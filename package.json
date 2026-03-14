@@ -1,0 +1,19 @@
+{
+  "name": "take-you-forward",
+  "version": "1.0.0",
+  "description": "Retail backend system",
+  "main": "src/app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "nodejs",
+    "reatil",
+    "backend"
+  ],
+  "author": "Edusite",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
