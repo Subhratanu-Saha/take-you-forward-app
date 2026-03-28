@@ -1,5 +1,7 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const { API_SUCCESSFUL_HEALTH_MESSAGE } = require('./constants/constant');
 const app = express();
 
 // Middleware
@@ -7,7 +9,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Request logging middleware
+// Request Handler :: Request logging middleware
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
@@ -17,12 +19,13 @@ app.use((req, res, next) => {
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'TUF Server is running in DEV_MODE',
+    message: API_SUCCESSFUL_HEALTH_MESSAGE,
     timestamp: new Date()
   });
 });
 
 // Routes
+app.use('/api/v1/customers', require('./routes/customerRoutes'));
 // app.use('/api/v1/users', require('./routes/userRoutes'));
 // app.use('/api/v1/products', require('./routes/productRoutes'));
 // Add more routes here as needed
