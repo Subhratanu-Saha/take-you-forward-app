@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const customerController = require('../controllers/customerController');
+const { validateCreateCustomer } = require('../middleware/customerValidator');
 
 // GET all customers [/api/v1/customers]
 router.get('/', customerController.getAllCustomers);
@@ -12,7 +13,7 @@ router.get('/search/:term', customerController.searchCustomers);
 router.get('/:customerId', customerController.getCustomerById);
 
 // CREATE new customer [/api/v1/customers]
-router.post('/', customerController.createCustomer);
+router.post('/', validateCreateCustomer, customerController.createCustomer);
 
 // UPDATE customer [/api/v1/customers/:customerId]
 router.put('/:customerId', customerController.updateCustomer);
