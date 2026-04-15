@@ -4,24 +4,95 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model customer {
-  customerid        String    @id @db.VarChar(20)
-  firstname         String    @db.VarChar(50)
-  lastname          String?   @db.VarChar(50)
-  emailadd          String    @unique @db.VarChar(100)
-  contactnum        String?   @db.VarChar(20)
-  addressline1      String    @db.VarChar(100)
-  addressline2      String?   @db.VarChar(100)
-  city              String    @db.VarChar(30)
-  pincode           String    @db.VarChar(10)
-  gender            String?   @db.VarChar(1)
-  dob               DateTime  @db.Date
+  customerid        String          @id @db.VarChar(20)
+  firstname         String          @db.VarChar(50)
+  lastname          String?         @db.VarChar(50)
+  emailaddr         String          @unique(map: "customer_emailadd_key") @db.VarChar(100)
+  contactnum        String?         @db.VarChar(20)
+  addressline1      String          @db.VarChar(100)
+  addressline2      String?         @db.VarChar(100)
+  city              String          @db.VarChar(30)
+  pincode           String          @db.VarChar(10)
+  gender            String?         @db.VarChar(1)
+  dob               DateTime        @db.Date
   isloyalty         Boolean?
-  sysenrollmentdt   DateTime? @db.Timestamp(6)
-  syslastmodifieddt DateTime? @db.Timestamp(6)
+  sysenrollmentdt   DateTime?       @db.Timestamp(6)
+  syslastmodifieddt DateTime?       @db.Timestamp(6)
+  interaction       interaction[]
+  loyalty           loyalty[]
+  loyaltyledger     loyaltyledger[]
+  orderheader       orderheader[]
+  subscriber        subscriber[]
+}
 
-  @@map("customer")
+model interaction {
+  interactionid     String    @id @db.VarChar(20)
+  customerid        String?   @db.VarChar(20)
+  interactionmode   String    @db.VarChar(20)
+  interactionvalue  String    @db.VarChar(40)
+  interactiontype   String    @db.VarChar(40)
+  syslastmodifieddt DateTime? @db.Timestamp(6)
+  customer          customer? @relation(fields: [customerid], references: [customerid], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model loyalty {
+  loyaltyid      Int       @id @default(autoincrement())
+  customerid     String?   @db.VarChar(20)
+  totalpoints    Decimal?  @db.Decimal(4, 0)
+  tier           String    @db.VarChar(15)
+  isactive       Boolean
+  lastearnedat   DateTime  @db.Timestamp(6)
+  lastredeemedat DateTime  @db.Timestamp(6)
+  createdat      DateTime  @db.Timestamp(6)
+  updatedat      DateTime? @db.Timestamp(6)
+  customer       customer? @relation(fields: [customerid], references: [customerid], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model loyaltyledger {
+  ledgerid     Int       @id @default(autoincrement())
+  customerid   String?   @db.VarChar(20)
+  orderid      String    @db.VarChar(20)
+  ledgertype   String?   @db.VarChar(20)
+  points       Decimal?  @db.Decimal(4, 0)
+  balanceafter Int?
+  expirydate   DateTime? @db.Timestamp(6)
+  createdat    DateTime? @db.Timestamp(6)
+  customer     customer? @relation(fields: [customerid], references: [customerid], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model orderheader {
+  orderid           String           @id @db.VarChar(20)
+  customerid        String?          @db.VarChar(20)
+  totalamount       Decimal          @db.Decimal(10, 2)
+  taxamount         Decimal?         @db.Decimal(10, 2)
+  channel           String?          @db.VarChar(10)
+  payment           String           @db.VarChar(10)
+  discount          Decimal?         @db.Decimal(10, 2)
+  isloyalty         Boolean?
+  syslastmodifieddt DateTime?        @db.Timestamp(6)
+  customer          customer?        @relation(fields: [customerid], references: [customerid], onDelete: NoAction, onUpdate: NoAction)
+  orderlineitems    orderlineitems[]
+}
+
+model orderlineitems {
+  orderitemid String       @id @db.VarChar(50)
+  orderid     String?      @db.VarChar(50)
+  skuid       String       @db.VarChar(20)
+  skuitem     String       @db.VarChar(200)
+  skuquantity String       @db.VarChar(3)
+  skuprice    Decimal      @db.Decimal(10, 2)
+  orderheader orderheader? @relation(fields: [orderid], references: [orderid], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model subscriber {
+  subscriberid    String    @id @db.VarChar(20)
+  customerid      String?   @db.VarChar(20)
+  issubscribe     Boolean
+  emailpermstatus Boolean
+  smspermstatus   Boolean
+  sysmodifieddt   DateTime? @db.Timestamp(6)
+  customer        customer? @relation(fields: [customerid], references: [customerid], onDelete: NoAction, onUpdate: NoAction)
 }
