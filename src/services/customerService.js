@@ -1,16 +1,7 @@
 const customerModel = require('../models/customer');
+const generateCustomerId = require('../utils/customerIdGenerator');
 
 // ==================== ID GENERATOR ====================
-const generateCustomerId = () => {
-  const timestamp = Date.now();
-
-  const randomStr = Math.random()
-    .toString(36)
-    .substring(2, 8)
-    .toUpperCase();
-
-  return `CUST-${timestamp}-${randomStr}`;
-};
 
 // ==================== VALIDATION HELPERS ====================
 const validateEmail = (email) => {
@@ -29,7 +20,7 @@ const validatePincode = (pincode) => {
 
 // ==================== CREATE CUSTOMER ====================
 const createCustomer = async (customerData) => {
-  // Validate required fields
+  const customerid = generateCustomerId();  // Validate required fields
   if (!customerData.firstname?.trim()) {
     throw new Error('First name is required');
   }
@@ -88,19 +79,7 @@ const createCustomer = async (customerData) => {
     }
   }
 
-  // ==================== AUTO GENERATE CUSTOMER ID ====================
-  let customerid;
-  let isUnique = false;
-
-  while (!isUnique) {
-    customerid = generateCustomerId();
-
-    const existingId = await customerModel.getCustomerById(customerid);
-    if (!existingId) {
-      isUnique = true;
-    }
-  }
-
+  
   // Attach ID to customer data
   const newCustomerData = {
     ...customerData,
