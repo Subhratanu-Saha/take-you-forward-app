@@ -10,7 +10,7 @@ model customer {
   customerid        String          @id @db.VarChar(20)
   firstname         String          @db.VarChar(50)
   lastname          String?         @db.VarChar(50)
-  emailaddr         String          @unique(map: "customer_emailadd_key") @db.VarChar(100)
+  emailadd          String          @unique @db.VarChar(100)
   contactnum        String?         @db.VarChar(20)
   addressline1      String          @db.VarChar(100)
   addressline2      String?         @db.VarChar(100)
