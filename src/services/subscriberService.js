@@ -35,22 +35,6 @@ const getSubscriberByCustomerId = async (customerid) => {
 
 // ==================== CREATE SUBSCRIBER ====================
 const createSubscriber = async (subscriberData) => {
-  // Validate required fields
-  if (!subscriberData.customerid?.trim()) {
-    throw new Error('Customer ID is required');
-  }
-
-  if (typeof subscriberData.issubscribe !== 'boolean') {
-    throw new Error('isSubscribe must be a boolean');
-  }
-
-  if (typeof subscriberData.emailpermstatus !== 'boolean') {
-    throw new Error('emailPermStatus must be a boolean');
-  }
-
-  if (typeof subscriberData.smspermstatus !== 'boolean') {
-    throw new Error('smsPermStatus must be a boolean');
-  }
 
   // Check if subscriber already exists for this customer or not
   const existing = await subscriberModel.getSubscriberByCustomerId(subscriberData.customerid);
