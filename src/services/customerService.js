@@ -1,83 +1,12 @@
 const customerModel = require('../models/customer');
-const generateCustomerId = require('../utils/customerIdGenerator');
-
-// ==================== ID GENERATOR ====================
-
-// ==================== VALIDATION HELPERS ====================
-const validateEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
-
-const validatePhone = (phone) => {
-  const phoneRegex = /^\d{10}$/;
-  return phoneRegex.test(phone.replace(/\D/g, ''));
-};
-
-const validatePincode = (pincode) => {
-  return /^\d{6}$/.test(pincode);
-};
-
-// ==================== CREATE CUSTOMER ====================
+// Business logic: Create customer with validation
 const createCustomer = async (customerData) => {
-  const customerid = generateCustomerId();  // Validate required fields
-  if (!customerData.firstname?.trim()) {
-    throw new Error('First name is required');
-  }
-
-  if (!customerData.emailadd?.trim()) {
-    throw new Error('Email is required');
-  }
-
-  if (!validateEmail(customerData.emailadd)) {
-    throw new Error('Invalid email format');
-  }
-
-  if (!customerData.contactnum?.trim()) {
-    throw new Error('Contact number is required');
-  }
-
-  if (!validatePhone(customerData.contactnum)) {
-    throw new Error('Invalid phone number (must be 10 digits)');
-  }
-
-  if (!customerData.addressline1?.trim()) {
-    throw new Error('Address is required');
-  }
-
-  if (!customerData.city?.trim()) {
-    throw new Error('City is required');
-  }
-
-  if (!customerData.pincode?.trim()) {
-    throw new Error('Pincode is required');
-  }
-
-  if (!validatePincode(customerData.pincode)) {
-    throw new Error('Invalid pincode (must be 6 digits)');
-  }
-
-  // Check if email already exists
+  // Check if customer already exists
   const existing = await customerModel.getCustomerByEmail(customerData.emailadd);
   if (existing) {
     throw new Error('Email already registered');
   }
-
-  // Validate DOB
-  if (customerData.dob) {
-    const dob = new Date(customerData.dob);
-    const age = Math.floor(
-      (new Date() - dob) / (365.25 * 24 * 60 * 60 * 1000)
-    );
-
-    if (age < 18) {
-      throw new Error('Customer must be at least 18 years old');
-    }
-
-    if (age > 120) {
-      throw new Error('Invalid date of birth');
-    }
-  }
+  
 
   
   // Attach ID to customer data
