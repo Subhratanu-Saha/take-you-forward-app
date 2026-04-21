@@ -23,12 +23,26 @@ DATABASE_URL="postgresql://username:password@localhost:5432/your_database"
 NODE_ENV=development
 ```
 
-### 3. Generate Prisma Client
+### 3. Generate Schema from Existing Database (Optional)
+If your PostgreSQL database already has tables created (from schema-creation.md), you can auto-generate the Prisma schema:
+```bash
+npx prisma db pull
+```
+
+This command will:
+- Introspect your PostgreSQL database
+- Auto-generate `prisma/schema.prisma` based on existing tables
+- Map database columns to proper Prisma types
+- Create models for: `customer`, `subscriber`, `interaction`, `orderheader`, `orderlineitems`, `loyalty`, `loyaltyledger`
+
+**Note:** Use this only if your database tables already exist. Skip this step if you're creating tables from scratch.
+
+### 4. Generate Prisma Client
 ```bash
 npx prisma generate
 ```
 
-### 4. Run Database Migrations
+### 5. Run Database Migrations
 If starting fresh:
 ```bash
 npx prisma migrate dev --name init
@@ -39,7 +53,7 @@ Or if you already have the database:
 npx prisma db push
 ```
 
-### 5. Verify Database Connection
+### 6. Verify Database Connection
 ```bash
 npx prisma studio
 ```
