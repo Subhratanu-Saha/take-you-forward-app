@@ -26,6 +26,7 @@ app.get('/api/health', (req, res) => {
 
 // Routes
 app.use('/api/v1/customers', require('./routes/customerRoutes'));
+app.use("api/v1/subscribers", require("./routes/subscriberRoutes"));
 // app.use('/api/v1/users', require('./routes/userRoutes'));
 // app.use('/api/v1/products', require('./routes/productRoutes'));
 // Add more routes here as needed
