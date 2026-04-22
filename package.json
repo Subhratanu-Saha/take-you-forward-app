@@ -10,32 +10,21 @@
   },
   "keywords": [
     "nodejs",
-    "reatil",
+    "retail",
     "backend"
   ],
   "author": "Edusite",
   "license": "ISC",
   "dependencies": {
-<<<<<<< HEAD
     "@prisma/adapter-pg": "^7.7.0",
-    "@prisma/client": "^7.7.0",
+    "@prisma/client": "^6.19.3",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^5.2.1",
     "pg": "^8.20.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1",
-    "prisma": "^7.7.0"
-=======
-    "@prisma/client": "^5.7.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "express": "^5.2.1"
-  },
-  "devDependencies": {
     "nodemon": "^3.1.14",
-    "prisma": "^5.7.0"
->>>>>>> 813d4d4a839c7c7c82264e9a4f7cffe1e328af97
+    "prisma": "^6.19.3"
   }
 }
