@@ -88,7 +88,7 @@ model orderlineitems {
 }
 
 model subscriber {
-  subscriberid    String    @id @db.VarChar(20)
+  subscriberid    String    @id @db.VarChar(40)
   customerid      String?   @db.VarChar(20)
   issubscribe     Boolean
   emailpermstatus Boolean
