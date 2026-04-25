@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const customerController = require('../controllers/customerController');
-const { validateUpdateCustomer, validateDeleteCustomer } = require('../middleware/custValidator');
+const {validateCreateCustomer, validateUpdateCustomer, validateDeleteCustomer } = require('../middleware/customerValidator');
 
 // GET all customers [/api/v1/customers]
 router.get('/', customerController.getAllCustomers);
