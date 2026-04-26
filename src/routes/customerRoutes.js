@@ -7,14 +7,19 @@ const {
   validateDeleteCustomer
 } = require('../middleware/customerValidator');
 
+const {
+    validateCustomerId,
+    validateGetAllCustomers,
+} = require('../middleware/customerValidator');
+
 // GET all customers [/api/v1/customers]
-router.get('/', customerController.getAllCustomers);
+router.get('/',validateGetAllCustomers,customerController.getAllCustomers);
 
 // SEARCH customers [/api/v1/customers/search/:term]
 router.get('/search/:term', customerController.searchCustomers);
 
 // GET customer by ID [/api/v1/customers/:customerId]
-router.get('/:customerId', customerController.getCustomerById);
+router.get('/:customerId',validateCustomerId,customerController.getCustomerById);
 
 // CREATE new customer [/api/v1/customers]
 router.post('/', validateCreateCustomer, customerController.createCustomer);
@@ -28,5 +33,3 @@ router.delete('/:customerId', customerController.deleteCustomer);
 router.delete('/:customerId', validateDeleteCustomer, customerController.deleteCustomer);
 
 module.exports = router;
-
-

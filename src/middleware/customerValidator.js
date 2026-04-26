@@ -51,9 +51,24 @@ const validateCreateCustomer = (req, res, next) => {
   next();
 };
 
+// Validate Customer ID
+const validateCustomerId = (req, res, next) => {
+  const { customerId } = req.params;
 
+  const customerIdRegex = /^CUST-\d+-[A-Z0-9]{10}$/;
 
-// 🔹 Update Customer Validation
+  if (!customerId || !customerIdRegex.test(customerId)) {
+    return res.status(400).json({
+      success: false,
+      message:
+        "Invalid customer ID format. Expected format: CUST-{timestamp}-{10 alphanumeric characters}",
+    });
+  }
+
+  next();
+};
+
+// Update Customer Validation
 function validateUpdateCustomer(req, res, next) {
   const { customerId } = req.params;
   const { firstname, emailadd, contactnum, pincode, dob } = req.body || {};
@@ -127,7 +142,7 @@ function validateUpdateCustomer(req, res, next) {
   next();
 }
 
-// 🔹 Delete Customer Validation
+// Delete Customer Validation
 function validateDeleteCustomer(req, res, next) {
   const { customerId } = req.params;
 
@@ -141,8 +156,37 @@ function validateDeleteCustomer(req, res, next) {
   next();
 }
 
+// Get All Customers Validation
+const validateGetAllCustomers = (req, res, next) => {
+  const { page, limit } = req.query;
+
+  if (page) {
+    const pageNum = Number(page);
+    if (isNaN(pageNum) || pageNum <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Page must be a positive number",
+      });
+    }
+  }
+
+  if (limit) {
+    const limitNum = Number(limit);
+    if (isNaN(limitNum) || limitNum <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Limit must be a positive number",
+      });
+    }
+  }
+
+  next();
+};
+
 module.exports = {
   validateCreateCustomer,
+  validateCustomerId,
   validateUpdateCustomer,
-  validateDeleteCustomer
+  validateDeleteCustomer,
+  validateGetAllCustomers,
 };
