@@ -6,7 +6,7 @@ const { validateCreateCustomer } = require('../middleware/customerValidator');
 const {
     validateCustomerId,
     validateGetAllCustomers,
-} = require('../middleware/customerRequestValidator');
+} = require('../middleware/customerValidator');
 
 // GET all customers [/api/v1/customers]
 router.get('/',validateGetAllCustomers,customerController.getAllCustomers);
