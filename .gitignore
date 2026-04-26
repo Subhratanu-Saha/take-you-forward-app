@@ -1,4 +1,4 @@
 node_modules
 .env
 .env.example
-prisma.migration
+prisma/migrations
