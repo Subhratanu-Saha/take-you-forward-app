@@ -7,7 +7,7 @@ datasource db {
 }
 
 model customer {
-  customerid        String          @id @db.VarChar(20)
+  customerid        String          @id @db.VarChar(40)
   firstname         String          @db.VarChar(50)
   lastname          String?         @db.VarChar(50)
   emailadd          String          @unique @db.VarChar(100)
@@ -88,7 +88,7 @@ model orderlineitems {
 }
 
 model subscriber {
-  subscriberid    String    @id @db.VarChar(20)
+  subscriberid    String    @id @db.VarChar(40)
   customerid      String?   @db.VarChar(20)
   issubscribe     Boolean
   emailpermstatus Boolean
