@@ -2,6 +2,20 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneRegex = /^\d{10}$/;
 const pincodeRegex = /^\d{6}$/;
 
+// ==================== PROTECTED FIELDS ====================
+// Fields that cannot be updated after customer creation
+const PROTECTED_FIELDS = ['firstname', 'emailadd', 'dob', 'customerid'];
+
+/**
+ * Check if data contains any protected fields
+ * @param {Object} data - Data object to check
+ * @returns {Array} - Array of protected field names found in data
+ */
+const checkProtectedFields = (data) => {
+  if (!data || typeof data !== 'object') return [];
+  return PROTECTED_FIELDS.filter(field => field in data);
+};
+
 const validateCreateCustomer = (req, res, next) => {
   const {
     firstname,
@@ -51,6 +65,22 @@ const validateCreateCustomer = (req, res, next) => {
   next();
 };
 
+const validateUpdateCustomer = (req, res, next) => {
+  const protectedFieldsInRequest = checkProtectedFields(req.body);
+
+  if (protectedFieldsInRequest.length > 0) {
+    return res.status(400).json({
+      success: false,
+      message: `You cannot update these fields: ${protectedFieldsInRequest.join(', ')}`,
+    });
+  }
+
+  next();
+};
+
 module.exports = {
   validateCreateCustomer,
+  validateUpdateCustomer,
+  checkProtectedFields,
+  PROTECTED_FIELDS,
 };
