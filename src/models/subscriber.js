@@ -101,6 +101,9 @@ const updateSubscriber = async (subscriberid, subscriberData) => {
 };
 
 module.exports = {
+  getAllSubscribers,
+  getSubscriberById,
+  getSubscriberByCustomerId,
   createSubscriber,
   updateSubscriber,
 };
