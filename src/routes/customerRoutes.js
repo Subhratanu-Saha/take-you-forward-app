@@ -1,16 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const customerController = require('../controllers/customerController');
-const { validateCreateCustomer, validateUpdateCustomer } = require('../middleware/customerValidator');
-const { validateCreateCustomer } = require('../middleware/customerValidator');
 const {
+  validateCreateCustomer,
   validateUpdateCustomer,
-  validateDeleteCustomer
-} = require('../middleware/customerValidator');
-
-const {
-    validateCustomerId,
-    validateGetAllCustomers,
+  validateDeleteCustomer,
+  validateCustomerId,
+  validateGetAllCustomers,
 } = require('../middleware/customerValidator');
 
 // GET all customers [/api/v1/customers]
