@@ -18,12 +18,28 @@ const generateSubscriberId = () => {
  * Fetch every subscriber record from the database.
  */
 // ============Write your code ====================
+const getAllSubscribers = async () => {
+  try {
+    return await prisma.subscriber.findMany();
+  } catch (error) {
+    throw new Error(`Error fetching subscribers: ${error.message}`);
+  }
+};
 
 
 /**
  * Fetch a single subscriber by its primary key.
  */
 // ============Write your code ====================
+const getSubscriberById = async (subscriberid) => {
+  try {
+    return await prisma.subscriber.findUnique({
+      where: { subscriberid }
+    });
+  } catch (error) {
+    throw new Error(`Error fetching subscriber: ${error.message}`);
+  }
+};
 
 
 /**
@@ -31,7 +47,15 @@ const generateSubscriberId = () => {
  * Note: customerid is not unique in the schema, so findFirst is the safe query.
  */
 // ============Write your code ====================
-
+const getSubscriberByCustomerId = async (customerid) => {
+  try {
+    return await prisma.subscriber.findFirst({
+      where: { customerid }
+    });
+  } catch (error) {
+    throw new Error(`Error fetching subscriber by customerId: ${error.message}`);
+  }
+};
 
 /**
  * Insert a new subscriber record into the downstream subscriber table.
@@ -77,6 +101,9 @@ const updateSubscriber = async (subscriberid, subscriberData) => {
 };
 
 module.exports = {
+  getAllSubscribers,
+  getSubscriberById,
+  getSubscriberByCustomerId,
   createSubscriber,
   updateSubscriber,
 };
