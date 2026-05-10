@@ -30,12 +30,6 @@ const getSubscriberByCustomerId = async (customerid) => {
 // ==================== CREATE SUBSCRIBER ====================
 const createSubscriber = async (subscriberData) => {
 
-  // Check if subscriber already exists for this customer or not
-  const existing = await subscriberModel.getSubscriberByCustomerId(subscriberData.customerid);
-  if (existing) {
-    throw new Error('Subscriber already exists for this customer');
-  }
-
   return await subscriberModel.createSubscriber(subscriberData);
 };
 
