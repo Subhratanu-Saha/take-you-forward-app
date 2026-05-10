@@ -1,4 +1,5 @@
 const customerService = require('../services/customerService');
+const config = require('../config');
 
 // GET all customers
 const getAllCustomers = async (req, res) => {
@@ -43,7 +44,7 @@ const createCustomer = async (req, res) => {
       const issubscribe = true; 
       const emailpermstatus = true; 
       const smspermstatus = true;
-      await fetch('http://localhost:5000/api/v1/subscriber', {
+      await fetch(`${config.apiBaseUrl}/api/v1/subscriber`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
