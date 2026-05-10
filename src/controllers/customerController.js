@@ -38,6 +38,24 @@ const getCustomerById = async (req, res) => {
 const createCustomer = async (req, res) => {
   try {
     const customer = await customerService.createCustomer(req.body);
+    if(customer){
+      //make an API call to subscriber
+      const issubscribe = true; 
+      const emailpermstatus = true; 
+      const smspermstatus = true;
+      const subscriberResponse = await fetch('http://localhost:5000/api/v1/subscriber', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          customerid: customer.customerid,
+          issubscribe,
+          emailpermstatus,
+          smspermstatus,
+        })
+      });
+    }
     res.status(201).json({
       success: true,
       message: 'Customer created successfully',
