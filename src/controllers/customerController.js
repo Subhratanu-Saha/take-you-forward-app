@@ -43,7 +43,7 @@ const createCustomer = async (req, res) => {
       const issubscribe = true; 
       const emailpermstatus = true; 
       const smspermstatus = true;
-      const subscriberResponse = await fetch('http://localhost:5000/api/v1/subscriber', {
+      await fetch('http://localhost:5000/api/v1/subscriber', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
