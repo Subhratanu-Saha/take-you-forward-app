@@ -1,5 +1,6 @@
 const customerService = require('../services/customerService');
 const config = require('../config');
+const generateRandomAlphaNumeric = require('../utils/idGenerator');
 
 // GET all customers
 const getAllCustomers = async (req, res) => {
@@ -40,9 +41,9 @@ const createCustomer = async (req, res) => {
   try {
     const customer = await customerService.createCustomer(req.body);
     if(customer){
-      //make an API call to subscriber
-      const issubscribe = true; 
-      const emailpermstatus = true; 
+      // make an API call to subscriber
+      const issubscribe = true;
+      const emailpermstatus = true;
       const smspermstatus = true;
       await fetch(`${config.apiBaseUrl}/api/v1/subscriber`, {
         method: 'POST',
@@ -54,6 +55,24 @@ const createCustomer = async (req, res) => {
           issubscribe,
           emailpermstatus,
           smspermstatus,
+        })
+      });
+
+      // Create interaction record
+      
+      const interactionid = generateRandomAlphaNumeric(20); // Match schema requirement
+      
+      await fetch(`${config.apiBaseUrl}/api/v1/interaction`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          interactionid,
+          customerid: customer.customerid,
+          interactionmode: 'SIGNUP',      // e.g., SIGNUP, PURCHASE, EMAIL, PHONE
+          interactionvalue: 'ACCOUNT_CREATION',
+          interactiontype: 'SYSTEM',      // e.g., SYSTEM, USER_INITIATED
         })
       });
     }
@@ -69,7 +88,7 @@ const createCustomer = async (req, res) => {
     });
   }
 };
-
+   
 // UPDATE customer
 const updateCustomer = async (req, res) => {
   try {
