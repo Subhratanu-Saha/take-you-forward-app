@@ -6,49 +6,18 @@ const {
   validateCreateInteraction,
   validateUpdateInteraction,
   validateDeleteInteraction,
-  validateInteractionId,
-  validateGetAllInteractions,
 } = require('../middleware/interactionValidator');
 
-// GET all interactions [/api/v1/interactions]
-router.get(
-  '/',
-  validateGetAllInteractions,
-  interactionController.getAllInteractions
-);
+// GET interaction by ID [/api/v1/interaction/:interactionId]
+router.get('/:interactionId', interactionController.getInteractionById);
 
-// SEARCH interactions [/api/v1/interactions/search/:term]
-router.get(
-  '/search/:term',
-  interactionController.searchInteractions
-);
+// CREATE new interaction [/api/v1/interaction]
+router.post('/', validateCreateInteraction, interactionController.createInteraction);
 
-// GET interaction by ID [/api/v1/interactions/:interactionId]
-router.get(
-  '/:interactionId',
-  validateInteractionId,
-  interactionController.getInteractionById
-);
+// UPDATE interaction [/api/v1/interaction/:interactionId]
+router.put('/:interactionId', validateUpdateInteraction, interactionController.updateInteraction);
 
-// CREATE new interaction [/api/v1/interactions]
-router.post(
-  '/',
-  validateCreateInteraction,
-  interactionController.createInteraction
-);
-
-// UPDATE interaction [/api/v1/interactions/:interactionId]
-router.put(
-  '/:interactionId',
-  validateUpdateInteraction,
-  interactionController.updateInteraction
-);
-
-// DELETE interaction [/api/v1/interactions/:interactionId]
-router.delete(
-  '/:interactionId',
-  validateDeleteInteraction,
-  interactionController.deleteInteraction
-);
+// DELETE interaction [/api/v1/interaction/:interactionId]
+router.delete('/:interactionId', validateDeleteInteraction, interactionController.deleteInteraction);
 
 module.exports = router;
