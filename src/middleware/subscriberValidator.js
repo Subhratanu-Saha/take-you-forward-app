@@ -36,7 +36,7 @@ const validateCreateSubscriber = (req, res, next) => {
 };
 
 const validateUpdateSubscriber = (req, res, next) => {
-  const subscriberId = req.params.subscriberId ?? req.params.subscriberid;
+  const { subscriberid } = req.params;
   const {
     issubscribe,
     emailpermstatus,
@@ -45,7 +45,7 @@ const validateUpdateSubscriber = (req, res, next) => {
 
   const errors = [];
 
-  if (!subscriberId?.trim()) {
+  if (!subscriberid?.trim()) {
     errors.push('Subscriber ID is required');
   }
 
@@ -73,10 +73,10 @@ const validateUpdateSubscriber = (req, res, next) => {
 };
 
 const validateGetSubscriberById = (req, res, next) => {
-  const subscriberId = req.params.subscriberId ?? req.params.subscriberid;
+  const { subscriberid } = req.params;
   const errors = [];
 
-  if (!subscriberId?.trim()) {
+  if (!subscriberid?.trim()) {
     errors.push('Subscriber ID is required');
   }
 
@@ -92,7 +92,7 @@ const validateGetSubscriberById = (req, res, next) => {
 };
 
 const validateGetSubscriberByCustomerId = (req, res, next) => {
-  const customerid = req.params.customerid ?? req.query.customerid;
+  const { customerid } = req.params;
   const errors = [];
 
   if (!customerid?.trim()) {
