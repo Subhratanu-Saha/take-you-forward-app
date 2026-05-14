@@ -1,5 +1,7 @@
 const customerModel = require('../models/customer');
 const { checkProtectedFields } = require('../middleware/customerValidator');
+const generateCustomerId = require('../utils/customerIdGenerator');
+
 // Business logic: Create customer with validation
 const createCustomer = async (customerData) => {
   // Check if customer already exists
@@ -8,7 +10,8 @@ const createCustomer = async (customerData) => {
     throw new Error('Email already registered');
   }
   
-
+  // Generate unique customer ID
+  const customerid = generateCustomerId();
   
   // Attach ID to customer data
   const newCustomerData = {

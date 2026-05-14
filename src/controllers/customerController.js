@@ -1,4 +1,5 @@
 const customerService = require('../services/customerService');
+const config = require('../config');
 
 // GET all customers
 const getAllCustomers = async (req, res) => {
@@ -38,6 +39,24 @@ const getCustomerById = async (req, res) => {
 const createCustomer = async (req, res) => {
   try {
     const customer = await customerService.createCustomer(req.body);
+    if(customer){
+      //make an API call to subscriber
+      const issubscribe = true; 
+      const emailpermstatus = true; 
+      const smspermstatus = true;
+      await fetch(`${config.apiBaseUrl}/api/v1/subscriber`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          customerid: customer.customerid,
+          issubscribe,
+          emailpermstatus,
+          smspermstatus,
+        })
+      });
+    }
     res.status(201).json({
       success: true,
       message: 'Customer created successfully',
