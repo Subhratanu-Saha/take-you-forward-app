@@ -22,11 +22,9 @@ router.get('/:customerId',validateCustomerId,customerController.getCustomerById)
 router.post('/', validateCreateCustomer, customerController.createCustomer);
 
 // UPDATE customer [/api/v1/customers/:customerId]
-router.put('/:customerId', customerController.updateCustomer);
 router.put('/:customerId', validateUpdateCustomer, customerController.updateCustomer);
 
 // DELETE customer [/api/v1/customers/:customerId]
-router.delete('/:customerId', customerController.deleteCustomer);
 router.delete('/:customerId', validateDeleteCustomer, customerController.deleteCustomer);
 
 module.exports = router;

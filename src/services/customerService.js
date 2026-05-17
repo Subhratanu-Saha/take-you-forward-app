@@ -45,32 +45,10 @@ const getCustomerById = async (customerid) => {
 
 // ==================== UPDATE ====================
 const updateCustomer = async (customerid, customerData) => {
-  if (!customerid?.trim()) {
-    throw new Error('Customer ID is required');
-  }
-
-  // Guard: Check for protected fields
-  const protectedFieldsInRequest = checkProtectedFields(customerData);
-  if (protectedFieldsInRequest.length > 0) {
-    throw new Error(`You cannot update these fields: ${protectedFieldsInRequest.join(', ')}`);
-  }
-
   const customer = await customerModel.getCustomerById(customerid);
-
   if (!customer) {
     throw new Error('Customer not found');
   }
-
-  // Phone validation (allowed to update)
-  if (customerData.contactnum && !validatePhone(customerData.contactnum)) {
-    throw new Error('Invalid phone number (must be 10 digits)');
-  }
-
-  // Pincode validation (allowed to update)
-  if (customerData.pincode && !validatePincode(customerData.pincode)) {
-    throw new Error('Invalid pincode (must be 6 digits)');
-  }
-
   return await customerModel.updateCustomer(customerid, customerData);
 };
 
