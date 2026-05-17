@@ -1,4 +1,5 @@
 const customerModel = require('../models/customer');
+const { checkProtectedFields } = require('../middleware/customerValidator');
 const generateCustomerId = require('../utils/customerIdGenerator');
 
 // Business logic: Create customer with validation
@@ -44,53 +45,10 @@ const getCustomerById = async (customerid) => {
 
 // ==================== UPDATE ====================
 const updateCustomer = async (customerid, customerData) => {
-  if (!customerid?.trim()) {
-    throw new Error('Customer ID is required');
-  }
-
   const customer = await customerModel.getCustomerById(customerid);
-
   if (!customer) {
     throw new Error('Customer not found');
   }
-
-  // Email validation
-  if (customerData.emailadd && customerData.emailadd !== customer.emailadd) {
-    if (!validateEmail(customerData.emailadd)) {
-      throw new Error('Invalid email format');
-    }
-
-    const existing = await customerModel.getCustomerByEmail(
-      customerData.emailadd
-    );
-
-    if (existing) {
-      throw new Error('Email already in use by another customer');
-    }
-  }
-
-  // Phone validation
-  if (customerData.contactnum && !validatePhone(customerData.contactnum)) {
-    throw new Error('Invalid phone number (must be 10 digits)');
-  }
-
-  // Pincode validation
-  if (customerData.pincode && !validatePincode(customerData.pincode)) {
-    throw new Error('Invalid pincode (must be 6 digits)');
-  }
-
-  // DOB validation
-  if (customerData.dob) {
-    const dob = new Date(customerData.dob);
-    const age = Math.floor(
-      (new Date() - dob) / (365.25 * 24 * 60 * 60 * 1000)
-    );
-
-    if (age < 18 || age > 120) {
-      throw new Error('Invalid date of birth');
-    }
-  }
-
   return await customerModel.updateCustomer(customerid, customerData);
 };
 

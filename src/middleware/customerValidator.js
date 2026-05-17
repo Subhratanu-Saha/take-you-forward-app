@@ -2,6 +2,20 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneRegex = /^\d{10}$/;
 const pincodeRegex = /^\d{6}$/;
 
+// ==================== PROTECTED FIELDS ====================
+// Fields that cannot be updated after customer creation
+const PROTECTED_FIELDS = ['firstname', 'emailadd', 'dob', 'customerid'];
+
+/**
+ * Check if data contains any protected fields
+ * @param {Object} data - Data object to check
+ * @returns {Array} - Array of protected field names found in data
+ */
+const checkProtectedFields = (data) => {
+  if (!data || typeof data !== 'object') return [];
+  return PROTECTED_FIELDS.filter(field => field in data);
+};
+
 const validateCreateCustomer = (req, res, next) => {
   const {
     firstname,
@@ -51,6 +65,8 @@ const validateCreateCustomer = (req, res, next) => {
   next();
 };
 
+
+
 // Validate Customer ID
 const validateCustomerId = (req, res, next) => {
   const { customerId } = req.params;
@@ -80,23 +96,13 @@ function validateUpdateCustomer(req, res, next) {
       message: "Customer ID is required"
     });
   }
-
-  // Validate First Name (required)
-  if (!firstname || !firstname.toString().trim()) {
+  const protectedFieldsInRequest = checkProtectedFields(req.body);
+  if (protectedFieldsInRequest.length > 0) {
     return res.status(400).json({
       success: false,
-      message: "First name is required"
+      message: `You cannot update these fields: ${protectedFieldsInRequest.join(', ')}`,
     });
   }
-
-  // Validate Email
-  if (emailadd && !emailRegex.test(emailadd)) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid email format"
-    });
-  }
-
   // Validate Contact Number (10 digits)
   if (contactnum) {
     const cleanedNumber = contactnum.toString().replace(/\D/g, '');
@@ -114,29 +120,6 @@ function validateUpdateCustomer(req, res, next) {
       success: false,
       message: "Invalid pincode (must be 6 digits)"
     });
-  }
-
-  // Validate DOB (age between 18–120)
-  if (dob) {
-    const birthDate = new Date(dob);
-
-    if (isNaN(birthDate.getTime())) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid date format"
-      });
-    }
-
-    const age = Math.floor(
-      (Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
-    );
-
-    if (age < 18 || age > 120) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid date of birth (age must be between 18 and 120)"
-      });
-    }
   }
 
   next();
@@ -185,6 +168,8 @@ const validateGetAllCustomers = (req, res, next) => {
 
 module.exports = {
   validateCreateCustomer,
+  checkProtectedFields,
+  PROTECTED_FIELDS,
   validateCustomerId,
   validateUpdateCustomer,
   validateDeleteCustomer,
