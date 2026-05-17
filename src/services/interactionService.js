@@ -1,4 +1,4 @@
-const interactionModel = require('../models/interactionModel');
+const interactionModel = require('../models/interaction');
 
 // ==================== GET ALL INTERACTIONS ====================
 const getAllInteractions = async () => {
