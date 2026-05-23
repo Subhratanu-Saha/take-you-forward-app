@@ -1,5 +1,6 @@
 const customerService = require('../services/customerService');
 const config = require('../config');
+const { INTERACTION_MODE, INTERACTION_TYPE, INTERACTION_VALUE } = require('../constants/constant');
 
 // GET all customers
 const getAllCustomers = async (req, res) => {
@@ -40,9 +41,9 @@ const createCustomer = async (req, res) => {
   try {
     const customer = await customerService.createCustomer(req.body);
     if(customer){
-      //make an API call to subscriber
-      const issubscribe = true; 
-      const emailpermstatus = true; 
+      // make an API call to subscriber
+      const issubscribe = true;
+      const emailpermstatus = true;
       const smspermstatus = true;
       await fetch(`${config.apiBaseUrl}/api/v1/subscriber`, {
         method: 'POST',
@@ -54,6 +55,21 @@ const createCustomer = async (req, res) => {
           issubscribe,
           emailpermstatus,
           smspermstatus,
+        })
+      });
+
+      // Create interaction record
+      
+       await fetch(`${config.apiBaseUrl}/api/v1/interaction`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          customerid: customer.customerid,
+          interactionmode: INTERACTION_MODE.SIGNUP,
+          interactiontype: INTERACTION_TYPE.SYSTEM,
+          interactionvalue: INTERACTION_VALUE.ACCOUNT_CREATION,
         })
       });
     }
@@ -69,7 +85,7 @@ const createCustomer = async (req, res) => {
     });
   }
 };
-
+   
 // UPDATE customer
 const updateCustomer = async (req, res) => {
   try {
