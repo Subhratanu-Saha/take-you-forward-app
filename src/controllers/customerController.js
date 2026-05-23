@@ -1,6 +1,5 @@
 const customerService = require('../services/customerService');
 const config = require('../config');
-const generateRandomAlphaNumeric = require('../utils/idGenerator');
 
 // GET all customers
 const getAllCustomers = async (req, res) => {
