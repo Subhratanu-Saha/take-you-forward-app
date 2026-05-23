@@ -18,7 +18,9 @@ const getInteractionRecord = async (req, res) => {
 
 const createInteractionRecord = async (req, res) => {
   try {
-    const interaction = await interactionService.createInteractionRecord(req.body);
+    
+    const interaction = await interactionService.createInteraction(req.body);
+    
     res.status(201).json({
       success: true,
       message: 'Interaction record created successfully',

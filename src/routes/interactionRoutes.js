@@ -5,19 +5,15 @@ const interactionController = require('../controllers/interactionController');
 const {
   validateCreateInteraction,
   validateUpdateInteraction,
-  validateDeleteInteraction,
 } = require('../middleware/interactionValidator');
 
 // GET interaction by ID [/api/v1/interaction/:interactionId]
-router.get('/:interactionId', interactionController.getInteractionById);
+router.get('/:interactionId', interactionController.getInteractionRecord);
 
 // CREATE new interaction [/api/v1/interaction]
-router.post('/', validateCreateInteraction, interactionController.createInteraction);
+router.post('/', validateCreateInteraction, interactionController.createInteractionRecord);
 
 // UPDATE interaction [/api/v1/interaction/:interactionId]
-router.put('/:interactionId', validateUpdateInteraction, interactionController.updateInteraction);
-
-// DELETE interaction [/api/v1/interaction/:interactionId]
-router.delete('/:interactionId', validateDeleteInteraction, interactionController.deleteInteraction);
+router.put('/:interactionId', validateUpdateInteraction, interactionController.updateInteractionRecord);
 
 module.exports = router;
