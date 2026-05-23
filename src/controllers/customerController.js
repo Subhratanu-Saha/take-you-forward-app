@@ -60,19 +60,13 @@ const createCustomer = async (req, res) => {
 
       // Create interaction record
       
-      const interactionid = generateRandomAlphaNumeric(20); // Match schema requirement
-      
-      await fetch(`${config.apiBaseUrl}/api/v1/interaction`, {
+       await fetch(`${config.apiBaseUrl}/api/v1/interaction`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          interactionid,
           customerid: customer.customerid,
-          interactionmode: 'SIGNUP',      // e.g., SIGNUP, PURCHASE, EMAIL, PHONE
-          interactionvalue: 'ACCOUNT_CREATION',
-          interactiontype: 'SYSTEM',      // e.g., SYSTEM, USER_INITIATED
         })
       });
     }
