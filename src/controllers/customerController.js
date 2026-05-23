@@ -1,5 +1,6 @@
 const customerService = require('../services/customerService');
 const config = require('../config');
+const { INTERACTION_MODE, INTERACTION_TYPE, INTERACTION_VALUE } = require('../constants/constant');
 
 // GET all customers
 const getAllCustomers = async (req, res) => {
@@ -66,9 +67,9 @@ const createCustomer = async (req, res) => {
         },
         body: JSON.stringify({
           customerid: customer.customerid,
-          interactionmode,
-          interactiontype,
-          interactionvalue,
+          interactionmode: INTERACTION_MODE.SIGNUP,
+          interactiontype: INTERACTION_TYPE.SYSTEM,
+          interactionvalue: INTERACTION_VALUE.ACCOUNT_CREATION,
         })
       });
     }
