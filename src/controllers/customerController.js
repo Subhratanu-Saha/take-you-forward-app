@@ -60,7 +60,7 @@ const createCustomer = async (req, res) => {
 
       // Create interaction record
       
-       await fetch(`${config.apiBaseUrl}/api/v1/interaction`, {
+       await fetch(`${config.apiBaseUrl}/api/v1/interactions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
