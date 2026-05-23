@@ -30,7 +30,7 @@ model customer {
 }
 
 model interaction {
-  interactionid     String    @id @db.VarChar(20)
+  interactionid     String    @id @db.VarChar(40)
   customerid        String?   @db.VarChar(40)
   interactionmode   String    @db.VarChar(20)
   interactionvalue  String    @db.VarChar(40)
@@ -55,7 +55,7 @@ model loyalty {
 model loyaltyledger {
   ledgerid     Int       @id @default(autoincrement())
   customerid   String?   @db.VarChar(40)
-  orderid      String    @db.VarChar(20)
+  orderid      String    @db.VarChar(40)
   ledgertype   String?   @db.VarChar(20)
   points       Decimal?  @db.Decimal(4, 0)
   balanceafter Int?
@@ -65,7 +65,7 @@ model loyaltyledger {
 }
 
 model orderheader {
-  orderid           String           @id @db.VarChar(20)
+  orderid           String           @id @db.VarChar(40)
   customerid        String?          @db.VarChar(40)
   totalamount       Decimal          @db.Decimal(10, 2)
   taxamount         Decimal?         @db.Decimal(10, 2)
@@ -79,9 +79,9 @@ model orderheader {
 }
 
 model orderlineitems {
-  orderitemid String       @id @db.VarChar(50)
-  orderid     String?      @db.VarChar(50)
-  skuid       String       @db.VarChar(20)
+  orderitemid String       @id @db.VarChar(40)
+  orderid     String?      @db.VarChar(40)
+  skuid       String       @db.VarChar(40)
   skuitem     String       @db.VarChar(200)
   skuquantity String       @db.VarChar(3)
   skuprice    Decimal      @db.Decimal(10, 2)
