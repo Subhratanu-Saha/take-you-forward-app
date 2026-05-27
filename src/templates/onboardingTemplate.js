@@ -200,12 +200,9 @@ const generateOnboardingHTML = (customerData = {}) => {
         </div>
 
         <ul class="feature-list">
-          <li>🎁 Earn reward points on every purchase</li>
-          <li>🔥 Access exclusive member-only discounts</li>
-          <li>📦 Track orders and delivery updates easily</li>
-          <li>💬 24/7 customer support assistance</li>
-          <li>🎉 Get birthday and festival special offers</li>
-          <li>⭐ Receive personalized product recommendations</li>
+          <li> Access exclusive member-only discounts</li>
+          <li> Track orders and delivery updates easily</li>
+          <li> Get birthday and festival special offers</li>
         </ul>
 
       </div>
