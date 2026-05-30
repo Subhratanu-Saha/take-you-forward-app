@@ -17,6 +17,23 @@ const getSubscriberRecord = async (req, res) => {
   }
 };
 
+//GET subscriberID by customerID
+const getSubscriberByCustomerId = async (req, res) => {
+  try {
+    const subscriber = await subscriberService.getSubscriberByCustomerId(req.query.customerid);
+    res.status(200).json({
+      success: true,
+      message: 'Subscriber record fetched successfully',
+      data: subscriber,
+    });
+  } catch (error) {
+    res.status(404).json({
+      success: false,
+      message: 'Subscriber record not found',
+    });
+  }
+};
+
 // CREATE new subscriber record
 const createSubscriberRecord = async (req, res) => {
   try {
@@ -53,6 +70,7 @@ const updateSubscriberRecord = async (req, res) => {
 
 module.exports = {
   getSubscriberRecord,
+  getSubscriberByCustomerId,
   createSubscriberRecord,
   updateSubscriberRecord,
 };
