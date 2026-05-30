@@ -1,15 +1,24 @@
 const express = require('express');
 const router = express.Router();
 const subscriberController = require('../controllers/subscriberController');
+const {
+  validateCreateSubscriber,
+  validateUpdateSubscriber,
+  validateGetSubscriberById,
+  validateGetSubscriberByCustomerId,
+} = require('../middleware/subscriberValidator');
 
-// GET subscriber (Expects ?customerid= query param)
-router.get('/', subscriberController.getSubscriberRecord);
+// GET subscriber by customer ID [/api/v1/subscriber?customerid=X]
+router.get('/', validateGetSubscriberByCustomerId, subscriberController.getSubscriberByCustomerId);
 
-// CREATE new subscriber
-router.post('/', subscriberController.createSubscriberRecord);
+// GET subscriber by ID [/api/v1/subscriber/:subscriberId]
+router.get('/:subscriberId', validateGetSubscriberById, subscriberController.getSubscriberRecord);
 
-// UPDATE subscriber
-router.put('/', subscriberController.updateSubscriberRecord);
+// CREATE new subscriber [/api/v1/subscriber]
+router.post('/', validateCreateSubscriber, subscriberController.createSubscriberRecord);
+
+// UPDATE subscriber [/api/v1/subscriber/:subscriberId]
+router.put('/:subscriberId', validateUpdateSubscriber, subscriberController.updateSubscriberRecord);
 
 // DELETE subscriber
 router.delete('/:subscriberId', subscriberController.deleteSubscriberRecord);
