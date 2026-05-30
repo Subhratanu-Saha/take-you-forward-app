@@ -4,7 +4,7 @@ const nodemailer = require("nodemailer");
 const CustomerModel = require("../models/customer");
 
 const loadEmailBody = () => {
-    const emailBodyPath = path.resolve(process.cwd(), "Template", "Onboarding Template", "email_body.js");
+    const emailBodyPath = path.resolve(__dirname, "..", "templates", "onboardingTemplate.js");
 
     if (!fs.existsSync(emailBodyPath)) {
         throw new Error(`Email body file not found at ${emailBodyPath}`);
