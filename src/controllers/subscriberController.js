@@ -51,8 +51,26 @@ const updateSubscriberRecord = async (req, res) => {
   }
 };
 
+// DELETE subscriber record
+const deleteSubscriberRecord = async (req, res) => {
+  try {
+    const subscriber = await subscriberService.deleteSubscriber(req.params.subscriberId);
+    res.status(200).json({
+      success: true,
+      message: 'Subscriber record deleted successfully',
+      data: subscriber,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   getSubscriberRecord,
   createSubscriberRecord,
   updateSubscriberRecord,
+  deleteSubscriberRecord,
 };

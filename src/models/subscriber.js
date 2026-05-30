@@ -100,10 +100,24 @@ const updateSubscriber = async (subscriberid, subscriberData) => {
   }
 };
 
+/**
+ * Delete an existing subscriber row by primary key.
+ */
+const deleteSubscriber = async (subscriberid) => {
+  try {
+    return await prisma.subscriber.delete({
+      where: { subscriberid },
+    });
+  } catch (error) {
+    throw new Error(`Error deleting subscriber: ${error.message}`);
+  }
+};
+
 module.exports = {
   getAllSubscribers,
   getSubscriberById,
   getSubscriberByCustomerId,
   createSubscriber,
   updateSubscriber,
+  deleteSubscriber,
 };

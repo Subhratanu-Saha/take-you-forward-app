@@ -11,4 +11,7 @@ router.post('/', subscriberController.createSubscriberRecord);
 // UPDATE subscriber
 router.put('/', subscriberController.updateSubscriberRecord);
 
+// DELETE subscriber
+router.delete('/:subscriberId', subscriberController.deleteSubscriberRecord);
+
 module.exports = router;
