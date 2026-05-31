@@ -49,3 +49,5 @@ const sendPromotionalEmails = async (customerData, subject ) => {
 module.exports = {
     sendPromotionalEmails,
 };
+
+//check and verified.
