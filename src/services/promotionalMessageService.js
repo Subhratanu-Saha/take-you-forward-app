@@ -77,3 +77,5 @@ const sendPromotionalEmails = async () => {
 module.exports = {
     sendPromotionalEmails,
 };
+
+//check and verified.
