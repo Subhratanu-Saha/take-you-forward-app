@@ -1,5 +1,3 @@
-const fs = require("fs");
-const path = require("path");
 const nodemailer = require("nodemailer");
 const CustomerModel = require("../models/customer");
 
@@ -36,9 +34,9 @@ const sendPromotionalEmails = async () => {
         // Get all customer email addresses using the existing model
         const customers = await CustomerModel.getAllCustomers();
 
-        const emailList = (customers || [])
-            .map(customer => customer.emailadd)
-            .filter(Boolean);
+    const emailList = (customers || [])
+        .map(customer => customer.emailadd)
+        .filter(Boolean);
 
         if (emailList.length === 0) {
             throw new Error("Error ! No customer email addresses found");
