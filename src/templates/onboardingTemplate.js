@@ -7,7 +7,7 @@ const generateOnboardingHTML = (customerData = {}) => {
   const {
     firstname = 'Customer',
     lastname = '',
-    customerid = '',
+    
     emailadd = '',
     city = ''
   } = customerData;
@@ -174,9 +174,7 @@ const generateOnboardingHTML = (customerData = {}) => {
       <!-- Customer Details -->
       <div class="info-box">
 
-        <div class="info-item">
-          <strong>Customer ID:</strong> ${customerid || 'Generated Soon'}
-        </div>
+       
 
         <div class="info-item">
           <strong>Email:</strong> ${emailadd || 'Not Available'}
