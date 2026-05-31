@@ -25,3 +25,7 @@ Models:
 
 Utils: 
 - Utility Functions
+
+## Backend deployed URL: https://take-you-forward-app.onrender.com
+
+## Neon DB: https://console.neon.tech/app/projects/muddy-surf-72146777?branchId=br-blue-surf-aod1k0wi
