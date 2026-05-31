@@ -1,7 +1,7 @@
 const nodemailer = require("nodemailer");
 const { generateOnboardingHTML } = require("../templates/onboardingTemplate");
 
-const sendPromotionalEmails = async (customerData, subject = "Welcome to Take You Forward - Your Journey Starts Here!") => {
+const sendPromotionalEmails = async (customerData, subject ) => {
     try {
         const { EMAIL_USER_ID, EMAIL_USER_PASSCODE } = process.env;
 
