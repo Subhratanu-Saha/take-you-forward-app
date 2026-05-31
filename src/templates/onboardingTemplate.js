@@ -5,16 +5,14 @@
 
 const generateOnboardingHTML = (customerData = {}) => {
   const {
-    firstname = 'Customer',
-    lastname = '',
-    customerid = '',
-    emailadd = '',
-    city = ''
+    firstname = "Customer",
+    lastname = "",
+
+    emailadd = "",
+    city = "",
   } = customerData;
 
-  const fullName = lastname
-    ? `${firstname} ${lastname}`
-    : firstname;
+  const fullName = lastname ? `${firstname} ${lastname}` : firstname;
 
   return `
 <!DOCTYPE html>
@@ -174,16 +172,14 @@ const generateOnboardingHTML = (customerData = {}) => {
       <!-- Customer Details -->
       <div class="info-box">
 
+       
+
         <div class="info-item">
-          <strong>Customer ID:</strong> ${customerid || 'Generated Soon'}
+          <strong>Email:</strong> ${emailadd || "Not Available"}
         </div>
 
         <div class="info-item">
-          <strong>Email:</strong> ${emailadd || 'Not Available'}
-        </div>
-
-        <div class="info-item">
-          <strong>City:</strong> ${city || 'Not Provided'}
+          <strong>City:</strong> ${city || "Not Provided"}
         </div>
 
         <div class="info-item">
@@ -231,4 +227,6 @@ const generateOnboardingHTML = (customerData = {}) => {
   `;
 };
 
-module.exports = { generateOnboardingHTML };
+module.exports = { generateOnboardingHTML,
+  html: generateOnboardingHTML(),
+  body: generateOnboardingHTML() };
