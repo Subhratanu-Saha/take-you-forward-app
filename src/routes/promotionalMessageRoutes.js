@@ -1,4 +1,5 @@
 const express = require('express');
+const promotionalMessageController = require('../controllers/promotionalMessageController');
 const { validateCreatePromotionalMessage } = require('../middleware/promotionalMessageValidator');
 
 const router = express.Router();
