@@ -51,11 +51,14 @@ const sendPromotionalEmails = async () => {
                 pass: process.env.EMAIL_USER_PASSCODE,
             },
         });
+const {
+  PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT,
+} = require('../constants/constant.js');
 
         const mailOptions = {
             from: process.env.EMAIL_USER_ID, // takeyouforward.info@gmail.com
             bcc: emailList,               // all customers
-            subject: "Welcome to Take You Forward - Your Journey Starts Here!",
+            subject: PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT,
             html: promotionalHtml,
         };
 
