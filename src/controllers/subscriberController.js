@@ -3,7 +3,8 @@ const subscriberService = require('../services/subscriberService');
 // GET subscriber record by ID
 const getSubscriberRecord = async (req, res) => {
   try {
-    const subscriber = await subscriberService.getSubscriberById(req.params.subscriberId);
+    const subscriberId = req.params.subscriberId || req.params.subscriberid;
+    const subscriber = await subscriberService.getSubscriberById(subscriberId);
     res.status(200).json({
       success: true,
       message: 'Subscriber record fetched successfully',
@@ -20,7 +21,8 @@ const getSubscriberRecord = async (req, res) => {
 //GET subscriberID by customerID
 const getSubscriberByCustomerId = async (req, res) => {
   try {
-    const subscriber = await subscriberService.getSubscriberByCustomerId(req.query.customerid);
+    const customerId = req.params.customerId || req.query.customerId || req.query.customerid;
+    const subscriber = await subscriberService.getSubscriberByCustomerId(customerId);
     res.status(200).json({
       success: true,
       message: 'Subscriber record fetched successfully',

@@ -59,18 +59,18 @@ const getSubscriberByCustomerId = async (customerid) => {
 
 /**
  * Insert a new subscriber record into the downstream subscriber table.
- * Only the allowed table fields are mapped here so the service layer stays clean.
+ * Maps camelCase input parameters to lowercase Prisma field names.
  */
 const createSubscriber = async (subscriberData) => {
   try {
     return await prisma.subscriber.create({
       data: {
         // Use the provided ID when present; otherwise generate one.
-        subscriberid: subscriberData.subscriberid || generateSubscriberId(),
-        customerid: subscriberData.customerid,
-        issubscribe: subscriberData.issubscribe,
-        emailpermstatus: subscriberData.emailpermstatus,
-        smspermstatus: subscriberData.smspermstatus,
+        subscriberid: subscriberData.subscriberId || subscriberData.subscriberid || generateSubscriberId(),
+        customerid: subscriberData.customerId || subscriberData.customerid,
+        issubscribe: subscriberData.isSubscribe !== undefined ? subscriberData.isSubscribe : subscriberData.issubscribe,
+        emailpermstatus: subscriberData.emailPermStatus !== undefined ? subscriberData.emailPermStatus : subscriberData.emailpermstatus,
+        smspermstatus: subscriberData.smsPermStatus !== undefined ? subscriberData.smsPermStatus : subscriberData.smspermstatus,
         // Track when the record was last created/changed.
         sysmodifieddt: new Date(),
       },
@@ -82,16 +82,17 @@ const createSubscriber = async (subscriberData) => {
 
 /**
  * Update an existing subscriber row by primary key.
- * Only mutable subscriber preference fields are updated here.
+ * Maps camelCase input parameters to lowercase Prisma field names.
+ * Only mutable subscriber preference fields are updated.
  */
 const updateSubscriber = async (subscriberid, subscriberData) => {
   try {
     return await prisma.subscriber.update({
       where: { subscriberid },
       data: {
-        issubscribe: subscriberData.issubscribe,
-        emailpermstatus: subscriberData.emailpermstatus,
-        smspermstatus: subscriberData.smspermstatus,
+        issubscribe: subscriberData.isSubscribe !== undefined ? subscriberData.isSubscribe : subscriberData.issubscribe,
+        emailpermstatus: subscriberData.emailPermStatus !== undefined ? subscriberData.emailPermStatus : subscriberData.emailpermstatus,
+        smspermstatus: subscriberData.smsPermStatus !== undefined ? subscriberData.smsPermStatus : subscriberData.smspermstatus,
         sysmodifieddt: new Date(),
       },
     });
