@@ -20,7 +20,4 @@ router.post('/', validateCreateSubscriber, subscriberController.createSubscriber
 // UPDATE subscriber [/api/v1/subscriber/:subscriberId]
 router.put('/:subscriberId', validateUpdateSubscriber, subscriberController.updateSubscriberRecord);
 
-// DELETE subscriber
-router.delete('/:subscriberId', subscriberController.deleteSubscriberRecord);
-
 module.exports = router;
