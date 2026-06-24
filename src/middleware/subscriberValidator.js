@@ -1,26 +1,27 @@
 const validateCreateSubscriber = (req, res, next) => {
+console.log('Validating create subscriber request body:', req.body);
   const {
-    customerid,
-    issubscribe,
-    emailpermstatus,
-    smspermstatus,
+    customerId,
+    isSubscribe,
+    emailPermStatus,
+    smsPermStatus,
   } = req.body;
 
   const errors = [];
 
-  if (!customerid?.trim()) {
+  if (!customerId?.trim()) {
     errors.push('Customer ID is required');
   }
 
-  if (typeof issubscribe !== 'boolean') {
+  if (typeof isSubscribe !== 'boolean') {
     errors.push('isSubscribe must be a boolean');
   }
 
-  if (typeof emailpermstatus !== 'boolean') {
+  if (typeof emailPermStatus !== 'boolean') {
     errors.push('emailPermStatus must be a boolean');
   }
 
-  if (typeof smspermstatus !== 'boolean') {
+  if (typeof smsPermStatus !== 'boolean') {
     errors.push('smsPermStatus must be a boolean');
   }
 
@@ -36,28 +37,28 @@ const validateCreateSubscriber = (req, res, next) => {
 };
 
 const validateUpdateSubscriber = (req, res, next) => {
-  const { subscriberid } = req.params;
+  const { subscriberId } = req.params;
   const {
-    issubscribe,
-    emailpermstatus,
-    smspermstatus,
+    isSubscribe,
+    emailPermStatus,
+    smsPermStatus,
   } = req.body;
 
   const errors = [];
 
-  if (!subscriberid?.trim()) {
+  if (!subscriberId?.trim()) {
     errors.push('Subscriber ID is required');
   }
 
-  if (issubscribe !== undefined && typeof issubscribe !== 'boolean') {
+  if (isSubscribe !== undefined && typeof isSubscribe !== 'boolean') {
     errors.push('isSubscribe must be a boolean');
   }
 
-  if (emailpermstatus !== undefined && typeof emailpermstatus !== 'boolean') {
+  if (emailPermStatus !== undefined && typeof emailPermStatus !== 'boolean') {
     errors.push('emailPermStatus must be a boolean');
   }
 
-  if (smspermstatus !== undefined && typeof smspermstatus !== 'boolean') {
+  if (smsPermStatus !== undefined && typeof smsPermStatus !== 'boolean') {
     errors.push('smsPermStatus must be a boolean');
   }
 
@@ -73,10 +74,10 @@ const validateUpdateSubscriber = (req, res, next) => {
 };
 
 const validateGetSubscriberById = (req, res, next) => {
-  const { subscriberid } = req.params;
+  const subscriberId = req.params.subscriberId || req.params.subscriberid;
   const errors = [];
 
-  if (!subscriberid?.trim()) {
+  if (!subscriberId?.trim()) {
     errors.push('Subscriber ID is required');
   }
 
@@ -92,10 +93,10 @@ const validateGetSubscriberById = (req, res, next) => {
 };
 
 const validateGetSubscriberByCustomerId = (req, res, next) => {
-  const { customerid } = req.params;
+  const customerId = req.params.customerId || req.query.customerId || req.query.customerid;
   const errors = [];
 
-  if (!customerid?.trim()) {
+  if (!customerId?.trim()) {
     errors.push('Customer ID is required');
   }
 
