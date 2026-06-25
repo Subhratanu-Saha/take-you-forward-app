@@ -100,11 +100,23 @@ const updateSubscriber = async (subscriberid, subscriberData) => {
     throw new Error(`Error updating subscriber: ${error.message}`);
   }
 };
-
+const getActiveEmailSubscribers = async () => {
+  try {
+    return await prisma.subscriber.findMany({
+      where: {
+        isSubscribe: true,
+        emailPermStatus: 'active',
+      },
+    });
+  } catch (error) {
+    throw new Error(`Error fetching active email subscribers: ${error.message}`);
+  }
+};
 module.exports = {
   getAllSubscribers,
   getSubscriberById,
   getSubscriberByCustomerId,
   createSubscriber,
+  getActiveEmailSubscribers,
   updateSubscriber,
 };
