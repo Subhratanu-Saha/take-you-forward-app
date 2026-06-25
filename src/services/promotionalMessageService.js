@@ -1,5 +1,4 @@
 const nodemailer = require('nodemailer');
-const CustomerModel = require('../models/customer');
 const SubscriberModel = require('../models/subscriber');
 const { generateOnboardingHTML } = require('../templates/onboardingTemplate');
 
