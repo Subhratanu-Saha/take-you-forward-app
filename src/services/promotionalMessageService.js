@@ -1,82 +1,34 @@
-const fs = require("fs");
-const path = require("path");
-const nodemailer = require("nodemailer");
-const CustomerModel = require("../models/customer");
+const nodemailer = require('nodemailer');
+const CustomerModel = require('../models/customer');             // add this
+const { generateOnboardingHTML } = require('../templates/onboardingTemplate');
 
-const loadEmailBody = () => {
-    const emailBodyPath = path.resolve(__dirname, "..", "templates", "onboardingTemplate.js");
-
-    if (!fs.existsSync(emailBodyPath)) {
-        throw new Error(`Email body file not found at ${emailBodyPath}`);
+const sendPromotionalEmails = async (customerData, subject) => {
+  try {
+    const { EMAIL_USER_ID, EMAIL_USER_PASSCODE } = process.env;
+    if (!EMAIL_USER_ID || !EMAIL_USER_PASSCODE) {
+      throw new Error('Missing required email configuration: EMAIL_USER_ID and EMAIL_USER_PASSCODE must both be defined');
     }
 
-    const emailBodyModule = require(emailBodyPath);
-    const emailBody =
-        typeof emailBodyModule === "string"
-            ? emailBodyModule
-            : emailBodyModule?.html || emailBodyModule?.body || emailBodyModule?.default;
+    // If you're sending one personalised email to customerData:
+    const promotionalHtml = generateOnboardingHTML(customerData);
 
-    if (!emailBody || typeof emailBody !== "string") {
-        throw new Error(`Invalid email body export from ${emailBodyPath}. Expected a string export or { html, body } object.`);
-    }
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: EMAIL_USER_ID, pass: EMAIL_USER_PASSCODE },
+    });
 
-    return emailBody;
+    const mailOptions = {
+      from: EMAIL_USER_ID,
+      to: customerData.emailadd,
+      subject,
+      html: promotionalHtml,
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    return { success: true, message: 'Promotional email sent successfully', data: result };
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
 };
 
-const sendPromotionalEmails = async () => {
-    try {
-        const { EMAIL_USER_ID, EMAIL_USER_PASSCODE } = process.env;
-
-        if (!EMAIL_USER_ID || !EMAIL_USER_PASSCODE) {
-            throw new Error('Missing required email configuration: EMAIL_USER_ID and EMAIL_USER_PASSCODE must both be defined');
-        }
-
-        const promotionalHtml = loadEmailBody();
-
-        // Get all customer email addresses using the existing model
-        const customers = await CustomerModel.getAllCustomers();
-
-        const emailList = (customers || [])
-            .map(customer => customer.emailadd)
-            .filter(Boolean);
-
-        if (emailList.length === 0) {
-            throw new Error("Error ! No customer email addresses found");
-        }
-
-        const transporter = nodemailer.createTransport({
-            service: "gmail",
-            auth: {
-                user: process.env.EMAIL_USER_ID,
-                pass: process.env.EMAIL_USER_PASSCODE,
-            },
-        });
-const {
-  PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT,
-} = require('../constants/constant.js');
-
-        const mailOptions = {
-            from: process.env.EMAIL_USER_ID, // takeyouforward.info@gmail.com
-            bcc: emailList,               // all customers
-            subject: PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT,
-            html: promotionalHtml,
-        };
-
-        const result = await transporter.sendMail(mailOptions);
-
-        return {
-            success: true,
-            message: "Promotional emails sent successfully",
-            data: result,
-        };
-    } catch (error) {
-        return {
-            success: false,
-            message: error.message,
-        };
-    }
-};
-
-module.exports = {
-    sendPromotionalEmails,
-};
+module.exports = { sendPromotionalEmails };
