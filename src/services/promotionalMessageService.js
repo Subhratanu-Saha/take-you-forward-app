@@ -2,6 +2,13 @@ const nodemailer = require('nodemailer');
 const CustomerModel = require('../models/customer');             // add this
 const { generateOnboardingHTML } = require('../templates/onboardingTemplate');
 
+const loadEmailBody = (customer = {}) => {
+  if(typeof generateOnboardingHTML !== 'function') {
+    throw new Error('Unable to load onboarding email template');
+  }
+  return generateOnboardingHTML(customer);
+};
+
 const sendPromotionalEmails = async (customerData, subject) => {
   try {
     const { EMAIL_USER_ID, EMAIL_USER_PASSCODE } = process.env;
@@ -10,7 +17,7 @@ const sendPromotionalEmails = async (customerData, subject) => {
     }
 
     // If you're sending one personalised email to customerData:
-    const promotionalHtml = generateOnboardingHTML(customerData);
+    const promotionalHtml = loadEmailBody(customerData);
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -31,4 +38,4 @@ const sendPromotionalEmails = async (customerData, subject) => {
   }
 };
 
-module.exports = { sendPromotionalEmails };
+module.exports = { sendPromotionalEmails, loadEmailBody };
