@@ -1,5 +1,5 @@
 const { transporter, EMAIL_USER_ID, EMAIL_USER_PASSCODE } = require('../config/email');
-const CustomerModel = require('../models/customer');             // add this
+const SubscriberModel = require('../models/subscriber');
 const interactionModel = require('../models/interaction');           // add this
 const { generateOnboardingHTML } = require('../templates/onboardingTemplate');
 const subscriberService = require('./subscriberService'); 
@@ -13,15 +13,19 @@ const loadEmailBody = (customer = {}) => {
 
 const sendPromotionalEmails = async (customerData, subject) => {
   try {
+
     if (!EMAIL_USER_ID || !EMAIL_USER_PASSCODE) {
-      throw new Error('Missing required email configuration: EMAIL_USER_ID and EMAIL_USER_PASSCODE must both be defined');
+      throw new Error(
+        'Missing required email configuration: EMAIL_USER_ID and EMAIL_USER_PASSCODE must both be defined'
+      );
     }
 
     if(!customerData || !customerData.customerid) {
       throw new Error('Customer ID is required to send promotional email');
     }
 
-    const subscriber = await subscriberService.getSubscriberByCustomerId(customerData.customerid);
+    // Verify subscriber status before sending promotional email
+    const subscriber = await SubscriberModel.getSubscriberByCustomerId(customerData.customerid);
 
     if(!subscriber || subscriber.issubscribe !== true || subscriber.emailpermstatus !== true) {
       return {
@@ -32,8 +36,7 @@ const sendPromotionalEmails = async (customerData, subject) => {
       };
     }
 
-    // If you're sending one personalised email to customerData:
-    const promotionalHtml = loadEmailBody(customerData);
+    const promotionalHtml = generateOnboardingHTML(customerData);
 
     const mailOptions = {
       from: EMAIL_USER_ID,
@@ -55,10 +58,10 @@ const sendPromotionalEmails = async (customerData, subject) => {
           interactiontype: 'PROMOTIONAL',
           interactionvalue: customerData.title || customerData.message || 'PROMOTIONAL_EMAIL',
         });
-    } catch (interactionError) {
-      console.error('Failed to record promotional interaction:', interactionError.message);
+      } catch (interactionError) {
+        console.error('Failed to record promotional interaction:', interactionError.message);
+      }
     }
-  }
     return { success: true, message: 'Promotional email sent successfully', data: result };
   } catch (error) {
     console.error('Failed to send promotional email:', error.message);
