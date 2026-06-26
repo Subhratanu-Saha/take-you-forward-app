@@ -41,36 +41,100 @@ const createCustomer = async (req, res) => {
   try {
     const customer = await customerService.createCustomer(req.body);
     if(customer){
-      // make an API call to subscriber
-      const issubscribe = true;
-      const emailpermstatus = true;
-      const smspermstatus = true;
-      await fetch(`${config.apiBaseUrl}/api/v1/subscriber`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          customerid: customer.customerid,
-          issubscribe,
-          emailpermstatus,
-          smspermstatus,
-        })
-      });
+      // Trigger downstream events concurrently (non-blocking)
+      // Using Promise.allSettled to handle failures gracefully
+      const eventTriggers = [
+        // Subscriber event trigger
+        (async () => {
+          try {
+            const issubscribe = true;
+            const emailpermstatus = true;
+            const smspermstatus = true;
+            const response = await fetch(`${config.apiBaseUrl}/api/v1/subscriber`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                customerid: customer.customerid,
+                issubscribe,
+                emailpermstatus,
+                smspermstatus,
+              })
+            });
+            if (!response.ok) {
+              throw new Error(`Subscriber service error: ${response.status}`);
+            }
+            return { success: true, service: 'subscriber' };
+          } catch (error) {
+            console.error('Subscriber event trigger failed:', error.message);
+            return { success: false, service: 'subscriber', error: error.message };
+          }
+        })(),
 
-      // Create interaction record
-      
-       await fetch(`${config.apiBaseUrl}/api/v1/interactions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          customerid: customer.customerid,
-          interactionmode: INTERACTION_MODE.SIGNUP,
-          interactiontype: INTERACTION_TYPE.SYSTEM,
-          interactionvalue: INTERACTION_VALUE.ACCOUNT_CREATION,
-        })
+        // Interaction event trigger
+        (async () => {
+          try {
+            const response = await fetch(`${config.apiBaseUrl}/api/v1/interactions`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                customerid: customer.customerid,
+                interactionmode: INTERACTION_MODE.SIGNUP,
+                interactiontype: INTERACTION_TYPE.SYSTEM,
+                interactionvalue: INTERACTION_VALUE.ACCOUNT_CREATION,
+              })
+            });
+            if (!response.ok) {
+              throw new Error(`Interaction service error: ${response.status}`);
+            }
+            return { success: true, service: 'interaction' };
+          } catch (error) {
+            console.error('Interaction event trigger failed:', error.message);
+            return { success: false, service: 'interaction', error: error.message };
+          }
+        })(),
+
+        // Promotional message event trigger
+        (async () => {
+          try {
+            const response = await fetch(`${config.apiBaseUrl}/api/v1/promotional-messages`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                customerid: customer.customerid,
+                email: customer.emailadd,
+              })
+            });
+            if (!response.ok) {
+              throw new Error(`Promotional service error: ${response.status}`);
+            }
+            return { success: true, service: 'promotional' };
+          } catch (error) {
+            console.error('Promotional event trigger failed:', error.message);
+            return { success: false, service: 'promotional', error: error.message };
+          }
+        })(),
+      ];
+
+      // Execute all event triggers concurrently (non-blocking)
+      Promise.allSettled(eventTriggers).then((results) => {
+        results.forEach((result) => {
+          if (result.status === 'fulfilled') {
+            const data = result.value;
+            if (data.success) {
+              console.log(`✓ ${data.service} event triggered successfully`);
+            } else {
+              console.warn(`✗ ${data.service} event failed: ${data.error}`);
+            }
+          } else if (result.status === 'rejected') {
+            console.error('Event trigger rejected:', result.reason);
+          }
+        });
       });
     }
     res.status(201).json({
