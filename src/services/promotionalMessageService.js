@@ -1,21 +1,15 @@
-const nodemailer = require('nodemailer');
+const { transporter, EMAIL_USER_ID, EMAIL_USER_PASSCODE } = require('../config/email');
 const CustomerModel = require('../models/customer');             // add this
 const { generateOnboardingHTML } = require('../templates/onboardingTemplate');
 
 const sendPromotionalEmails = async (customerData, subject) => {
   try {
-    const { EMAIL_USER_ID, EMAIL_USER_PASSCODE } = process.env;
     if (!EMAIL_USER_ID || !EMAIL_USER_PASSCODE) {
       throw new Error('Missing required email configuration: EMAIL_USER_ID and EMAIL_USER_PASSCODE must both be defined');
     }
 
     // If you're sending one personalised email to customerData:
     const promotionalHtml = generateOnboardingHTML(customerData);
-
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: EMAIL_USER_ID, pass: EMAIL_USER_PASSCODE },
-    });
 
     const mailOptions = {
       from: EMAIL_USER_ID,
