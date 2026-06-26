@@ -24,62 +24,19 @@ const sendPromotionalEmails = async (customerData, subject) => {
       throw new Error('Customer ID is required to send promotional email');
     }
 
-    const subscriber = await subscriberService.getSubscriberByCustomerId(customerData.customerid);
-
-    if(!subscriber || subscriber.issubscribe !== true || subscriber.emailpermstatus !== true) {
-      return {
-        success: true,
-        skipped: true,
-        message: 'Email skipped due to subscriber opt-out or permission settings',
-        data: null,
-      };
-    }
-
-    if(!customerData || !customerData.customerid) {
-      throw new Error('Customer ID is required to send promotional email');
-    }
-
-    const subscriber = await subscriberService.getSubscriberByCustomerId(customerData.customerid);
-
-    if(!subscriber || subscriber.issubscribe !== true || subscriber.emailpermstatus !== true) {
-      return {
-        success: true,
-        skipped: true,
-        message: 'Email skipped due to subscriber opt-out or permission settings',
-        data: null,
-      };
-    }
-
     // Verify subscriber status before sending promotional email
-    const subscriber = await SubscriberModel.getSubscriberByCustomerId(
-      customerData.customerid
-    );
+    const subscriber = await SubscriberModel.getSubscriberByCustomerId(customerData.customerid);
 
-    if (
-      !subscriber ||
-      subscriber.isSubscribe !== true ||
-      subscriber.emailPermStatus !== true
-    ) {
-      console.log(
-        `Promotional email blocked for customer ${customerData.customerid} (${customerData.emailadd})`
-      );
-
+    if(!subscriber || subscriber.issubscribe !== true || subscriber.emailpermstatus !== true) {
       return {
-        success: false,
-        message:
-          'Customer has unsubscribed or email permission is not active. Promotional email not sent.',
+        success: true,
+        skipped: true,
+        message: 'Email skipped due to subscriber opt-out or permission settings',
+        data: null,
       };
     }
 
     const promotionalHtml = generateOnboardingHTML(customerData);
-
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: EMAIL_USER_ID,
-        pass: EMAIL_USER_PASSCODE,
-      },
-    });
 
     const mailOptions = {
       from: EMAIL_USER_ID,
@@ -101,10 +58,10 @@ const sendPromotionalEmails = async (customerData, subject) => {
           interactiontype: 'PROMOTIONAL',
           interactionvalue: customerData.title || customerData.message || 'PROMOTIONAL_EMAIL',
         });
-    } catch (interactionError) {
-      console.error('Failed to record promotional interaction:', interactionError.message);
+      } catch (interactionError) {
+        console.error('Failed to record promotional interaction:', interactionError.message);
+      }
     }
-  }
     return { success: true, message: 'Promotional email sent successfully', data: result };
   } catch (error) {
     console.error('Failed to send promotional email:', error.message);
