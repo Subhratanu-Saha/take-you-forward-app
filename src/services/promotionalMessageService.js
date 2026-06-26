@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const CustomerModel = require('../models/customer');             // add this
+const interactionModel = require('../models/interaction');           // add this
 const { generateOnboardingHTML } = require('../templates/onboardingTemplate');
 const subscriberService = require('./subscriberService'); 
 
@@ -48,8 +49,25 @@ const sendPromotionalEmails = async (customerData, subject) => {
     };
 
     const result = await transporter.sendMail(mailOptions);
+
+    const customerId =
+      customerData.customerId || customerData.customerid || customerData.customerID;
+
+    if (customerId) {
+      try {
+        await interactionModel.createInteraction({
+          customerid: customerId,
+          interactionmode: 'EMAIL',
+          interactiontype: 'PROMOTIONAL',
+          interactionvalue: customerData.title || customerData.message || 'PROMOTIONAL_EMAIL',
+        });
+    } catch (interactionError) {
+      console.error('Failed to record promotional interaction:', interactionError.message);
+    }
+  }
     return { success: true, message: 'Promotional email sent successfully', data: result };
   } catch (error) {
+    console.error('Failed to send promotional email:', error.message);
     return { success: false, message: error.message };
   }
 };
