@@ -1,7 +1,15 @@
 const nodemailer = require('nodemailer');
-const CustomerModel = require('../models/customer');
-const SubscriberModel = require('../models/subscriber');
+const interactionModel = require('../models/interaction');
 const { generateOnboardingHTML } = require('../templates/onboardingTemplate');
+const subscriberService = require('./subscriberService');
+
+const loadEmailBody = (customer = {}) => {
+  if (typeof generateOnboardingHTML !== 'function') {
+    throw new Error('Unable to load onboarding email template');
+  }
+
+  return generateOnboardingHTML(customer);
+};
 
 const sendPromotionalEmails = async (customerData, subject) => {
   try {
@@ -13,8 +21,12 @@ const sendPromotionalEmails = async (customerData, subject) => {
       );
     }
 
+    if (!customerData || !customerData.customerid) {
+      throw new Error('Customer ID is required to send promotional email');
+    }
+
     // Verify subscriber status before sending promotional email
-    const subscriber = await SubscriberModel.getSubscriberByCustomerId(
+    const subscriber = await subscriberService.getSubscriberByCustomerId(
       customerData.customerid
     );
 
@@ -28,13 +40,15 @@ const sendPromotionalEmails = async (customerData, subject) => {
       );
 
       return {
-        success: false,
+        success: true,
+        skipped: true,
         message:
-          'Customer has unsubscribed or email permission is not active. Promotional email not sent.',
+          'Email skipped because customer is unsubscribed or email permission is disabled.',
+        data: null,
       };
     }
 
-    const promotionalHtml = generateOnboardingHTML(customerData);
+    const promotionalHtml = loadEmailBody(customerData);
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -53,12 +67,38 @@ const sendPromotionalEmails = async (customerData, subject) => {
 
     const result = await transporter.sendMail(mailOptions);
 
+    const customerId =
+      customerData.customerId ||
+      customerData.customerid ||
+      customerData.customerID;
+
+    if (customerId) {
+      try {
+        await interactionModel.createInteraction({
+          customerid: customerId,
+          interactionmode: 'EMAIL',
+          interactiontype: 'PROMOTIONAL',
+          interactionvalue:
+            customerData.title ||
+            customerData.message ||
+            'PROMOTIONAL_EMAIL',
+        });
+      } catch (interactionError) {
+        console.error(
+          'Failed to record promotional interaction:',
+          interactionError.message
+        );
+      }
+    }
+
     return {
       success: true,
       message: 'Promotional email sent successfully',
       data: result,
     };
   } catch (error) {
+    console.error('Failed to send promotional email:', error.message);
+
     return {
       success: false,
       message: error.message,
@@ -68,4 +108,5 @@ const sendPromotionalEmails = async (customerData, subject) => {
 
 module.exports = {
   sendPromotionalEmails,
+  loadEmailBody,
 };
