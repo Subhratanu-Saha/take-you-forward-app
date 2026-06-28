@@ -1,16 +1,6 @@
 const loyaltyModel = require('../models/loyalty');
 const customerModel = require('../models/customer');
-
-// Function to calculate tier based on total purchase amount
-const calculateTier = (totalPurchaseAmount) => {
-  if (totalPurchaseAmount >= 15000) {
-    return 'Gold';
-  } else if (totalPurchaseAmount >= 5001) {
-    return 'Silver';
-  } else {
-    return 'Bronze';
-  }
-};
+const { calculateTier } = require('../utils/loyalty');
 
 const updateLoyaltyTier = async (customerid) => {
   try {
