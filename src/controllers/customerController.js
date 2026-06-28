@@ -1,6 +1,7 @@
 const customerService = require('../services/customerService');
 const config = require('../config');
 const { INTERACTION_MODE, INTERACTION_TYPE, INTERACTION_VALUE } = require('../constants/constant');
+const welcomeEmailService = require('../services/welcomeEmailService');
 
 // GET all customers
 const getAllCustomers = async (req, res) => {
@@ -97,23 +98,14 @@ const createCustomer = async (req, res) => {
           }
         })(),
 
-        // Promotional message event trigger
+        // Promotional welcome email trigger (direct service call)
         (async () => {
           try {
-            const response = await fetch(`${config.apiBaseUrl}/api/v1/promotional-messages`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                customerid: customer.customerid,
-                email: customer.emailadd,
-              })
-            });
-            if (!response.ok) {
-              throw new Error(`Promotional service error: ${response.status}`);
+            const result = await welcomeEmailService.sendWelcomeEmail(customer);
+            if (result.success) {
+              return { success: true, service: 'promotional' };
             }
-            return { success: true, service: 'promotional' };
+            throw new Error(result.message || 'Welcome email failed');
           } catch (error) {
             console.error('Promotional event trigger failed:', error.message);
             return { success: false, service: 'promotional', error: error.message };

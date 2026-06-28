@@ -2,7 +2,7 @@ const { transporter, EMAIL_USER_ID, EMAIL_USER_PASSCODE } = require('../config/e
 const SubscriberModel = require('../models/subscriber');
 const interactionModel = require('../models/interaction');           // add this
 const { generateOnboardingHTML } = require('../templates/onboardingTemplate');
-const subscriberService = require('./subscriberService'); 
+
 
 const loadEmailBody = (customer = {}) => {
   if(typeof generateOnboardingHTML !== 'function') {

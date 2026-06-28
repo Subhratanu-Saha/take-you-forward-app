@@ -1,5 +1,5 @@
 // controllers/promotionalMessageController.js
-const { PROMOTIONAL_ONBORDING_EMAIL_SUBJECT } = require('../constants/constant');
+const { PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT } = require('../constants/constant');
 const promotionalMessageService = require('../services/promotionalMessageService');
 
 const createPromotionalMessage = async (req, res) => {
@@ -9,7 +9,7 @@ const createPromotionalMessage = async (req, res) => {
     const data = req.body;
 
     const result =
-      await promotionalMessageService.sendPromotionalEmails(data, PROMOTIONAL_ONBORDING_EMAIL_SUBJECT);
+      await promotionalMessageService.sendPromotionalEmails(data, PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT);
 
     if (!result || !result.success) {
       return res.status(500).json({
