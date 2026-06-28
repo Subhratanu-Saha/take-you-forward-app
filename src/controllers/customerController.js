@@ -40,7 +40,7 @@ const getCustomerById = async (req, res) => {
 const createCustomer = async (req, res) => {
   try {
     const customer = await customerService.createCustomer(req.body);
-    if(customer){
+    if (customer) {
       // make an API call to subscriber
       const issubscribe = true;
       const emailpermstatus = true;
@@ -59,8 +59,8 @@ const createCustomer = async (req, res) => {
       });
 
       // Create interaction record
-      
-       await fetch(`${config.apiBaseUrl}/api/v1/interactions`, {
+
+      await fetch(`${config.apiBaseUrl}/api/v1/interactions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -70,6 +70,20 @@ const createCustomer = async (req, res) => {
           interactionmode: INTERACTION_MODE.SIGNUP,
           interactiontype: INTERACTION_TYPE.SYSTEM,
           interactionvalue: INTERACTION_VALUE.ACCOUNT_CREATION,
+        })
+      });
+
+      // Send promotional welcome email
+      await fetch(`${config.apiBaseUrl}/api/v1/promotionalmessage`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          firstname: customer.firstname,
+          lastname: customer.lastname,
+          emailadd: customer.emailadd,
+          city: customer.city,
         })
       });
     }
@@ -85,7 +99,7 @@ const createCustomer = async (req, res) => {
     });
   }
 };
-   
+
 // UPDATE customer
 const updateCustomer = async (req, res) => {
   try {
