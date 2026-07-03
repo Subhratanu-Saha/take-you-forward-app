@@ -29,6 +29,7 @@ app.use('/api/v1/customers', require('./routes/customerRoutes'));
 app.use('/api/v1/interactions', require('./routes/interactionRoutes'));
 app.use('/api/v1/subscriber', require('./routes/subscriberRoutes'));
 app.use('/api/v1/promotionalmessage', require('./routes/promotionalMessageRoutes'));
+app.use('/api/v1/loyalty', require('./routes/loyaltyRoutes'));
 // app.use('/api/v1/users', require('./routes/userRoutes'));
 // app.use('/api/v1/products', require('./routes/productRoutes'));
 // Add more routes here as needed
