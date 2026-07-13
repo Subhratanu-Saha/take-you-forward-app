@@ -1,30 +1,27 @@
 const validateCreateSubscriber = (req, res, next) => {
 console.log('Validating create subscriber request body:', req.body);
-  const {
-    customerId,
-    isSubscribe,
-    emailPermStatus,
-    smsPermStatus,
-  } = req.body;
+ const customerId = req.body.customerId || req.body.customerid;
+const isSubscribe = req.body.isSubscribe ?? req.body.issubscribe;
+const emailPermStatus = req.body.emailPermStatus ?? req.body.emailpermstatus;
+const smsPermStatus = req.body.smsPermStatus ?? req.body.smspermstatus;
 
-  const errors = [];
+const errors = [];
 
-  if (!customerId?.trim()) {
-    errors.push('Customer ID is required');
-  }
+if (!customerId?.toString().trim()) {
+  errors.push('Customer ID is required');
+}
 
-  if (typeof isSubscribe !== 'boolean') {
-    errors.push('isSubscribe must be a boolean');
-  }
+if (typeof isSubscribe !== 'boolean') {
+  errors.push('isSubscribe must be a boolean');
+}
 
-  if (typeof emailPermStatus !== 'boolean') {
-    errors.push('emailPermStatus must be a boolean');
-  }
+if (typeof emailPermStatus !== 'boolean') {
+  errors.push('emailPermStatus must be a boolean');
+}
 
-  if (typeof smsPermStatus !== 'boolean') {
-    errors.push('smsPermStatus must be a boolean');
-  }
-
+if (typeof smsPermStatus !== 'boolean') {
+  errors.push('smsPermStatus must be a boolean');
+}
   if (errors.length) {
     return res.status(400).json({
       success: false,
