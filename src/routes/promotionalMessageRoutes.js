@@ -4,8 +4,8 @@ const { validateCreatePromotionalMessage } = require('../middleware/promotionalM
 
 const router = express.Router();
 
-// POST /api/v1/promotionalMessage
+router.get('/dlq', promotionalMessageController.getFailedPromotionalMessages);
+router.post('/retry', promotionalMessageController.retryFailedPromotionalMessages);
 router.post('/', validateCreatePromotionalMessage, promotionalMessageController.createPromotionalMessage);
 
 module.exports = router;
-
