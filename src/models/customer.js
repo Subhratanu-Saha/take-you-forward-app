@@ -31,6 +31,17 @@ const getCustomerByEmail = async (emailadd) => {
   }
 };
 
+// Get customer by contact number
+const getCustomerByContactNum = async (contactnum) => {
+  try {
+    return await prisma.customer.findFirst({
+      where: { contactnum },
+    });
+  } catch (error) {
+    throw new Error(`Error fetching customer by contact number: ${error.message}`);
+  }
+};
+
 // Create a new customer
 const createCustomer = async (customerData) => {
   try {
@@ -113,6 +124,7 @@ module.exports = {
   getAllCustomers,
   getCustomerById,
   getCustomerByEmail,
+  getCustomerByContactNum,
   createCustomer,
   updateCustomer,
   deleteCustomer,
