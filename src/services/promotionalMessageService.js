@@ -27,7 +27,7 @@ const createDlqEntry = async (customerData, subject, error, attemptCount = 1) =>
       data: {
         eventid: generateDlqId(),
         customerid: customerId,
-        emailaddress: payload.emailadd || null,
+        emailaddress: payload.emailaddress || payload.emailadd || null,
         subject: subject || 'PROMOTIONAL_EMAIL',
         payload,
         errormessage: error?.message || String(error),
@@ -51,7 +51,6 @@ const createDlqEntry = async (customerData, subject, error, attemptCount = 1) =>
 const sendPromotionalEmails = async (customerData, subject, options = {}) => {
   const { shouldQueueOnFailure = true, skipDlqRecord = false } = options;
 
-  try {
     if (!EMAIL_USER_ID || !EMAIL_USER_PASSCODE) {
       throw new Error('Missing required email configuration: EMAIL_USER_ID and EMAIL_USER_PASSCODE must both be defined');
     }
@@ -62,25 +61,46 @@ const sendPromotionalEmails = async (customerData, subject, options = {}) => {
 
     const subscriber = await SubscriberModel.getSubscriberByCustomerId(customerData.customerid);
 
-    if (!subscriber || subscriber.issubscribe !== true || subscriber.emailpermstatus !== true) {
+     if (!subscriber || subscriber.issubscribe !== true || subscriber.emailpermstatus !== true) {
       return {
         success: true,
         skipped: true,
         message: 'Email skipped due to subscriber opt-out or permission settings',
         data: null,
-      };
+     };
     }
 
+    const recipientEmail = customerData.emailaddress || customerData.emailadd || null;
+
+    if (!recipientEmail) {
+      return {
+    success: true,
+    skipped: true,
+    message: 'Email skipped: no recipient email provided',
+    data: null,
+  };
+}
     const promotionalHtml = generateOnboardingHTML(customerData);
 
     const mailOptions = {
       from: EMAIL_USER_ID,
-      to: customerData.emailadd,
+      to: recipientEmail,
       subject,
       html: promotionalHtml,
     };
 
+    try {
+
     const result = await transporter.sendMail(mailOptions);
+
+    if (
+      !result ||
+      !result.messageId ||
+      !Array.isArray(result.accepted) ||
+      result.accepted.length === 0
+    ) {
+      throw new Error(`Email transport reported failure: ${JSON.stringify(result)}`);
+    }
 
     const customerId = normalizeCustomerId(customerData);
     if (customerId) {
@@ -97,14 +117,14 @@ const sendPromotionalEmails = async (customerData, subject, options = {}) => {
     }
 
     return { success: true, message: 'Promotional email sent successfully', data: result };
-  } catch (error) {
-    console.error('Failed to send promotional email:', error.message);
+  } catch (mailError) {
+    console.error('Failed to send promotional email:', mailError.message);
 
     if (shouldQueueOnFailure && !skipDlqRecord) {
-      await createDlqEntry(customerData, subject, error);
+      await createDlqEntry(customerData, subject, mailError);
     }
 
-    return { success: false, message: error.message };
+    return { success: false, message: mailError.message };
   }
 };
 

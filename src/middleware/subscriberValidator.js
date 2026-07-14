@@ -1,10 +1,10 @@
 const validateCreateSubscriber = (req, res, next) => {
 console.log('Validating create subscriber request body:', req.body);
   const {
-    customerId,
-    isSubscribe,
-    emailPermStatus,
-    smsPermStatus,
+    customerId = req.body.customerId || req.body.customerid,
+    isSubscribe = req.body.isSubscribe ?? req.body.issubscribe,
+    emailPermStatus = req.body.emailPermStatus ?? req.body.emailpermstatus,
+    smsPermStatus = req.body.smsPermStatus ?? req.body.smspermstatus,
   } = req.body;
 
   const errors = [];
