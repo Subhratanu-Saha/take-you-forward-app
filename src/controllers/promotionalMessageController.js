@@ -18,7 +18,7 @@ const createPromotionalMessage = async (req, res) => {
       });
     }
 
-    return res.status(201).json({
+    res.status(201).json({
       success: true,
       message: 'Promotional emails sent successfully',
       data: result.data
@@ -26,7 +26,7 @@ const createPromotionalMessage = async (req, res) => {
 
   } catch (error) {
 
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: error.message
     });
@@ -35,40 +35,6 @@ const createPromotionalMessage = async (req, res) => {
 
 };
 
-const getFailedPromotionalMessages = async (req, res) => {
-  try {
-    const failedEvents = await promotionalMessageService.getFailedPromotionalEvents();
-    return res.status(200).json({
-      success: true,
-      data: failedEvents,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
-const retryFailedPromotionalMessages = async (req, res) => {
-  try {
-    const results = await promotionalMessageService.retryFailedPromotionalEvents();
-
-    return res.status(200).json({
-      success: true,
-      message: 'Retry process completed',
-      data: results,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
 module.exports = {
-  createPromotionalMessage,
-  getFailedPromotionalMessages,
-  retryFailedPromotionalMessages,
+  createPromotionalMessage
 };
