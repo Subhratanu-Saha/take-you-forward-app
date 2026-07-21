@@ -9,10 +9,18 @@ const createCustomer = async (customerData) => {
   if (existing) {
     throw new Error('Email already registered');
   }
-  
+
+  // Check if contact number is already in use
+  if (customerData.contactnum) {
+    const existingContact = await customerModel.getCustomerByContactNum(customerData.contactnum);
+    if (existingContact) {
+      throw new Error('Contact number already registered');
+    }
+  }
+
   // Generate unique customer ID
   const customerid = generateCustomerId();
-  
+
   // Attach ID to customer data
   const newCustomerData = {
     ...customerData,
