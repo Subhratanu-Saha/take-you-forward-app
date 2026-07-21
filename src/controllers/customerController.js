@@ -1,6 +1,6 @@
 const customerService = require('../services/customerService');
 const config = require('../config');
-const { INTERACTION_MODE, INTERACTION_TYPE, INTERACTION_VALUE } = require('../constants/constant');
+const { INTERACTION_MODE, INTERACTION_TYPE, INTERACTION_VALUE, PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT, PROMOTIONAL_ONBOARDING_EMAIL_MESSAGE } = require('../constants/constant');
 
 // GET all customers
 const getAllCustomers = async (req, res) => {
@@ -100,14 +100,16 @@ const createCustomer = async (req, res) => {
         // Promotional message event trigger
         (async () => {
           try {
-            const response = await fetch(`${config.apiBaseUrl}/api/v1/promotional-messages`, {
+            const response = await fetch(`${config.apiBaseUrl}/api/v1/promotionalmessage`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
                 customerid: customer.customerid,
-                email: customer.emailadd,
+                emailaddress: customer.emailadd,
+                title: PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT,
+                message: PROMOTIONAL_ONBOARDING_EMAIL_MESSAGE,
               })
             });
             if (!response.ok) {
