@@ -1,6 +1,6 @@
 const customerService = require('../services/customerService');
 const config = require('../config');
-const { INTERACTION_MODE, INTERACTION_TYPE, INTERACTION_VALUE } = require('../constants/constant');
+const { INTERACTION_MODE, INTERACTION_TYPE, INTERACTION_VALUE, PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT, PROMOTIONAL_ONBOARDING_EMAIL_MESSAGE } = require('../constants/constant');
 
 // GET all customers
 const getAllCustomers = async (req, res) => {
