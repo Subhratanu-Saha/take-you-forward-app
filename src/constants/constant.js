@@ -3,6 +3,8 @@ const API_SUCCESSFUL_HEALTH_MESSAGE = 'TUF Server is running in DEV MODE - Chrom
 const PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT =
   'Welcome to Take You Forward - Your Journey Starts Here!';
 
+const PROMOTIONAL_ONBOARDING_EMAIL_MESSAGE = `Welcome to TUF Retail! Thank you for joining us.`;
+
 const INTERACTION_MODE = {
   SIGNUP: 'SIGNUP',
 };
@@ -15,10 +17,24 @@ const INTERACTION_VALUE = {
   ACCOUNT_CREATION: 'ACCOUNT_CREATION',
 };
 
+const LOYALTY_TIER = Object.freeze({
+  GOLD: 'Gold',
+  SILVER: 'Silver',
+  BRONZE: 'Bronze',
+});
+
+const LOYALTY_TIER_THRESHOLD = Object.freeze({
+  SILVER: 5001,
+  GOLD: 15001,
+});
+
 module.exports = {
   API_SUCCESSFUL_HEALTH_MESSAGE,
   PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT,
+  PROMOTIONAL_ONBOARDING_EMAIL_MESSAGE,
   INTERACTION_MODE,
   INTERACTION_TYPE,
   INTERACTION_VALUE,
+  LOYALTY_TIER,
+  LOYALTY_TIER_THRESHOLD,
 };

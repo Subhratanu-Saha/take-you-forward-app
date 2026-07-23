@@ -1,7 +1,6 @@
 const customerService = require('../services/customerService');
 const config = require('../config');
-const { INTERACTION_MODE, INTERACTION_TYPE, INTERACTION_VALUE } = require('../constants/constant');
-const welcomeEmailService = require('../services/welcomeEmailService');
+const { INTERACTION_MODE, INTERACTION_TYPE, INTERACTION_VALUE, PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT, PROMOTIONAL_ONBOARDING_EMAIL_MESSAGE } = require('../constants/constant');
 
 // GET all customers
 const getAllCustomers = async (req, res) => {
@@ -104,6 +103,20 @@ const createCustomer = async (req, res) => {
             const result = await welcomeEmailService.sendWelcomeEmail(customer);
             if (result.success) {
               return { success: true, service: 'promotional' };
+            const response = await fetch(`${config.apiBaseUrl}/api/v1/promotionalmessage`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                customerid: customer.customerid,
+                emailaddress: customer.emailadd,
+                title: PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT,
+                message: PROMOTIONAL_ONBOARDING_EMAIL_MESSAGE,
+              })
+            });
+            if (!response.ok) {
+              throw new Error(`Promotional service error: ${response.status}`);
             }
             throw new Error(result.message || 'Welcome email failed');
           } catch (error) {
