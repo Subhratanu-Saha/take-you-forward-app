@@ -47,19 +47,19 @@ const createCustomer = async (req, res) => {
         // Subscriber event trigger
         (async () => {
           try {
-            const issubscribe = true;
-            const emailpermstatus = true;
-            const smspermstatus = true;
+            const isSubscribe = true;
+            const emailPermStatus = true;
+            const smsPermStatus = true;
             const response = await fetch(`${config.apiBaseUrl}/api/v1/subscriber`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
-                customerid: customer.customerid,
-                issubscribe,
-                emailpermstatus,
-                smspermstatus,
+                customerId: customer.customerid,
+                isSubscribe,
+                emailPermStatus,
+                smsPermStatus,
               })
             });
             if (!response.ok) {

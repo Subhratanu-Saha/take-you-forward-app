@@ -1,27 +1,43 @@
 const validateCreateSubscriber = (req, res, next) => {
 console.log('Validating create subscriber request body:', req.body);
   const {
+<<<<<<< Updated upstream
     customerId = req.body.customerId || req.body.customerid,
     isSubscribe = req.body.isSubscribe ?? req.body.issubscribe,
     emailPermStatus = req.body.emailPermStatus ?? req.body.emailpermstatus,
     smsPermStatus = req.body.smsPermStatus ?? req.body.smspermstatus,
+=======
+    customerId,
+    customerid,
+    isSubscribe,
+    issubscribe,
+    emailPermStatus,
+    emailpermstatus,
+    smsPermStatus,
+    smspermstatus,
+>>>>>>> Stashed changes
   } = req.body;
+
+  const normalizedCustomerId = customerId ?? customerid;
+  const normalizedIsSubscribe = isSubscribe ?? issubscribe;
+  const normalizedEmailPermStatus = emailPermStatus ?? emailpermstatus;
+  const normalizedSmsPermStatus = smsPermStatus ?? smspermstatus;
 
   const errors = [];
 
-  if (!customerId?.trim()) {
+  if (!normalizedCustomerId?.toString().trim()) {
     errors.push('Customer ID is required');
   }
 
-  if (typeof isSubscribe !== 'boolean') {
+  if (typeof normalizedIsSubscribe !== 'boolean') {
     errors.push('isSubscribe must be a boolean');
   }
 
-  if (typeof emailPermStatus !== 'boolean') {
+  if (typeof normalizedEmailPermStatus !== 'boolean') {
     errors.push('emailPermStatus must be a boolean');
   }
 
-  if (typeof smsPermStatus !== 'boolean') {
+  if (typeof normalizedSmsPermStatus !== 'boolean') {
     errors.push('smsPermStatus must be a boolean');
   }
 
@@ -40,9 +56,16 @@ const validateUpdateSubscriber = (req, res, next) => {
   const { subscriberId } = req.params;
   const {
     isSubscribe,
+    issubscribe,
     emailPermStatus,
+    emailpermstatus,
     smsPermStatus,
+    smspermstatus,
   } = req.body;
+
+  const normalizedIsSubscribe = isSubscribe ?? issubscribe;
+  const normalizedEmailPermStatus = emailPermStatus ?? emailpermstatus;
+  const normalizedSmsPermStatus = smsPermStatus ?? smspermstatus;
 
   const errors = [];
 
@@ -50,15 +73,15 @@ const validateUpdateSubscriber = (req, res, next) => {
     errors.push('Subscriber ID is required');
   }
 
-  if (isSubscribe !== undefined && typeof isSubscribe !== 'boolean') {
+  if (normalizedIsSubscribe !== undefined && typeof normalizedIsSubscribe !== 'boolean') {
     errors.push('isSubscribe must be a boolean');
   }
 
-  if (emailPermStatus !== undefined && typeof emailPermStatus !== 'boolean') {
+  if (normalizedEmailPermStatus !== undefined && typeof normalizedEmailPermStatus !== 'boolean') {
     errors.push('emailPermStatus must be a boolean');
   }
 
-  if (smsPermStatus !== undefined && typeof smsPermStatus !== 'boolean') {
+  if (normalizedSmsPermStatus !== undefined && typeof normalizedSmsPermStatus !== 'boolean') {
     errors.push('smsPermStatus must be a boolean');
   }
 
