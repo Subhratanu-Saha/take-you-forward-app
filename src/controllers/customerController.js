@@ -97,9 +97,12 @@ const createCustomer = async (req, res) => {
           }
         })(),
 
-        // Promotional message event trigger
+        // Promotional welcome email trigger (direct service call)
         (async () => {
           try {
+            const result = await welcomeEmailService.sendWelcomeEmail(customer);
+            if (result.success) {
+              return { success: true, service: 'promotional' };
             const response = await fetch(`${config.apiBaseUrl}/api/v1/promotionalmessage`, {
               method: 'POST',
               headers: {
@@ -115,7 +118,7 @@ const createCustomer = async (req, res) => {
             if (!response.ok) {
               throw new Error(`Promotional service error: ${response.status}`);
             }
-            return { success: true, service: 'promotional' };
+            throw new Error(result.message || 'Welcome email failed');
           } catch (error) {
             console.error('Promotional event trigger failed:', error.message);
             return { success: false, service: 'promotional', error: error.message };
