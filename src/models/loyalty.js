@@ -89,9 +89,30 @@ const updateLoyaltyTier = async (customerid, newTier) => {
   }
 };
 
+const createLoyaltyRecord = async (loyaltyData) => {
+  try {
+    const { customerid, tier, totalpoints, isactive } = loyaltyData;
+    return await prisma.loyalty.create({
+      data: {
+        customerid,
+        tier: tier || 'BRONZE',
+        totalpoints: totalpoints ?? 0,
+        isactive: isactive ?? true,
+        lastearnedat: new Date(),
+        lastredeemedat: new Date(),
+        createdat: new Date(),
+        updatedat: new Date(),
+      },
+    });
+  } catch (error) {
+    throw new Error(`Error creating loyalty record: ${error.message}`);
+  }
+};
+
 module.exports = {
   getLoyaltyByCustomerId,
   getLoyaltySummaryByCustomerId,
   getTotalPurchaseAmount,
   updateLoyaltyTier,
-};
+  createLoyaltyRecord,
+};
