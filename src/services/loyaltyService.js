@@ -35,8 +35,22 @@ const getLoyaltySummary = async (customerid) => {
   return await loyaltyModel.getLoyaltySummaryByCustomerId(customerid);
 };
 
+const createLoyaltyRecord = async (loyaltyData) => {
+  if (!loyaltyData || !loyaltyData.customerid?.trim()) {
+    throw new Error('Customer ID is required');
+  }
+
+  const customer = await customerModel.getCustomerById(loyaltyData.customerid);
+  if (!customer) {
+    throw new Error('Customer not found');
+  }
+
+  return await loyaltyModel.createLoyaltyRecord(loyaltyData);
+};
+
 module.exports = {
   getLoyaltySummary,
   updateLoyaltyTier,
   calculateTier,
-};
+  createLoyaltyRecord,
+};
