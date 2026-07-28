@@ -20,18 +20,19 @@ const { PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT } = require('../constants/constant'
 const sendWelcomeEmail = async (customer) => {
   try {
     if (!customer || !customer.customerid || !customer.emailadd) {
-      console.warn('⚠️ Welcome email skipped: missing customer ID or email');
+      console.warn(`[PROMOTIONAL_WELCOME] Welcome email skipped for customer=${customer?.customerid || 'unknown'}: missing customer ID or email`);
       return { success: false, message: 'Missing customer ID or email' };
     }
 
-    // Wait briefly for the subscriber record to be created by the parallel task
+    console.info(`[PROMOTIONAL_WELCOME] Preparing welcome email for customer=${customer.customerid}`);
+
     const subscriber = await waitForSubscriber(customer.customerid, {
       maxRetries: 2,
       delayMs: 1000,
     });
 
     if (!subscriber || !subscriber.issubscribe || !subscriber.emailpermstatus) {
-      console.log(`ℹ️ Welcome email skipped for ${customer.customerid}: subscriber not opted in`);
+      console.warn(`[PROMOTIONAL_WELCOME] Welcome email skipped for customer=${customer.customerid}: subscriber not opted in or record not found`);
       return {
         success: true,
         skipped: true,
@@ -39,20 +40,18 @@ const sendWelcomeEmail = async (customer) => {
       };
     }
 
-    // Delegate to the existing promotional message service
     const result = await promotionalMessageService.sendPromotionalEmails(
       customer,
       PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT
     );
 
     if (result.success && !result.skipped) {
-      console.log(`✉️ Welcome email sent to ${customer.emailadd}`);
+      console.log(`[PROMOTIONAL_WELCOME] Welcome email sent to ${customer.emailadd}`);
     }
 
     return result;
   } catch (error) {
-    // Errors here must never propagate — the customer 201 response must be unaffected
-    console.error('❌ Welcome email dispatch failed:', error.message);
+    console.error(`[PROMOTIONAL_WELCOME] Welcome email dispatch failed for customer=${customer?.customerid || 'unknown'}: ${error.message}`);
     return { success: false, message: error.message };
   }
 };
@@ -70,6 +69,7 @@ const waitForSubscriber = async (customerid, { maxRetries = 2, delayMs = 1000 } 
     }
 
     if (attempt < maxRetries) {
+      console.warn(`[PROMOTIONAL_WELCOME] Subscriber record not yet available for customer=${customerid}; retry ${attempt}/${maxRetries}`);
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }

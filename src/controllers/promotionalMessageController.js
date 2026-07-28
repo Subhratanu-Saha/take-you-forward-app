@@ -3,46 +3,48 @@ const { PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT } = require('../constants/constant'
 const promotionalMessageService = require('../services/promotionalMessageService');
 
 const createPromotionalMessage = async (req, res) => {
+  const customerId = req.body?.customerid || req.body?.customerId || 'unknown';
+  console.info(`[PROMOTIONAL_CONTROLLER] Received promotional send request for customer=${customerId}`);
 
   try {
-
     const data = req.body;
 
     const result =
       await promotionalMessageService.sendPromotionalEmails(data, PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT);
 
     if (!result || !result.success) {
+      console.warn(`[PROMOTIONAL_CONTROLLER] Promotional send did not complete for customer=${customerId}: ${result?.message || 'unknown error'}`);
       return res.status(500).json({
         success: false,
-        message: result ? result.message : 'Failed to send promotional email'
+        message: result ? result.message : 'Failed to send promotional email',
       });
     }
 
+    console.info(`[PROMOTIONAL_CONTROLLER] Promotional send completed successfully for customer=${customerId}`);
     return res.status(201).json({
       success: true,
       message: 'Promotional emails sent successfully',
-      data: result.data
+      data: result.data,
     });
-
   } catch (error) {
-
+    console.error(`[PROMOTIONAL_CONTROLLER] Promotional send failed for customer=${customerId}: ${error.message}`);
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
-
   }
-
 };
 
 const getFailedPromotionalMessages = async (req, res) => {
   try {
+    console.info('[PROMOTIONAL_CONTROLLER] Retrieving failed promotional events from DLQ');
     const failedEvents = await promotionalMessageService.getFailedPromotionalEvents();
     return res.status(200).json({
       success: true,
       data: failedEvents,
     });
   } catch (error) {
+    console.error(`[PROMOTIONAL_CONTROLLER] Failed to retrieve failed promotional events: ${error.message}`);
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -52,14 +54,17 @@ const getFailedPromotionalMessages = async (req, res) => {
 
 const retryFailedPromotionalMessages = async (req, res) => {
   try {
+    console.info('[PROMOTIONAL_CONTROLLER] Starting promotional DLQ retry process');
     const results = await promotionalMessageService.retryFailedPromotionalEvents();
 
+    console.info(`[PROMOTIONAL_CONTROLLER] DLQ retry process completed with ${results.length} event(s)`);
     return res.status(200).json({
       success: true,
       message: 'Retry process completed',
       data: results,
     });
   } catch (error) {
+    console.error(`[PROMOTIONAL_CONTROLLER] DLQ retry process failed: ${error.message}`);
     return res.status(500).json({
       success: false,
       message: error.message,
