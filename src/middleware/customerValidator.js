@@ -19,7 +19,6 @@ const checkProtectedFields = (data) => {
 };
 
 const validateCreateCustomer = (req, res, next) => {
-  const requestId = req.requestId;
   const {
     firstname,
     emailadd,
@@ -59,7 +58,6 @@ const validateCreateCustomer = (req, res, next) => {
 
   if (errors.length) {
     logger.warn('CUSTOMER_VALIDATOR', 'Create customer validation failed', {
-      requestId,
       statusCode: 400,
       errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
       errors,
@@ -78,7 +76,6 @@ const validateCreateCustomer = (req, res, next) => {
 
 // Validate Customer ID
 const validateCustomerId = (req, res, next) => {
-  const requestId = req.requestId;
   const { customerId } = req.params;
 
   const customerIdRegex = /^CUST-\d+-[A-Z0-9]{10}$/;
@@ -86,7 +83,6 @@ const validateCustomerId = (req, res, next) => {
   if (!customerId || !customerIdRegex.test(customerId)) {
     const msg = "Invalid customer ID format. Expected format: CUST-{timestamp}-{10 alphanumeric characters}";
     logger.warn('CUSTOMER_VALIDATOR', msg, {
-      requestId,
       customerId,
       statusCode: 400,
       errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
@@ -104,14 +100,12 @@ const validateCustomerId = (req, res, next) => {
 
 // Update Customer Validation
 function validateUpdateCustomer(req, res, next) {
-  const requestId = req.requestId;
   const { customerId } = req.params;
   const { contactnum, pincode } = req.body || {};
 
   // Validate Customer ID
   if (!customerId || !customerId.toString().trim()) {
     logger.warn('CUSTOMER_VALIDATOR', 'Customer ID is required for update', {
-      requestId,
       statusCode: 400,
       errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
     });
@@ -126,7 +120,6 @@ function validateUpdateCustomer(req, res, next) {
   if (protectedFieldsInRequest.length > 0) {
     const msg = `You cannot update these fields: ${protectedFieldsInRequest.join(', ')}`;
     logger.warn('CUSTOMER_VALIDATOR', msg, {
-      requestId,
       customerId,
       statusCode: 400,
       errorCode: ERROR_CODES.CUSTOMER_PROTECTED_FIELD,
@@ -144,7 +137,6 @@ function validateUpdateCustomer(req, res, next) {
     const cleanedNumber = contactnum.toString().replace(/\D/g, '');
     if (!phoneRegex.test(cleanedNumber)) {
       logger.warn('CUSTOMER_VALIDATOR', 'Invalid contact number format in update', {
-        requestId,
         customerId,
         statusCode: 400,
         errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
@@ -160,7 +152,6 @@ function validateUpdateCustomer(req, res, next) {
   // Validate Pincode (6 digits)
   if (pincode && !pincodeRegex.test(pincode.toString())) {
     logger.warn('CUSTOMER_VALIDATOR', 'Invalid pincode format in update', {
-      requestId,
       customerId,
       statusCode: 400,
       errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
@@ -177,12 +168,10 @@ function validateUpdateCustomer(req, res, next) {
 
 // Delete Customer Validation
 function validateDeleteCustomer(req, res, next) {
-  const requestId = req.requestId;
   const { customerId } = req.params;
 
   if (!customerId || !customerId.toString().trim()) {
     logger.warn('CUSTOMER_VALIDATOR', 'Customer ID is required for delete', {
-      requestId,
       statusCode: 400,
       errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
     });
@@ -198,14 +187,12 @@ function validateDeleteCustomer(req, res, next) {
 
 // Get All Customers Validation
 const validateGetAllCustomers = (req, res, next) => {
-  const requestId = req.requestId;
   const { page, limit } = req.query;
 
   if (page) {
     const pageNum = Number(page);
     if (isNaN(pageNum) || pageNum <= 0) {
       logger.warn('CUSTOMER_VALIDATOR', 'Invalid page parameter', {
-        requestId,
         statusCode: 400,
         errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
       });
@@ -221,7 +208,6 @@ const validateGetAllCustomers = (req, res, next) => {
     const limitNum = Number(limit);
     if (isNaN(limitNum) || limitNum <= 0) {
       logger.warn('CUSTOMER_VALIDATOR', 'Invalid limit parameter', {
-        requestId,
         statusCode: 400,
         errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
       });

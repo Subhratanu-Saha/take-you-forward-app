@@ -1,20 +1,16 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const crypto = require('crypto');
 const { logger, ERROR_CODES } = require('./utils/db');
 const { API_SUCCESSFUL_HEALTH_MESSAGE } = require('./constants/constant');
 
 const app = express();
 
-
 // Request Tracing & Performance Logging Middleware (Inline)
 app.use((req, res, next) => {
   const startTime = Date.now();
-  const requestId = req.requestId || 'UNKNOWN';
 
   logger.info('HTTP_REQUEST', `[REQUEST_START] ${req.method} ${req.originalUrl || req.path}`, {
-    requestId,
     method: req.method,
     path: req.originalUrl || req.path,
   });
@@ -25,7 +21,6 @@ app.use((req, res, next) => {
     const logLevel = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
 
     logger[logLevel]('HTTP_RESPONSE', `[REQUEST_END] ${req.method} ${req.originalUrl || req.path} ${statusCode}`, {
-      requestId,
       method: req.method,
       path: req.originalUrl || req.path,
       statusCode,
@@ -44,9 +39,7 @@ app.use(express.urlencoded({ extended: true }));
 // Malformed JSON syntax error handler middleware
 app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
-    const requestId = req.requestId || 'UNKNOWN';
     logger.warn('EXPRESS_APP', 'Malformed JSON in request body', {
-      requestId,
       statusCode: 400,
       errorCode: ERROR_CODES.MALFORMED_JSON,
       path: req.path,
@@ -67,7 +60,6 @@ app.get('/api/health', (req, res) => {
     success: true,
     message: API_SUCCESSFUL_HEALTH_MESSAGE,
     timestamp: new Date().toISOString(),
-    requestId: req.requestId,
   });
 });
 
@@ -82,9 +74,7 @@ app.use('/api/v1/loyalty', require('./routes/loyaltyRoutes'));
 
 // Catch-all 404 Route Not Found handler
 app.use((req, res) => {
-  const requestId = req.requestId || 'UNKNOWN';
   logger.warn('ROUTE_HANDLER', `[ROUTE_NOT_FOUND] ${req.method} ${req.path}`, {
-    requestId,
     method: req.method,
     path: req.path,
     statusCode: 404,
@@ -101,13 +91,11 @@ app.use((req, res) => {
 
 // Centralized Global Error Handling Middleware
 app.use((err, req, res, next) => {
-  const requestId = req.requestId || 'UNKNOWN';
   const statusCode = err.statusCode || err.status || 500;
   const errorCode = err.errorCode || ERROR_CODES.INTERNAL_SERVER_ERROR;
   const message = err.message || 'Internal server error';
 
   logger.error('GLOBAL_ERROR', `[GLOBAL_ERROR] ${req.method} ${req.path} failed: ${message}`, {
-    requestId,
     method: req.method,
     path: req.path,
     statusCode,
