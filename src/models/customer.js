@@ -1,51 +1,65 @@
 const prisma = require('../utils/db');
+const { logger, handlePrismaError } = require('../utils/db');
 
 // Get all customers
-const getAllCustomers = async () => {
+const getAllCustomers = async (requestId = null) => {
+  logger.info('CUSTOMER_MODEL', 'Fetching all customers from database', { requestId, operation: 'getAllCustomers' });
   try {
-    return await prisma.customer.findMany();
+    const customers = await prisma.customer.findMany();
+    logger.info('CUSTOMER_MODEL', `Successfully fetched ${customers.length} customers`, { requestId, operation: 'getAllCustomers' });
+    return customers;
   } catch (error) {
-    throw new Error(`Error fetching customers: ${error.message}`);
+    throw handlePrismaError(error, { operation: 'getAllCustomers', model: 'CUSTOMER_MODEL', requestId });
   }
 };
 
 // Get customer by ID
-const getCustomerById = async (customerid) => {
+const getCustomerById = async (customerid, requestId = null) => {
+  logger.info('CUSTOMER_MODEL', `Fetching customer by ID: ${customerid}`, { requestId, operation: 'getCustomerById', customerId: customerid });
   try {
-    return await prisma.customer.findUnique({
+    const customer = await prisma.customer.findUnique({
       where: { customerid },
     });
+    return customer;
   } catch (error) {
-    throw new Error(`Error fetching customer: ${error.message}`);
+    throw handlePrismaError(error, { operation: 'getCustomerById', model: 'CUSTOMER_MODEL', requestId, resourceId: customerid });
   }
 };
 
 // Get customer by email
-const getCustomerByEmail = async (emailadd) => {
+const getCustomerByEmail = async (emailadd, requestId = null) => {
+  logger.info('CUSTOMER_MODEL', 'Fetching customer by email', { requestId, operation: 'getCustomerByEmail' });
   try {
     return await prisma.customer.findUnique({
       where: { emailadd },
     });
   } catch (error) {
-    throw new Error(`Error fetching customer by email: ${error.message}`);
+    throw handlePrismaError(error, { operation: 'getCustomerByEmail', model: 'CUSTOMER_MODEL', requestId });
   }
 };
 
 // Get customer by contact number
-const getCustomerByContactNum = async (contactnum) => {
+const getCustomerByContactNum = async (contactnum, requestId = null) => {
+  logger.info('CUSTOMER_MODEL', 'Fetching customer by contact number', { requestId, operation: 'getCustomerByContactNum' });
   try {
     return await prisma.customer.findFirst({
       where: { contactnum },
     });
   } catch (error) {
-    throw new Error(`Error fetching customer by contact number: ${error.message}`);
+    throw handlePrismaError(error, { operation: 'getCustomerByContactNum', model: 'CUSTOMER_MODEL', requestId });
   }
 };
 
 // Create a new customer
-const createCustomer = async (customerData) => {
+const createCustomer = async (customerData, requestId = null) => {
+  logger.info('CUSTOMER_MODEL', `Creating new customer in DB: ${customerData.customerid}`, {
+    requestId,
+    operation: 'createCustomer',
+    customerId: customerData.customerid,
+  });
+
   try {
-    return await prisma.customer.create({
+    const createdCustomer = await prisma.customer.create({
       data: {
         customerid: customerData.customerid,
         firstname: customerData.firstname,
@@ -63,15 +77,29 @@ const createCustomer = async (customerData) => {
         syslastmodifieddt: new Date(),
       },
     });
+
+    logger.info('CUSTOMER_MODEL', `Successfully created customer: ${createdCustomer.customerid}`, {
+      requestId,
+      operation: 'createCustomer',
+      customerId: createdCustomer.customerid,
+    });
+
+    return createdCustomer;
   } catch (error) {
-    throw new Error(`Error creating customer: ${error.message}`);
+    throw handlePrismaError(error, { operation: 'createCustomer', model: 'CUSTOMER_MODEL', requestId, resourceId: customerData.customerid });
   }
 };
 
 // Update customer
-const updateCustomer = async (customerid, customerData) => {
+const updateCustomer = async (customerid, customerData, requestId = null) => {
+  logger.info('CUSTOMER_MODEL', `Updating customer in DB: ${customerid}`, {
+    requestId,
+    operation: 'updateCustomer',
+    customerId: customerid,
+  });
+
   try {
-    return await prisma.customer.update({
+    const updatedCustomer = await prisma.customer.update({
       where: { customerid },
       data: {
         firstname: customerData.firstname,
@@ -87,26 +115,53 @@ const updateCustomer = async (customerid, customerData) => {
         syslastmodifieddt: new Date(),
       },
     });
+
+    logger.info('CUSTOMER_MODEL', `Successfully updated customer: ${customerid}`, {
+      requestId,
+      operation: 'updateCustomer',
+      customerId: customerid,
+    });
+
+    return updatedCustomer;
   } catch (error) {
-    throw new Error(`Error updating customer: ${error.message}`);
+    throw handlePrismaError(error, { operation: 'updateCustomer', model: 'CUSTOMER_MODEL', requestId, resourceId: customerid });
   }
 };
 
 // Delete customer
-const deleteCustomer = async (customerid) => {
+const deleteCustomer = async (customerid, requestId = null) => {
+  logger.info('CUSTOMER_MODEL', `Deleting customer from DB: ${customerid}`, {
+    requestId,
+    operation: 'deleteCustomer',
+    customerId: customerid,
+  });
+
   try {
-    return await prisma.customer.delete({
+    const deletedCustomer = await prisma.customer.delete({
       where: { customerid },
     });
+
+    logger.info('CUSTOMER_MODEL', `Successfully deleted customer: ${customerid}`, {
+      requestId,
+      operation: 'deleteCustomer',
+      customerId: customerid,
+    });
+
+    return deletedCustomer;
   } catch (error) {
-    throw new Error(`Error deleting customer: ${error.message}`);
+    throw handlePrismaError(error, { operation: 'deleteCustomer', model: 'CUSTOMER_MODEL', requestId, resourceId: customerid });
   }
 };
 
 // Search customers
-const searchCustomers = async (searchTerm) => {
+const searchCustomers = async (searchTerm, requestId = null) => {
+  logger.info('CUSTOMER_MODEL', `Searching customers in DB with term: ${searchTerm}`, {
+    requestId,
+    operation: 'searchCustomers',
+  });
+
   try {
-    return await prisma.customer.findMany({
+    const results = await prisma.customer.findMany({
       where: {
         OR: [
           { firstname: { contains: searchTerm, mode: 'insensitive' } },
@@ -115,8 +170,15 @@ const searchCustomers = async (searchTerm) => {
         ],
       },
     });
+
+    logger.info('CUSTOMER_MODEL', `Found ${results.length} search results`, {
+      requestId,
+      operation: 'searchCustomers',
+    });
+
+    return results;
   } catch (error) {
-    throw new Error(`Error searching customers: ${error.message}`);
+    throw handlePrismaError(error, { operation: 'searchCustomers', model: 'CUSTOMER_MODEL', requestId });
   }
 };
 
