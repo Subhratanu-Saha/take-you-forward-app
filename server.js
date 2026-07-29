@@ -17,17 +17,19 @@ try {
 const PORT = config.port;
 const NODE_ENV = config.nodeEnv;
 
-logger.info('SERVER', 'Starting Customer Services backend application...', { port: PORT, env: NODE_ENV });
-
 const server = app.listen(PORT, async () => {
-  logger.info('SERVER', `Server started successfully on port ${PORT} (${NODE_ENV} environment)`);
+  console.log(`
+  ╔══════════════════════════════════════╗
+  ║  Backend Server Started Successfully ║
+  ║  Port: ${PORT}                           
+  ║  Environment: ${NODE_ENV}              
+  ╚══════════════════════════════════════╝
+  `);
 
   try {
-    logger.info('DATABASE', 'Testing database & email transport configuration...');
     await verifyEmailConfig();
-    logger.info('SERVER', 'All startup checks completed successfully.');
   } catch (error) {
-    logger.fatal('SERVER', `Startup check failed, shutting down server: ${error.message}`, { error });
+    console.error('Email transporter verification failed, shutting down server:', error.message);
     server.close(() => {
       process.exit(1);
     });
@@ -35,16 +37,15 @@ const server = app.listen(PORT, async () => {
 });
 
 // Process Crash Handler: Handle unhandled promise rejections
-process.on('unhandledRejection', (reason) => {
+process.on('unhandledRejection', (err) => {
   logger.fatal('PROCESS', 'Unhandled Promise Rejection encountered', {
     type: 'unhandledRejection',
-    reason: reason?.message || String(reason),
-    stack: reason?.stack || null,
+    reason: err?.message || String(err),
+    stack: err?.stack || null,
   });
 
   if (server && server.listening) {
     server.close(() => {
-      logger.fatal('PROCESS', 'Server closed due to unhandled rejection. Exiting process.');
       process.exit(1);
     });
   } else {
@@ -54,7 +55,7 @@ process.on('unhandledRejection', (reason) => {
 
 // Process Crash Handler: Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
-  logger.fatal('PROCESS', `Uncaught Exception encountered: ${err.message}`, {
+  logger.fatal('PROCESS', `Uncaught Exception: ${err.message}`, {
     type: 'uncaughtException',
     message: err.message,
     stack: err.stack,
@@ -62,7 +63,6 @@ process.on('uncaughtException', (err) => {
 
   if (server && server.listening) {
     server.close(() => {
-      logger.fatal('PROCESS', 'Server closed due to uncaught exception. Exiting process.');
       process.exit(1);
     });
   } else {
