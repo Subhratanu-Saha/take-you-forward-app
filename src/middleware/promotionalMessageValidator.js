@@ -5,6 +5,7 @@ const isPlainObject = (value) =>
 
 const validateCreatePromotionalMessage = (req, res, next) => {
   if (!isPlainObject(req.body)) {
+    console.warn('[PROMOTIONAL_VALIDATOR] Request body must be a JSON object');
     return res.status(400).json({
       success: false,
       message: 'Validation failed',
@@ -65,6 +66,7 @@ const validateCreatePromotionalMessage = (req, res, next) => {
   }
 
   if (errors.length > 0) {
+    console.warn(`[PROMOTIONAL_VALIDATOR] Validation failed for customer=${normalizedCustomerId || 'unknown'}: ${errors.join('; ')}`);
     return res.status(400).json({
       success: false,
       message: 'Validation failed',
@@ -79,6 +81,7 @@ const validateCreatePromotionalMessage = (req, res, next) => {
     message: trimmedMessage,
   };
 
+  console.info(`[PROMOTIONAL_VALIDATOR] Request validated for customer=${normalizedCustomerId}`);
   next();
 };
 

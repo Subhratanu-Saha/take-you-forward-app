@@ -21,5 +21,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Run build
+        run: npm run build
+
       - name: Deploy to Render Server
         run: curl -X POST ${{secrets.RENDER_DEPLOY_HOOK}}

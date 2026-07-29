@@ -32,7 +32,7 @@ console.log('Validating create subscriber request body:', req.body);
       errors,
     });
   }
-
+console.log('Validation passed for create subscriber request body:', req.body);
   next();
 };
 
@@ -70,6 +70,7 @@ const validateUpdateSubscriber = (req, res, next) => {
     });
   }
 
+  console.log('Validation passed for update subscriber request body:', req.body);
   next();
 };
 
@@ -89,6 +90,7 @@ const validateGetSubscriberById = (req, res, next) => {
     });
   }
 
+  console.log('Validation passed for get subscriber by ID request:', req.params);
   next();
 };
 
@@ -108,6 +110,7 @@ const validateGetSubscriberByCustomerId = (req, res, next) => {
     });
   }
 
+  console.log('Validation passed for get subscriber by customer ID request:', req.params);
   next();
 };
 
