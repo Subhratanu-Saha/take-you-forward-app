@@ -115,4 +115,4 @@ module.exports = {
   getTotalPurchaseAmount,
   updateLoyaltyTier,
   createLoyaltyRecord,
-};
+};
