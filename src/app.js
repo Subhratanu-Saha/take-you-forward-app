@@ -7,15 +7,6 @@ const { API_SUCCESSFUL_HEALTH_MESSAGE } = require('./constants/constant');
 
 const app = express();
 
-// Request Correlation ID Middleware (Inline)
-app.use((req, res, next) => {
-  const incomingRequestId = req.headers['x-request-id'] || req.headers['x-correlation-id'];
-  const requestId = incomingRequestId || crypto.randomUUID();
-
-  req.requestId = requestId;
-  res.setHeader('X-Request-Id', requestId);
-  next();
-});
 
 // Request Tracing & Performance Logging Middleware (Inline)
 app.use((req, res, next) => {
