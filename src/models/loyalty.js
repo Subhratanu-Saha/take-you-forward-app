@@ -2,17 +2,35 @@ const prisma = require('../utils/db');
 
 const getLoyaltyByCustomerId = async (customerid) => {
   try {
-    return await prisma.loyalty.findFirst({
+    console.log(`[LOYALTY_MODEL] Fetching loyalty record for customerId=${customerid}`);
+
+    const loyaltyRecord = await prisma.loyalty.findFirst({
       where: { customerid },
       orderBy: { createdat: 'desc' },
     });
+
+     if (!loyaltyRecord) {
+      console.warn(`[LOYALTY_MODEL] No loyalty record found for customerId=${customerid}`);
+      return null;
+    }
+
+    console.log(`[LOYALTY_MODEL] Loyalty record found for customerId=${customerid}`, {
+      loyaltyid: loyaltyRecord.loyaltyid,
+    });
+
+
+    return loyaltyRecord;
   } catch (error) {
+    console.error(`[LOYALTY_MODEL] Failed to fetch loyalty record for customerId=${customerid}`, error);
     throw new Error(`Error fetching loyalty record: ${error.message}`);
   }
 };
 
 const getLoyaltySummaryByCustomerId = async (customerid) => {
   try {
+    console.log(`[LOYALTY_MODEL] Building loyalty summary for customerId=${customerid}`);
+
+
     const loyaltyRecord = await prisma.loyalty.findFirst({
       where: { customerid },
       include: { customer: true },
@@ -20,10 +38,11 @@ const getLoyaltySummaryByCustomerId = async (customerid) => {
     });
 
     if (!loyaltyRecord) {
+      console.warn(`[LOYALTY_MODEL] No loyalty summary available for customerId=${customerid}`);
       return null;
     }
 
-    return {
+    const summary = {
       loyaltyid: loyaltyRecord.loyaltyid,
       customerid: loyaltyRecord.customerid,
       tier: loyaltyRecord.tier,
@@ -37,42 +56,70 @@ const getLoyaltySummaryByCustomerId = async (customerid) => {
         ? `${loyaltyRecord.customer.firstname} ${loyaltyRecord.customer.lastname || ''}`.trim()
         : null,
     };
+
+    console.log(`[LOYALTY_MODEL] Loyalty summary generated for customerId=${customerid}`, {
+      loyaltyid: summary.loyaltyid,
+      tier: summary.tier,
+      totalpoints: summary.totalpoints,
+    });
+
+    return summary;
   } catch (error) {
+    console.error(`[LOYALTY_MODEL] Failed to build loyalty summary for customerId=${customerid}`, error);
     throw new Error(`Error fetching loyalty summary: ${error.message}`);
   }
 };
 
 const getTotalPurchaseAmount = async (customerid) => {
   try {
+    console.log(`[LOYALTY_MODEL] Calculating total purchase amount for customerId=${customerid}`);
+
     const result = await prisma.orderheader.aggregate({
       where: { customerid },
       _sum: { totalamount: true },
     });
 
-    return Number(result._sum.totalamount || 0);
+    const totalPurchaseAmount = Number(result._sum.totalamount || 0);
+
+    console.log(`[LOYALTY_MODEL] Total purchase amount calculated for customerId=${customerid}`, {
+      totalPurchaseAmount,
+    });
+    
+    return totalPurchaseAmount;
   } catch (error) {
+    console.error(`[LOYALTY_MODEL] Failed to calculate total purchase amount for customerId=${customerid}`, error);
     throw new Error(`Error calculating total purchase amount: ${error.message}`);
   }
 };
 
 const updateLoyaltyTier = async (customerid, newTier) => {
   try {
+
+    console.log(`[LOYALTY_MODEL] Updating loyalty tier for customerId=${customerid} to ${newTier}`);
+
     const existingLoyalty = await prisma.loyalty.findFirst({
       where: { customerid },
       orderBy: { createdat: 'desc' },
     });
 
     if (existingLoyalty) {
-      return await prisma.loyalty.update({
+      const updatedRecord = await prisma.loyalty.update({
         where: { loyaltyid: existingLoyalty.loyaltyid },
         data: {
           tier: newTier,
           updatedat: new Date(),
         },
       });
+
+      console.log(`[LOYALTY_MODEL] Updated existing loyalty record for customerId=${customerid}`, {
+        loyaltyid: updatedRecord.loyaltyid,
+        tier: updatedRecord.tier,
+      });
+
+      return updatedRecord;
     }
 
-    return await prisma.loyalty.create({
+    const createdRecord = await prisma.loyalty.create({
       data: {
         customerid,
         tier: newTier,
@@ -84,7 +131,14 @@ const updateLoyaltyTier = async (customerid, newTier) => {
         updatedat: new Date(),
       },
     });
+    console.log(`[LOYALTY_MODEL] Created new loyalty record for customerId=${customerid}`, {
+      loyaltyid: createdRecord.loyaltyid,
+      tier: createdRecord.tier,
+    });
+
+    return createdRecord;
   } catch (error) {
+    console.error(`[LOYALTY_MODEL] Failed to update loyalty tier for customerId=${customerid}`, error);
     throw new Error(`Error updating loyalty tier: ${error.message}`);
   }
 };
@@ -92,7 +146,14 @@ const updateLoyaltyTier = async (customerid, newTier) => {
 const createLoyaltyRecord = async (loyaltyData) => {
   try {
     const { customerid, tier, totalpoints, isactive } = loyaltyData;
-    return await prisma.loyalty.create({
+
+    console.log(`[LOYALTY_MODEL] Creating loyalty record for customerId=${customerid}`, {
+      tier: tier || 'BRONZE',
+      totalpoints: totalpoints ?? 0,
+      isactive: isactive ?? true,
+    });
+
+    const createdRecord = await prisma.loyalty.create({
       data: {
         customerid,
         tier: tier || 'BRONZE',
@@ -104,7 +165,14 @@ const createLoyaltyRecord = async (loyaltyData) => {
         updatedat: new Date(),
       },
     });
+
+     console.log(`[LOYALTY_MODEL] Loyalty record created successfully for customerId=${customerid}`, {
+      loyaltyid: createdRecord.loyaltyid,
+    });
+
+    return createdRecord;
   } catch (error) {
+    console.error(`[LOYALTY_MODEL] Failed to create loyalty record for customerId=${loyaltyData?.customerid}`, error);
     throw new Error(`Error creating loyalty record: ${error.message}`);
   }
 };
