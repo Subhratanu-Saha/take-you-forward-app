@@ -1,40 +1,12 @@
 const customerModel = require('../models/customer');
 const generateCustomerId = require('../utils/customerIdGenerator');
-const { logger, ERROR_CODES, ConflictError, NotFoundError, ValidationError } = require('../utils/db');
+const { logger, ERROR_CODES, NotFoundError, ValidationError } = require('../utils/db');
 
-// Business logic: Create customer with validation
+// Business logic: Create customer
 const createCustomer = async (customerData, requestId = null) => {
   logger.info('CUSTOMER_SERVICE', 'Executing createCustomer business logic', { requestId, operation: 'createCustomer' });
 
   try {
-    // Check if customer already exists
-    const existing = await customerModel.getCustomerByEmail(customerData.emailadd, requestId);
-    if (existing) {
-      const err = new ConflictError('Email already registered', ERROR_CODES.CUSTOMER_ALREADY_EXISTS);
-      logger.warn('CUSTOMER_SERVICE', 'Email already registered', {
-        requestId,
-        operation: 'createCustomer',
-        statusCode: 409,
-        errorCode: ERROR_CODES.CUSTOMER_ALREADY_EXISTS,
-      });
-      throw err;
-    }
-
-    // Check if contact number is already in use
-    if (customerData.contactnum) {
-      const existingContact = await customerModel.getCustomerByContactNum(customerData.contactnum, requestId);
-      if (existingContact) {
-        const err = new ConflictError('Contact number already registered', ERROR_CODES.CUSTOMER_ALREADY_EXISTS);
-        logger.warn('CUSTOMER_SERVICE', 'Contact number already registered', {
-          requestId,
-          operation: 'createCustomer',
-          statusCode: 409,
-          errorCode: ERROR_CODES.CUSTOMER_ALREADY_EXISTS,
-        });
-        throw err;
-      }
-    }
-
     // Generate unique customer ID
     const customerid = generateCustomerId();
 

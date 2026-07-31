@@ -1,3 +1,4 @@
+const customerModel = require('../models/customer');
 const { logger, ERROR_CODES } = require('../utils/db');
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -18,7 +19,7 @@ const checkProtectedFields = (data) => {
   return PROTECTED_FIELDS.filter(field => field in data);
 };
 
-const validateCreateCustomer = (req, res, next) => {
+const validateCreateCustomer = async (req, res, next) => {
   const requestId = req.requestId;
   const {
     firstname,
@@ -71,6 +72,47 @@ const validateCreateCustomer = (req, res, next) => {
       errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
       errors,
     });
+  }
+
+  // Check if customer already exists (Email or Contact Number)
+  try {
+    const existingEmail = await customerModel.getCustomerByEmail(emailadd, requestId);
+    if (existingEmail) {
+      logger.warn('CUSTOMER_VALIDATOR', 'Email already registered', {
+        requestId,
+        statusCode: 409,
+        errorCode: ERROR_CODES.CUSTOMER_ALREADY_EXISTS,
+      });
+
+      return res.status(409).json({
+        success: false,
+        message: 'Email already registered',
+        errorCode: ERROR_CODES.CUSTOMER_ALREADY_EXISTS,
+      });
+    }
+
+    if (contactnum) {
+      const existingContact = await customerModel.getCustomerByContactNum(contactnum, requestId);
+      if (existingContact) {
+        logger.warn('CUSTOMER_VALIDATOR', 'Contact number already registered', {
+          requestId,
+          statusCode: 409,
+          errorCode: ERROR_CODES.CUSTOMER_ALREADY_EXISTS,
+        });
+
+        return res.status(409).json({
+          success: false,
+          message: 'Contact number already registered',
+          errorCode: ERROR_CODES.CUSTOMER_ALREADY_EXISTS,
+        });
+      }
+    }
+  } catch (error) {
+    logger.error('CUSTOMER_VALIDATOR', `Error validating customer existence: ${error.message}`, {
+      requestId,
+      error,
+    });
+    return next(error);
   }
 
   next();
