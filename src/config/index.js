@@ -21,5 +21,25 @@ const config = {
 };
 
 const environment = process.env.NODE_ENV || 'development';
+const activeConfig = config[environment] || config.development;
 
-module.exports = config[environment];
+const validateConfig = () => {
+  const missing = [];
+  if (!process.env.DATABASE_URL && !process.env.DB_URL && environment === 'production') {
+    missing.push('DATABASE_URL');
+  }
+
+  if (missing.length > 0) {
+    const errorMsg = `Missing required environment variable(s): ${missing.join(', ')}`;
+    console.error(`[FATAL] [CONFIG] ${errorMsg}`);
+    throw new Error(errorMsg);
+  }
+
+  return true;
+};
+
+module.exports = {
+  ...activeConfig,
+  validateConfig,
+};
+
