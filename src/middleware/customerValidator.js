@@ -1,3 +1,6 @@
+const customerModel = require('../models/customer');
+const { logger, ERROR_CODES } = require('../utils/db');
+
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneRegex = /^\d{10}$/;
 const pincodeRegex = /^\d{6}$/;
@@ -16,7 +19,8 @@ const checkProtectedFields = (data) => {
   return PROTECTED_FIELDS.filter(field => field in data);
 };
 
-const validateCreateCustomer = (req, res, next) => {
+const validateCreateCustomer = async (req, res, next) => {
+  const requestId = req.requestId;
   const {
     firstname,
     emailadd,
@@ -25,7 +29,7 @@ const validateCreateCustomer = (req, res, next) => {
     city,
     pincode,
     dob,
-  } = req.body;
+  } = req.body || {};
 
   const errors = [];
 
@@ -55,29 +59,85 @@ const validateCreateCustomer = (req, res, next) => {
   }
 
   if (errors.length) {
+    logger.warn('CUSTOMER_VALIDATOR', 'Create customer validation failed', {
+      requestId,
+      statusCode: 400,
+      errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
+      errors,
+    });
+
     return res.status(400).json({
       success: false,
       message: 'Validation failed',
+      errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
       errors,
     });
+  }
+
+  // Check if customer already exists (Email or Contact Number)
+  try {
+    const existingEmail = await customerModel.getCustomerByEmail(emailadd, requestId);
+    if (existingEmail) {
+      logger.warn('CUSTOMER_VALIDATOR', 'Email already registered', {
+        requestId,
+        statusCode: 409,
+        errorCode: ERROR_CODES.CUSTOMER_ALREADY_EXISTS,
+      });
+
+      return res.status(409).json({
+        success: false,
+        message: 'Email already registered',
+        errorCode: ERROR_CODES.CUSTOMER_ALREADY_EXISTS,
+      });
+    }
+
+    if (contactnum) {
+      const existingContact = await customerModel.getCustomerByContactNum(contactnum, requestId);
+      if (existingContact) {
+        logger.warn('CUSTOMER_VALIDATOR', 'Contact number already registered', {
+          requestId,
+          statusCode: 409,
+          errorCode: ERROR_CODES.CUSTOMER_ALREADY_EXISTS,
+        });
+
+        return res.status(409).json({
+          success: false,
+          message: 'Contact number already registered',
+          errorCode: ERROR_CODES.CUSTOMER_ALREADY_EXISTS,
+        });
+      }
+    }
+  } catch (error) {
+    logger.error('CUSTOMER_VALIDATOR', `Error validating customer existence: ${error.message}`, {
+      requestId,
+      error,
+    });
+    return next(error);
   }
 
   next();
 };
 
-
-
 // Validate Customer ID
 const validateCustomerId = (req, res, next) => {
+  const requestId = req.requestId;
   const { customerId } = req.params;
 
   const customerIdRegex = /^CUST-\d+-[A-Z0-9]{10}$/;
 
   if (!customerId || !customerIdRegex.test(customerId)) {
+    const msg = "Invalid customer ID format. Expected format: CUST-{timestamp}-{10 alphanumeric characters}";
+    logger.warn('CUSTOMER_VALIDATOR', msg, {
+      requestId,
+      customerId,
+      statusCode: 400,
+      errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
+    });
+
     return res.status(400).json({
       success: false,
-      message:
-        "Invalid customer ID format. Expected format: CUST-{timestamp}-{10 alphanumeric characters}",
+      message: msg,
+      errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
     });
   }
 
@@ -86,39 +146,71 @@ const validateCustomerId = (req, res, next) => {
 
 // Update Customer Validation
 function validateUpdateCustomer(req, res, next) {
+  const requestId = req.requestId;
   const { customerId } = req.params;
-  const { firstname, emailadd, contactnum, pincode, dob } = req.body || {};
+  const { contactnum, pincode } = req.body || {};
 
   // Validate Customer ID
   if (!customerId || !customerId.toString().trim()) {
+    logger.warn('CUSTOMER_VALIDATOR', 'Customer ID is required for update', {
+      requestId,
+      statusCode: 400,
+      errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
+    });
     return res.status(400).json({
       success: false,
-      message: "Customer ID is required"
+      message: "Customer ID is required",
+      errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
     });
   }
+
   const protectedFieldsInRequest = checkProtectedFields(req.body);
   if (protectedFieldsInRequest.length > 0) {
+    const msg = `You cannot update these fields: ${protectedFieldsInRequest.join(', ')}`;
+    logger.warn('CUSTOMER_VALIDATOR', msg, {
+      requestId,
+      customerId,
+      statusCode: 400,
+      errorCode: ERROR_CODES.CUSTOMER_PROTECTED_FIELD,
+      protectedFields: protectedFieldsInRequest,
+    });
     return res.status(400).json({
       success: false,
-      message: `You cannot update these fields: ${protectedFieldsInRequest.join(', ')}`,
+      message: msg,
+      errorCode: ERROR_CODES.CUSTOMER_PROTECTED_FIELD,
     });
   }
+
   // Validate Contact Number (10 digits)
   if (contactnum) {
     const cleanedNumber = contactnum.toString().replace(/\D/g, '');
     if (!phoneRegex.test(cleanedNumber)) {
+      logger.warn('CUSTOMER_VALIDATOR', 'Invalid contact number format in update', {
+        requestId,
+        customerId,
+        statusCode: 400,
+        errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
+      });
       return res.status(400).json({
         success: false,
-        message: "Invalid contact number (must be 10 digits)"
+        message: "Invalid contact number (must be 10 digits)",
+        errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
       });
     }
   }
 
   // Validate Pincode (6 digits)
   if (pincode && !pincodeRegex.test(pincode.toString())) {
+    logger.warn('CUSTOMER_VALIDATOR', 'Invalid pincode format in update', {
+      requestId,
+      customerId,
+      statusCode: 400,
+      errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
+    });
     return res.status(400).json({
       success: false,
-      message: "Invalid pincode (must be 6 digits)"
+      message: "Invalid pincode (must be 6 digits)",
+      errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
     });
   }
 
@@ -127,12 +219,19 @@ function validateUpdateCustomer(req, res, next) {
 
 // Delete Customer Validation
 function validateDeleteCustomer(req, res, next) {
+  const requestId = req.requestId;
   const { customerId } = req.params;
 
   if (!customerId || !customerId.toString().trim()) {
+    logger.warn('CUSTOMER_VALIDATOR', 'Customer ID is required for delete', {
+      requestId,
+      statusCode: 400,
+      errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
+    });
     return res.status(400).json({
       success: false,
-      message: "Customer ID is required"
+      message: "Customer ID is required",
+      errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
     });
   }
 
@@ -141,14 +240,21 @@ function validateDeleteCustomer(req, res, next) {
 
 // Get All Customers Validation
 const validateGetAllCustomers = (req, res, next) => {
+  const requestId = req.requestId;
   const { page, limit } = req.query;
 
   if (page) {
     const pageNum = Number(page);
     if (isNaN(pageNum) || pageNum <= 0) {
+      logger.warn('CUSTOMER_VALIDATOR', 'Invalid page parameter', {
+        requestId,
+        statusCode: 400,
+        errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
+      });
       return res.status(400).json({
         success: false,
         message: "Page must be a positive number",
+        errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
       });
     }
   }
@@ -156,9 +262,15 @@ const validateGetAllCustomers = (req, res, next) => {
   if (limit) {
     const limitNum = Number(limit);
     if (isNaN(limitNum) || limitNum <= 0) {
+      logger.warn('CUSTOMER_VALIDATOR', 'Invalid limit parameter', {
+        requestId,
+        statusCode: 400,
+        errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
+      });
       return res.status(400).json({
         success: false,
         message: "Limit must be a positive number",
+        errorCode: ERROR_CODES.CUSTOMER_VALIDATION_FAILED,
       });
     }
   }
