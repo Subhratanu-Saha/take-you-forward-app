@@ -5,11 +5,13 @@ const { INTERACTION_MODE, INTERACTION_TYPE, INTERACTION_VALUE, PROMOTIONAL_ONBOA
 
 // GET all customers
 const getAllCustomers = async (req, res, next) => {
-  logger.info('CUSTOMER_CONTROLLER', 'Handling getAllCustomers request', { operation: 'getAllCustomers' });
+  const requestId = req.requestId;
+  logger.info('CUSTOMER_CONTROLLER', 'Handling getAllCustomers request', { requestId, operation: 'getAllCustomers' });
 
   try {
-    const customers = await customerService.getAllCustomers();
+    const customers = await customerService.getAllCustomers(requestId);
     logger.info('CUSTOMER_CONTROLLER', `getAllCustomers succeeded with ${customers.length} records`, {
+      requestId,
       operation: 'getAllCustomers',
       statusCode: 200,
     });
@@ -24,6 +26,7 @@ const getAllCustomers = async (req, res, next) => {
     const errorCode = error.errorCode || ERROR_CODES.INTERNAL_SERVER_ERROR;
 
     logger.error('CUSTOMER_CONTROLLER', `getAllCustomers failed: ${error.message}`, {
+      requestId,
       operation: 'getAllCustomers',
       statusCode,
       errorCode,
@@ -44,16 +47,19 @@ const getAllCustomers = async (req, res, next) => {
 
 // GET customer by ID
 const getCustomerById = async (req, res, next) => {
+  const requestId = req.requestId;
   const customerId = req.params.customerId;
 
   logger.info('CUSTOMER_CONTROLLER', `Handling getCustomerById request for ID: ${customerId}`, {
+    requestId,
     operation: 'getCustomerById',
     customerId,
   });
 
   try {
-    const customer = await customerService.getCustomerById(customerId);
+    const customer = await customerService.getCustomerById(customerId, requestId);
     logger.info('CUSTOMER_CONTROLLER', `getCustomerById succeeded for ID: ${customerId}`, {
+      requestId,
       operation: 'getCustomerById',
       customerId,
       statusCode: 200,
@@ -69,6 +75,7 @@ const getCustomerById = async (req, res, next) => {
     const errorCode = error.errorCode || ERROR_CODES.CUSTOMER_NOT_FOUND;
 
     logger.warn('CUSTOMER_CONTROLLER', `getCustomerById failed for ID: ${customerId} - ${error.message}`, {
+      requestId,
       operation: 'getCustomerById',
       customerId,
       statusCode,
@@ -89,10 +96,11 @@ const getCustomerById = async (req, res, next) => {
 
 // CREATE new customer
 const createCustomer = async (req, res, next) => {
-  logger.info('CUSTOMER_CONTROLLER', 'Handling createCustomer request', { operation: 'createCustomer' });
+  const requestId = req.requestId;
+  logger.info('CUSTOMER_CONTROLLER', 'Handling createCustomer request', { requestId, operation: 'createCustomer' });
 
   try {
-    const customer = await customerService.createCustomer(req.body);
+    const customer = await customerService.createCustomer(req.body, requestId);
     if (customer) {
       // Trigger downstream events concurrently (non-blocking)
       const eventTriggers = [
@@ -107,6 +115,7 @@ const createCustomer = async (req, res, next) => {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
+                'X-Request-Id': requestId,
               },
               body: JSON.stringify({
                 customerid: customer.customerid,
@@ -120,6 +129,7 @@ const createCustomer = async (req, res, next) => {
               throw new Error(`Subscriber service returned status ${response.status}`);
             }
             logger.info('EXTERNAL_INTEGRATION', 'Subscriber event trigger succeeded', {
+              requestId,
               service: 'subscriber',
               durationMs: duration,
               statusCode: response.status,
@@ -127,6 +137,7 @@ const createCustomer = async (req, res, next) => {
             return { success: true, service: 'subscriber' };
           } catch (error) {
             logger.error('EXTERNAL_INTEGRATION', `Subscriber event trigger failed: ${error.message}`, {
+              requestId,
               service: 'subscriber',
               error,
             });
@@ -142,6 +153,7 @@ const createCustomer = async (req, res, next) => {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
+                'X-Request-Id': requestId,
               },
               body: JSON.stringify({
                 customerid: customer.customerid,
@@ -155,6 +167,7 @@ const createCustomer = async (req, res, next) => {
               throw new Error(`Interaction service returned status ${response.status}`);
             }
             logger.info('EXTERNAL_INTEGRATION', 'Interaction event trigger succeeded', {
+              requestId,
               service: 'interaction',
               durationMs: duration,
               statusCode: response.status,
@@ -162,6 +175,7 @@ const createCustomer = async (req, res, next) => {
             return { success: true, service: 'interaction' };
           } catch (error) {
             logger.error('EXTERNAL_INTEGRATION', `Interaction event trigger failed: ${error.message}`, {
+              requestId,
               service: 'interaction',
               error,
             });
@@ -177,6 +191,7 @@ const createCustomer = async (req, res, next) => {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
+                'X-Request-Id': requestId,
               },
               body: JSON.stringify({
                 customerid: customer.customerid,
@@ -190,6 +205,7 @@ const createCustomer = async (req, res, next) => {
               throw new Error(`Promotional service returned status ${response.status}`);
             }
             logger.info('EXTERNAL_INTEGRATION', 'Promotional event trigger succeeded', {
+              requestId,
               service: 'promotional',
               durationMs: duration,
               statusCode: response.status,
@@ -197,6 +213,7 @@ const createCustomer = async (req, res, next) => {
             return { success: true, service: 'promotional' };
           } catch (error) {
             logger.error('EXTERNAL_INTEGRATION', `Promotional event trigger failed: ${error.message}`, {
+              requestId,
               service: 'promotional',
               error,
             });
@@ -211,18 +228,19 @@ const createCustomer = async (req, res, next) => {
           if (result.status === 'fulfilled') {
             const data = result.value;
             if (data.success) {
-              logger.info('CUSTOMER_CONTROLLER', `✓ ${data.service} event triggered successfully`);
+              logger.info('CUSTOMER_CONTROLLER', `✓ ${data.service} event triggered successfully`, { requestId });
             } else {
-              logger.warn('CUSTOMER_CONTROLLER', `✗ ${data.service} event failed: ${data.error}`);
+              logger.warn('CUSTOMER_CONTROLLER', `✗ ${data.service} event failed: ${data.error}`, { requestId });
             }
           } else if (result.status === 'rejected') {
-            logger.error('CUSTOMER_CONTROLLER', `Event trigger rejected: ${result.reason}`);
+            logger.error('CUSTOMER_CONTROLLER', `Event trigger rejected: ${result.reason}`, { requestId });
           }
         });
       });
     }
 
     logger.info('CUSTOMER_CONTROLLER', `createCustomer succeeded for ID: ${customer.customerid}`, {
+      requestId,
       operation: 'createCustomer',
       customerId: customer.customerid,
       statusCode: 201,
@@ -238,6 +256,7 @@ const createCustomer = async (req, res, next) => {
     const errorCode = error.errorCode || ERROR_CODES.CUSTOMER_VALIDATION_FAILED;
 
     logger.warn('CUSTOMER_CONTROLLER', `createCustomer failed: ${error.message}`, {
+      requestId,
       operation: 'createCustomer',
       statusCode,
       errorCode,
@@ -257,16 +276,19 @@ const createCustomer = async (req, res, next) => {
 
 // UPDATE customer
 const updateCustomer = async (req, res, next) => {
+  const requestId = req.requestId;
   const customerId = req.params.customerId;
 
   logger.info('CUSTOMER_CONTROLLER', `Handling updateCustomer request for ID: ${customerId}`, {
+    requestId,
     operation: 'updateCustomer',
     customerId,
   });
 
   try {
-    const customer = await customerService.updateCustomer(customerId, req.body);
+    const customer = await customerService.updateCustomer(customerId, req.body, requestId);
     logger.info('CUSTOMER_CONTROLLER', `updateCustomer succeeded for ID: ${customerId}`, {
+      requestId,
       operation: 'updateCustomer',
       customerId,
       statusCode: 200,
@@ -282,6 +304,7 @@ const updateCustomer = async (req, res, next) => {
     const errorCode = error.errorCode || ERROR_CODES.CUSTOMER_VALIDATION_FAILED;
 
     logger.warn('CUSTOMER_CONTROLLER', `updateCustomer failed for ID: ${customerId} - ${error.message}`, {
+      requestId,
       operation: 'updateCustomer',
       customerId,
       statusCode,
@@ -302,16 +325,19 @@ const updateCustomer = async (req, res, next) => {
 
 // DELETE customer
 const deleteCustomer = async (req, res, next) => {
+  const requestId = req.requestId;
   const customerId = req.params.customerId;
 
   logger.info('CUSTOMER_CONTROLLER', `Handling deleteCustomer request for ID: ${customerId}`, {
+    requestId,
     operation: 'deleteCustomer',
     customerId,
   });
 
   try {
-    await customerService.deleteCustomer(customerId);
+    await customerService.deleteCustomer(customerId, requestId);
     logger.info('CUSTOMER_CONTROLLER', `deleteCustomer succeeded for ID: ${customerId}`, {
+      requestId,
       operation: 'deleteCustomer',
       customerId,
       statusCode: 200,
@@ -326,6 +352,7 @@ const deleteCustomer = async (req, res, next) => {
     const errorCode = error.errorCode || ERROR_CODES.CUSTOMER_VALIDATION_FAILED;
 
     logger.warn('CUSTOMER_CONTROLLER', `deleteCustomer failed for ID: ${customerId} - ${error.message}`, {
+      requestId,
       operation: 'deleteCustomer',
       customerId,
       statusCode,
@@ -346,15 +373,18 @@ const deleteCustomer = async (req, res, next) => {
 
 // SEARCH customers
 const searchCustomers = async (req, res, next) => {
+  const requestId = req.requestId;
   const term = req.params.term;
 
   logger.info('CUSTOMER_CONTROLLER', `Handling searchCustomers request for term: ${term}`, {
+    requestId,
     operation: 'searchCustomers',
   });
 
   try {
-    const customers = await customerService.searchCustomers(term);
+    const customers = await customerService.searchCustomers(term, requestId);
     logger.info('CUSTOMER_CONTROLLER', `searchCustomers succeeded with ${customers.length} results`, {
+      requestId,
       operation: 'searchCustomers',
       statusCode: 200,
     });
@@ -369,6 +399,7 @@ const searchCustomers = async (req, res, next) => {
     const errorCode = error.errorCode || ERROR_CODES.CUSTOMER_VALIDATION_FAILED;
 
     logger.warn('CUSTOMER_CONTROLLER', `searchCustomers failed for term: ${term} - ${error.message}`, {
+      requestId,
       operation: 'searchCustomers',
       statusCode,
       errorCode,

@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const crypto = require('crypto');
 
 // Initialize Prisma client
 const prisma = new PrismaClient({
@@ -87,6 +88,7 @@ const formatLog = (level, component, message, metadata = {}) => {
   const prefix = `[${timestamp}] [${level}] [${logPayload.component}]`;
   const details = [];
 
+  if (logPayload.requestId) details.push(`requestId=${logPayload.requestId}`);
   if (logPayload.operation) details.push(`operation=${logPayload.operation}`);
   if (logPayload.customerId) details.push(`customerId=${logPayload.customerId}`);
   if (logPayload.statusCode) details.push(`statusCode=${logPayload.statusCode}`);
@@ -199,10 +201,11 @@ prisma.$on('warn', (e) => {
 
 // Prisma error translator
 const handlePrismaError = (error, context = {}) => {
-  const { operation = 'DATABASE_OP', model = 'DATABASE', resourceId = null } = context;
+  const { operation = 'DATABASE_OP', model = 'DATABASE', requestId = null, resourceId = null } = context;
 
   logger.error(model, `Database operation failed: ${error.message}`, {
     operation,
+    requestId,
     resourceId,
     code: error.code,
     stack: error.stack,

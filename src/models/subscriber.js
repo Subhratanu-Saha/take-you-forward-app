@@ -3,8 +3,6 @@ const generateRandomAlphaNumeric = require('../utils/idGenerator');
 
 /**
  * Generate a readable subscriber ID when the client does not send one.
- * This keeps the create flow working even if the request body only contains
- * the subscriber preferences and customer reference.
  */
 const generateSubscriberId = () => {
   const timestamp = Date.now();
@@ -13,110 +11,230 @@ const generateSubscriberId = () => {
   return `SUB-${timestamp}-${randomStr}`;
 };
 
-
-/**
- * Fetch every subscriber record from the database.
- */
-// ============Write your code ====================
+// ==================== GET ALL SUBSCRIBERS ====================
 const getAllSubscribers = async () => {
+  console.log('[SubscriberModel] Fetching all subscribers...');
+
   try {
-    return await prisma.subscriber.findMany();
+    const subscribers = await prisma.subscriber.findMany();
+
+    console.log(
+      `[SubscriberModel] Successfully fetched ${subscribers.length} subscriber(s).`
+    );
+
+    return subscribers;
   } catch (error) {
+    console.error(
+      '[SubscriberModel] Error fetching subscribers:',
+      error.message
+    );
+    console.error(error.stack);
+
     throw new Error(`Error fetching subscribers: ${error.message}`);
   }
 };
 
-
-/**
- * Fetch a single subscriber by its primary key.
- */
-// ============Write your code ====================
+// ==================== GET SUBSCRIBER BY ID ====================
 const getSubscriberById = async (subscriberid) => {
+  console.log(
+    `[SubscriberModel] Fetching subscriber with ID: ${subscriberid}`
+  );
+
   try {
-    return await prisma.subscriber.findUnique({
-      where: { subscriberid }
+    const subscriber = await prisma.subscriber.findUnique({
+      where: { subscriberid },
     });
+
+    if (!subscriber) {
+      console.warn(
+        `[SubscriberModel] Subscriber not found with ID: ${subscriberid}`
+      );
+    } else {
+      console.log(
+        `[SubscriberModel] Subscriber fetched successfully.`
+      );
+    }
+
+    return subscriber;
   } catch (error) {
+    console.error(
+      `[SubscriberModel] Error fetching subscriber ${subscriberid}:`,
+      error.message
+    );
+    console.error(error.stack);
+
     throw new Error(`Error fetching subscriber: ${error.message}`);
   }
 };
 
-
-/**
- * Fetch the first subscriber row for a customer.
- * Note: customerid is not unique in the schema, so findFirst is the safe query.
- */
-// ============Write your code ====================
+// ==================== GET SUBSCRIBER BY CUSTOMER ID ====================
 const getSubscriberByCustomerId = async (customerid) => {
+  console.log(
+    `[SubscriberModel] Fetching subscriber for Customer ID: ${customerid}`
+  );
+
   try {
-    return await prisma.subscriber.findFirst({
-      where: { customerid }
+    const subscriber = await prisma.subscriber.findFirst({
+      where: { customerid },
     });
+
+    if (!subscriber) {
+      console.warn(
+        `[SubscriberModel] No subscriber found for Customer ID: ${customerid}`
+      );
+    } else {
+      console.log(
+        `[SubscriberModel] Subscriber fetched successfully for Customer ID: ${customerid}`
+      );
+    }
+
+    return subscriber;
   } catch (error) {
-    throw new Error(`Error fetching subscriber by customerId: ${error.message}`);
+    console.error(
+      `[SubscriberModel] Error fetching subscriber for Customer ID ${customerid}:`,
+      error.message
+    );
+    console.error(error.stack);
+
+    throw new Error(
+      `Error fetching subscriber by customerId: ${error.message}`
+    );
   }
 };
 
-/**
- * Insert a new subscriber record into the downstream subscriber table.
- * Maps camelCase input parameters to lowercase Prisma field names.
- */
+// ==================== CREATE SUBSCRIBER ====================
 const createSubscriber = async (subscriberData) => {
+  console.log('[SubscriberModel] Creating subscriber...');
+  console.log('[SubscriberModel] Request Data:', subscriberData);
+
   try {
-    return await prisma.subscriber.create({
+    const subscriber = await prisma.subscriber.create({
       data: {
-        // Use the provided ID when present; otherwise generate one.
-        subscriberid: subscriberData.subscriberId || subscriberData.subscriberid || generateSubscriberId(),
-        customerid: subscriberData.customerId || subscriberData.customerid,
-        issubscribe: subscriberData.isSubscribe !== undefined ? subscriberData.isSubscribe : subscriberData.issubscribe,
-        emailpermstatus: subscriberData.emailPermStatus !== undefined ? subscriberData.emailPermStatus : subscriberData.emailpermstatus,
-        smspermstatus: subscriberData.smsPermStatus !== undefined ? subscriberData.smsPermStatus : subscriberData.smspermstatus,
-        // Track when the record was last created/changed.
+        subscriberid:
+          subscriberData.subscriberId ||
+          subscriberData.subscriberid ||
+          generateSubscriberId(),
+
+        customerid:
+          subscriberData.customerId ||
+          subscriberData.customerid,
+
+        issubscribe:
+          subscriberData.isSubscribe !== undefined
+            ? subscriberData.isSubscribe
+            : subscriberData.issubscribe,
+
+        emailpermstatus:
+          subscriberData.emailPermStatus !== undefined
+            ? subscriberData.emailPermStatus
+            : subscriberData.emailpermstatus,
+
+        smspermstatus:
+          subscriberData.smsPermStatus !== undefined
+            ? subscriberData.smsPermStatus
+            : subscriberData.smspermstatus,
+
         sysmodifieddt: new Date(),
       },
     });
+
+    console.log(
+      `[SubscriberModel] Subscriber created successfully. ID: ${subscriber.subscriberid}`
+    );
+
+    return subscriber;
   } catch (error) {
+    console.error(
+      '[SubscriberModel] Error creating subscriber:',
+      error.message
+    );
+    console.error(error.stack);
+
     throw new Error(`Error creating subscriber: ${error.message}`);
   }
 };
 
-/**
- * Update an existing subscriber row by primary key.
- * Maps camelCase input parameters to lowercase Prisma field names.
- * Only mutable subscriber preference fields are updated.
- */
+// ==================== UPDATE SUBSCRIBER ====================
 const updateSubscriber = async (subscriberid, subscriberData) => {
+  console.log(
+    `[SubscriberModel] Updating subscriber with ID: ${subscriberid}`
+  );
+  console.log('[SubscriberModel] Update Data:', subscriberData);
+
   try {
-    return await prisma.subscriber.update({
+    const subscriber = await prisma.subscriber.update({
       where: { subscriberid },
       data: {
-        issubscribe: subscriberData.isSubscribe !== undefined ? subscriberData.isSubscribe : subscriberData.issubscribe,
-        emailpermstatus: subscriberData.emailPermStatus !== undefined ? subscriberData.emailPermStatus : subscriberData.emailpermstatus,
-        smspermstatus: subscriberData.smsPermStatus !== undefined ? subscriberData.smsPermStatus : subscriberData.smspermstatus,
+        issubscribe:
+          subscriberData.isSubscribe !== undefined
+            ? subscriberData.isSubscribe
+            : subscriberData.issubscribe,
+
+        emailpermstatus:
+          subscriberData.emailPermStatus !== undefined
+            ? subscriberData.emailPermStatus
+            : subscriberData.emailpermstatus,
+
+        smspermstatus:
+          subscriberData.smsPermStatus !== undefined
+            ? subscriberData.smsPermStatus
+            : subscriberData.smspermstatus,
+
         sysmodifieddt: new Date(),
       },
     });
+
+    console.log(
+      `[SubscriberModel] Subscriber updated successfully. ID: ${subscriberid}`
+    );
+
+    return subscriber;
   } catch (error) {
-    throw new Error(`Error updating subscriber: ${error.message}`);
+    console.error(
+      `[SubscriberModel] Error updating subscriber ${subscriberid}:`,
+      error.message
+    );
+    console.error(error.stack);
+
+      throw new Error(`Error updating subscriber: ${error.message}`);
   }
 };
+
+// ==================== GET ACTIVE EMAIL SUBSCRIBERS ====================
 const getActiveEmailSubscribers = async () => {
+  console.log('[SubscriberModel] Fetching active email subscribers...');
+
   try {
-    return await prisma.subscriber.findMany({
+    const subscribers = await prisma.subscriber.findMany({
       where: {
-        isSubscribe: true,
-        emailPermStatus: 'active',
+        issubscribe: true,
+        emailpermstatus: true,
       },
     });
+
+    console.log(
+      `[SubscriberModel] Successfully fetched ${subscribers.length} active email subscriber(s).`
+    );
+
+    return subscribers;
   } catch (error) {
-    throw new Error(`Error fetching active email subscribers: ${error.message}`);
+    console.error(
+      '[SubscriberModel] Error fetching active email subscribers:',
+      error.message
+    );
+    console.error(error.stack);
+
+    throw new Error(
+      `Error fetching active email subscribers: ${error.message}`
+    );
   }
 };
+
 module.exports = {
   getAllSubscribers,
   getSubscriberById,
   getSubscriberByCustomerId,
   createSubscriber,
-  getActiveEmailSubscribers,
   updateSubscriber,
+  getActiveEmailSubscribers,
 };
