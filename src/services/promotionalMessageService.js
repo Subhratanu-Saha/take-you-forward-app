@@ -58,6 +58,7 @@ const sendPromotionalEmails = async (customerData, subject, options = {}) => {
   try {
     if (!EMAIL_USER_ID || !EMAIL_USER_PASSCODE) {
       const configError = new Error('Missing required email configuration: EMAIL_USER_ID and EMAIL_USER_PASSCODE must both be defined');
+      configError.statusCode = 401;
       console.error(`[PROMOTIONAL] ${configError.message}`);
       throw configError;
     }
@@ -133,7 +134,10 @@ const sendPromotionalEmails = async (customerData, subject, options = {}) => {
       await createDlqEntry(customerData, subject, mailError);
     }
 
-    return { success: false, message: mailError.message };
+    return { 
+      success: false,
+       message: mailError.message,
+      statusCode: mailError.statusCode || 500,};
   }
 };
 

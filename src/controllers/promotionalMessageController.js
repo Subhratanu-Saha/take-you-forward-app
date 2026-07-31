@@ -12,11 +12,14 @@ const createPromotionalMessage = async (req, res) => {
     const result =
       await promotionalMessageService.sendPromotionalEmails(data, PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT);
 
-    if (!result || !result.success) {
+    if (!result || !result.success === false) {
+      const statusCode = result?.statusCode || 500;
+      const message = result?.message || 'Failed to send promotional email';
+      
       console.warn(`[PROMOTIONAL_CONTROLLER] Promotional send did not complete for customer=${customerId}: ${result?.message || 'unknown error'}`);
-      return res.status(500).json({
+      return res.status(statusCode).json({
         success: false,
-        message: result ? result.message : 'Failed to send promotional email',
+        message,
       });
     }
 
@@ -27,8 +30,9 @@ const createPromotionalMessage = async (req, res) => {
       data: result.data,
     });
   } catch (error) {
+    const statusCode = error?.statusCode || 500;
     console.error(`[PROMOTIONAL_CONTROLLER] Promotional send failed for customer=${customerId}: ${error.message}`);
-    return res.status(500).json({
+    return res.status(statusCode).json({
       success: false,
       message: error.message,
     });
