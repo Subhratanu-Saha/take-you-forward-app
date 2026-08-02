@@ -1,5 +1,13 @@
 const loyaltyService = require('../services/loyaltyService');
 
+const getLoyaltyErrorStatus = (error) => {
+  const message = error?.message || '';
+
+  if (message.includes('Customer ID is required')) return 400;
+  if (message.includes('Customer not found')) return 404;
+  return 500;
+};
+
 // GET loyalty summary by customer ID
 const getLoyaltySummary = async (req, res) => {
   try {
@@ -11,12 +19,10 @@ const getLoyaltySummary = async (req, res) => {
     if (!summary) {
       console.warn(`[LOYALTY_CONTROLLER] No loyalty record found for customerId=${req.params.customerId}`);
     } else {
-      console.log(`[LOYALTY_CONTROLLER] Loyalty summary found for customerId=${req.params.customerId}`, 
+      console.log(`[LOYALTY_CONTROLLER] Loyalty summary found for customerId=${req.params.customerId}`);
+ }
 
-      );
-    }
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: 'Loyalty summary fetched successfully',
       data: summary,
@@ -24,9 +30,11 @@ const getLoyaltySummary = async (req, res) => {
   } catch (error) {
      console.error(`[LOYALTY_CONTROLLER] Failed to fetch loyalty summary for customerId=${req.params.customerId}:`, error);
      
-    res.status(404).json({
+     const status = getLoyaltyErrorStatus(error);
+     
+     return res.status(status).json({
       success: false,
-      message: error.message,
+      message: error.message || 'Internal server error',
     });
   }
 };
@@ -41,43 +49,34 @@ const updateLoyaltyTier = async (req, res) => {
 
     console.log(`[LOYALTY_CONTROLLER] Loyalty tier updated successfully for customerId=${req.params.customerId}`);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: 'Loyalty tier updated successfully',
       data: result,
     });
   } catch (error) {
     console.error(`[LOYALTY_CONTROLLER] Failed to update loyalty tier for customerId=${req.params.customerId}`, error);
-    res.status(400).json({
+
+    const status = getLoyaltyErrorStatus(error);
+
+     return res.status(status).json({
       success: false,
-      message: error.message,
+      message: error.message || 'Internal server error',
     });
   }
+
 };
+
+
 
 // CREATE new loyalty record
 const createLoyaltyRecord = async (req, res) => {
   try {
-    const urlCustomerId = req.params?.customerId;
-    const bodyCustomerId = req.body?.customerid;
-
-    // Validate that if both URL and body customer IDs are provided, they must match
-    if (bodyCustomerId && urlCustomerId && bodyCustomerId.trim() !== urlCustomerId.trim()) {
-      console.warn(
-        `[LOYALTY_CONTROLLER] Customer ID mismatch: URL=${urlCustomerId}, Body=${bodyCustomerId}`
-      );
-      return res.status(400).json({
-        success: false,
-        message: 'Customer ID in URL and request body do not match',
-      });
-    }
-
-    const customerid = bodyCustomerId?.trim() || urlCustomerId?.trim();
-
+    const { customerid } = req.body || {};
     console.log(`[LOYALTY_CONTROLLER] POST loyalty record request for customerId=${customerid}`);
 
     // Validate required fields before processing
-    if (!customerid) {
+    if (!customerid || (typeof customerid === 'string' && !customerid.trim())) {
       console.warn('[LOYALTY_CONTROLLER] Customer ID is missing in create loyalty request');
       return res.status(400).json({
         success: false,
@@ -85,12 +84,11 @@ const createLoyaltyRecord = async (req, res) => {
       });
     }
 
-    const loyaltyData = { ...req.body, customerid };
-
     // Call service layer to create loyalty record
-    const loyalty = await loyaltyService.createLoyaltyRecord(loyaltyData);
+    const loyalty = await loyaltyService.createLoyaltyRecord(req.body);
 
     console.log(`[LOYALTY_CONTROLLER] Loyalty record created successfully for customerId=${customerid}`);
+
 
     // Return 201 Created on success
     return res.status(201).json({
@@ -99,10 +97,12 @@ const createLoyaltyRecord = async (req, res) => {
       data: loyalty,
     });
   } catch (error) {
-    console.error(`[LOYALTY_CONTROLLER] Failed to create loyalty record for customerId=${req.params?.customerId || req.body?.customerid}`, error);
+    console.error(`[LOYALTY_CONTROLLER] Failed to create loyalty record for customerId=${req.body?.customerid}`, error);
+
+    const status = getLoyaltyErrorStatus(error);
 
     // Handle unexpected exceptions with 500 Internal Server Error
-    return res.status(500).json({
+    return res.status(status).json({
       success: false,
       message: error.message || 'Internal server error',
     });
