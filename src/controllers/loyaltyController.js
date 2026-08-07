@@ -48,9 +48,22 @@ const updateLoyaltyTier = async (req, res) => {
     });
   } catch (error) {
     console.error(`[LOYALTY_CONTROLLER] Failed to update loyalty tier for customerId=${req.params.customerId}`, error);
-    res.status(400).json({
+
+    if (error.message?.includes('Customer not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    if (error.message?.includes('Customer ID is required')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    return res.status(500).json({
       success: false,
-      message: error.message,
+      message: error.message || 'Internal server error',
     });
   }
 };
@@ -100,6 +113,19 @@ const createLoyaltyRecord = async (req, res) => {
     });
   } catch (error) {
     console.error(`[LOYALTY_CONTROLLER] Failed to create loyalty record for customerId=${req.params?.customerId || req.body?.customerid}`, error);
+
+    if (error.message?.includes('Customer not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    if (error.message?.includes('Customer ID is required')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
 
     // Handle unexpected exceptions with 500 Internal Server Error
     return res.status(500).json({
