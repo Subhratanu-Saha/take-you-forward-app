@@ -3,7 +3,7 @@ const loyaltyService = require('../services/loyaltyService');
 // GET loyalty summary by customer ID
 const getLoyaltySummary = async (req, res) => {
   try {
-     console.log(`[LOYALTY_CONTROLLER] GET loyalty summary request for customerId=${req.params.customerId}`);
+    console.log(`[LOYALTY_CONTROLLER] GET loyalty summary request for customerId=${req.params.customerId}`);
 
 
     const summary = await loyaltyService.getLoyaltySummary(req.params.customerId);
@@ -11,7 +11,7 @@ const getLoyaltySummary = async (req, res) => {
     if (!summary) {
       console.warn(`[LOYALTY_CONTROLLER] No loyalty record found for customerId=${req.params.customerId}`);
     } else {
-      console.log(`[LOYALTY_CONTROLLER] Loyalty summary found for customerId=${req.params.customerId}`, 
+      console.log(`[LOYALTY_CONTROLLER] Loyalty summary found for customerId=${req.params.customerId}`,
 
       );
     }
@@ -22,8 +22,8 @@ const getLoyaltySummary = async (req, res) => {
       data: summary,
     });
   } catch (error) {
-     console.error(`[LOYALTY_CONTROLLER] Failed to fetch loyalty summary for customerId=${req.params.customerId}:`, error);
-     
+    console.error(`[LOYALTY_CONTROLLER] Failed to fetch loyalty summary for customerId=${req.params.customerId}:`, error);
+
     res.status(404).json({
       success: false,
       message: error.message,
@@ -34,10 +34,14 @@ const getLoyaltySummary = async (req, res) => {
 // UPDATE loyalty tier
 const updateLoyaltyTier = async (req, res) => {
   try {
+    const customerid = req.params?.customerId;
+    const { totalpoints } = req.body;
+    console.log(`customerid`, customerid);
+    console.log(`totalpoints`, totalpoints);
 
-    console.log(`[LOYALTY_CONTROLLER] PUT loyalty tier update request for customerId=${req.params.customerId}`);
+    console.log(`[LOYALTY_CONTROLLER] PUT loyalty tier update request for customerId=${customerid}`);
 
-    const result = await loyaltyService.updateLoyaltyTier(req.params.customerId);
+    const result = await loyaltyService.updateLoyaltyTier(customerid, totalpoints);
 
     console.log(`[LOYALTY_CONTROLLER] Loyalty tier updated successfully for customerId=${req.params.customerId}`);
 

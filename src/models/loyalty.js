@@ -1,5 +1,5 @@
 const prisma = require('../utils/db');
-const { normalizeLoyaltyTier } = require('../utils/loyalty');
+const { normalizeLoyaltyTier, calculateTier } = require('../utils/loyalty');
 
 const getLoyaltyByCustomerId = async (customerid) => {
   try {
@@ -10,7 +10,7 @@ const getLoyaltyByCustomerId = async (customerid) => {
       orderBy: { createdat: 'desc' },
     });
 
-     if (!loyaltyRecord) {
+    if (!loyaltyRecord) {
       console.warn(`[LOYALTY_MODEL] No loyalty record found for customerId=${customerid}`);
       return null;
     }
@@ -85,7 +85,7 @@ const getTotalPurchaseAmount = async (customerid) => {
     console.log(`[LOYALTY_MODEL] Total purchase amount calculated for customerId=${customerid}`, {
       totalPurchaseAmount,
     });
-    
+
     return totalPurchaseAmount;
   } catch (error) {
     console.error(`[LOYALTY_MODEL] Failed to calculate total purchase amount for customerId=${customerid}`, error);
@@ -93,7 +93,7 @@ const getTotalPurchaseAmount = async (customerid) => {
   }
 };
 
-const updateLoyaltyTier = async (customerid, newTier) => {
+const updateLoyaltyTier = async (customerid, totalpoints, newTier) => {
   try {
     const normalizedTier = normalizeLoyaltyTier(newTier);
 
@@ -108,6 +108,7 @@ const updateLoyaltyTier = async (customerid, newTier) => {
       const updatedRecord = await prisma.loyalty.update({
         where: { loyaltyid: existingLoyalty.loyaltyid },
         data: {
+          totalpoints: Number(totalpoints),
           tier: normalizedTier,
           updatedat: new Date(),
         },
@@ -147,11 +148,11 @@ const updateLoyaltyTier = async (customerid, newTier) => {
 
 const createLoyaltyRecord = async (loyaltyData) => {
   try {
-    const { customerid, tier, totalpoints, isactive } = loyaltyData;
-    const normalizedTier = normalizeLoyaltyTier(tier);
+    const { customerid, totalpoints, isactive } = loyaltyData;
+    const calculatedTier = calculateTier(Number(totalpoints ?? 0));
 
     console.log(`[LOYALTY_MODEL] Creating loyalty record for customerId=${customerid}`, {
-      tier: normalizedTier,
+      tier: calculatedTier,
       totalpoints: totalpoints ?? 0,
       isactive: isactive ?? true,
     });
@@ -159,8 +160,8 @@ const createLoyaltyRecord = async (loyaltyData) => {
     const createdRecord = await prisma.loyalty.create({
       data: {
         customerid,
-        tier: normalizedTier,
-        totalpoints: totalpoints ?? 0,
+        tier: calculatedTier,
+        totalpoints: Number(totalpoints ?? 0),
         isactive: isactive ?? true,
         lastearnedat: new Date(),
         lastredeemedat: new Date(),
@@ -169,7 +170,7 @@ const createLoyaltyRecord = async (loyaltyData) => {
       },
     });
 
-     console.log(`[LOYALTY_MODEL] Loyalty record created successfully for customerId=${customerid}`, {
+    console.log(`[LOYALTY_MODEL] Loyalty record created successfully for customerId=${customerid}`, {
       loyaltyid: createdRecord.loyaltyid,
     });
 
