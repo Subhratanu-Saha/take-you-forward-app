@@ -1,4 +1,5 @@
 const prisma = require('../utils/db');
+const { normalizeLoyaltyTier } = require('../utils/loyalty');
 
 const getLoyaltyByCustomerId = async (customerid) => {
   try {
@@ -94,8 +95,9 @@ const getTotalPurchaseAmount = async (customerid) => {
 
 const updateLoyaltyTier = async (customerid, newTier) => {
   try {
+    const normalizedTier = normalizeLoyaltyTier(newTier);
 
-    console.log(`[LOYALTY_MODEL] Updating loyalty tier for customerId=${customerid} to ${newTier}`);
+    console.log(`[LOYALTY_MODEL] Updating loyalty tier for customerId=${customerid} to ${normalizedTier}`);
 
     const existingLoyalty = await prisma.loyalty.findFirst({
       where: { customerid },
@@ -106,7 +108,7 @@ const updateLoyaltyTier = async (customerid, newTier) => {
       const updatedRecord = await prisma.loyalty.update({
         where: { loyaltyid: existingLoyalty.loyaltyid },
         data: {
-          tier: newTier,
+          tier: normalizedTier,
           updatedat: new Date(),
         },
       });
@@ -122,7 +124,7 @@ const updateLoyaltyTier = async (customerid, newTier) => {
     const createdRecord = await prisma.loyalty.create({
       data: {
         customerid,
-        tier: newTier,
+        tier: normalizedTier,
         totalpoints: 0,
         isactive: true,
         lastearnedat: new Date(),
@@ -146,9 +148,10 @@ const updateLoyaltyTier = async (customerid, newTier) => {
 const createLoyaltyRecord = async (loyaltyData) => {
   try {
     const { customerid, tier, totalpoints, isactive } = loyaltyData;
+    const normalizedTier = normalizeLoyaltyTier(tier);
 
     console.log(`[LOYALTY_MODEL] Creating loyalty record for customerId=${customerid}`, {
-      tier: tier || 'BRONZE',
+      tier: normalizedTier,
       totalpoints: totalpoints ?? 0,
       isactive: isactive ?? true,
     });
@@ -156,7 +159,7 @@ const createLoyaltyRecord = async (loyaltyData) => {
     const createdRecord = await prisma.loyalty.create({
       data: {
         customerid,
-        tier: tier || 'BRONZE',
+        tier: normalizedTier,
         totalpoints: totalpoints ?? 0,
         isactive: isactive ?? true,
         lastearnedat: new Date(),
