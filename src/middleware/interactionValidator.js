@@ -43,6 +43,11 @@ const validateCreateInteraction = (req, res, next) => {
   }
 
   if (errors.length) {
+    console.warn('[INTERACTION_VALIDATOR] Create interaction validation failed', {
+      path: req.originalUrl,
+      errors,
+    });
+
     return res.status(400).json({
       success: false,
       message: 'Validation failed',
@@ -50,6 +55,7 @@ const validateCreateInteraction = (req, res, next) => {
     });
   }
 
+  console.log(`[INTERACTION_VALIDATOR] Create interaction validation passed for ${req.method} ${req.originalUrl}`);
   next();
 };
 
@@ -94,6 +100,12 @@ const validateUpdateInteraction = (req, res, next) => {
   }
 
   if (errors.length) {
+    console.warn('[INTERACTION_VALIDATOR] Update interaction validation failed', {
+      path: req.originalUrl,
+      interactionId,
+      errors,
+    });
+
     return res.status(400).json({
       success: false,
       message: 'Validation failed',
@@ -101,6 +113,7 @@ const validateUpdateInteraction = (req, res, next) => {
     });
   }
 
+  console.log(`[INTERACTION_VALIDATOR] Update interaction validation passed for ${req.method} ${req.originalUrl}`);
   next();
 };
 
@@ -113,6 +126,12 @@ const validateDeleteInteraction = (req, res, next) => {
   }
 
   if (errors.length) {
+    console.warn('[INTERACTION_VALIDATOR] Delete interaction validation failed', {
+      path: req.originalUrl,
+      interactionId,
+      errors,
+    });
+
     return res.status(400).json({
       success: false,
       message: 'Validation failed',
@@ -120,6 +139,7 @@ const validateDeleteInteraction = (req, res, next) => {
     });
   }
 
+  console.log(`[INTERACTION_VALIDATOR] Delete interaction validation passed for ${req.method} ${req.originalUrl}`);
   next();
 };
 
