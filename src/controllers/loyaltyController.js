@@ -48,9 +48,22 @@ const updateLoyaltyTier = async (req, res) => {
     });
   } catch (error) {
     console.error(`[LOYALTY_CONTROLLER] Failed to update loyalty tier for customerId=${req.params.customerId}`, error);
-    res.status(400).json({
+
+    if (error.message?.includes('Customer not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    if (error.message?.includes('Customer ID is required')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    return res.status(500).json({
       success: false,
-      message: error.message,
+      message: error.message || 'Internal server error',
     });
   }
 };
@@ -58,11 +71,26 @@ const updateLoyaltyTier = async (req, res) => {
 // CREATE new loyalty record
 const createLoyaltyRecord = async (req, res) => {
   try {
-    const { customerid } = req.body || {};
+    const urlCustomerId = req.params?.customerId;
+    const bodyCustomerId = req.body?.customerid;
+
+    // Validate that if both URL and body customer IDs are provided, they must match
+    if (bodyCustomerId && urlCustomerId && bodyCustomerId.trim() !== urlCustomerId.trim()) {
+      console.warn(
+        `[LOYALTY_CONTROLLER] Customer ID mismatch: URL=${urlCustomerId}, Body=${bodyCustomerId}`
+      );
+      return res.status(400).json({
+        success: false,
+        message: 'Customer ID in URL and request body do not match',
+      });
+    }
+
+    const customerid = bodyCustomerId?.trim() || urlCustomerId?.trim();
+
     console.log(`[LOYALTY_CONTROLLER] POST loyalty record request for customerId=${customerid}`);
 
     // Validate required fields before processing
-    if (!customerid || (typeof customerid === 'string' && !customerid.trim())) {
+    if (!customerid) {
       console.warn('[LOYALTY_CONTROLLER] Customer ID is missing in create loyalty request');
       return res.status(400).json({
         success: false,
@@ -70,11 +98,12 @@ const createLoyaltyRecord = async (req, res) => {
       });
     }
 
+    const loyaltyData = { ...req.body, customerid };
+
     // Call service layer to create loyalty record
-    const loyalty = await loyaltyService.createLoyaltyRecord(req.body);
+    const loyalty = await loyaltyService.createLoyaltyRecord(loyaltyData);
 
     console.log(`[LOYALTY_CONTROLLER] Loyalty record created successfully for customerId=${customerid}`);
-
 
     // Return 201 Created on success
     return res.status(201).json({
@@ -83,7 +112,20 @@ const createLoyaltyRecord = async (req, res) => {
       data: loyalty,
     });
   } catch (error) {
-    console.error(`[LOYALTY_CONTROLLER] Failed to create loyalty record for customerId=${req.body?.customerid}`, error);
+    console.error(`[LOYALTY_CONTROLLER] Failed to create loyalty record for customerId=${req.params?.customerId || req.body?.customerid}`, error);
+
+    if (error.message?.includes('Customer not found')) {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    if (error.message?.includes('Customer ID is required')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
 
     // Handle unexpected exceptions with 500 Internal Server Error
     return res.status(500).json({
