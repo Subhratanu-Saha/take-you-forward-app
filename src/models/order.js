@@ -138,24 +138,7 @@ const createOrder = async (orderData, requestId = null) => {
     operation: 'createOrder',
     customerId: orderData?.customerid,
   });
-
-  const requiredFields = ['customerid', 'totalamount', 'payment'];
-
-  const missingFields = requiredFields.filter((field) => {
-    const value = orderData?.[field];
-
-    return (
-      value === undefined ||
-      value === null ||
-      value.toString().trim() === ''
-    );
-  });
-
-  if (missingFields.length) {
-    throw new Error(
-      `Missing required order fields: ${missingFields.join(', ')}`
-    );
-  }
+  
 
   try {
     const createdOrder = await prisma.orderheader.create({
