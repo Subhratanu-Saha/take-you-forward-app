@@ -88,6 +88,7 @@ app.use('/api/v1/interactions', require('./routes/interactionRoutes'));
 app.use('/api/v1/subscriber', require('./routes/subscriberRoutes'));
 app.use('/api/v1/promotionalmessage', require('./routes/promotionalMessageRoutes'));
 app.use('/api/v1/loyalty', require('./routes/loyaltyRoutes'));
+app.use('/api/v1/orders', require('./routes/orderRoutes'));
 
 // Catch-all 404 Route Not Found handler
 app.use((req, res) => {
