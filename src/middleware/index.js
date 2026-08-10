@@ -23,7 +23,16 @@ const validateInput = (schema) => {
   };
 };
 
+const validateJsonContentType = (req) => {
+  const contentType = req.headers['content-type'] || '';
+  if (!contentType.includes('application/json')) {
+    return 'Content-Type must be application/json';
+  }
+  return null;
+};
+
 module.exports = {
   authMiddleware,
-  validateInput
+  validateInput,
+  validateJsonContentType,
 };
