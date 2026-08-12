@@ -1,3 +1,5 @@
+
+
 const { logger, ERROR_CODES } = require('../utils/db');
 const { validateJsonContentType } = require('./index');
 
@@ -166,6 +168,47 @@ const validateQueryPagination = (req, res, next) => {
   return next();
 };
 
+const validateGetAllOrders = (req, res, next) => {
+  const requestId = req.requestId;
+  const { page, limit } = req.query;
+  const errors = [];
+  let pageValue = 1;
+  let limitValue = 20;
+
+  if (page !== undefined) {
+    const parsed = Number(page);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      errors.push('page must be a positive integer');
+    } else {
+      pageValue = parsed;
+    }
+  }
+
+  if (limit !== undefined) {
+    const parsed = Number(limit);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      errors.push('limit must be a positive integer');
+    } else {
+      limitValue = parsed;
+    }
+  }
+
+  if (errors.length) {
+    return buildValidationErrorResponse(res, requestId, errors);
+  }
+
+  req.validated = {
+    ...(req.validated || {}),
+    query: { page: pageValue, limit: limitValue },
+  };
+
+  return next();
+};
+
+const validateDeleteOrder = (req, res, next) => {
+  return validateOrderId(req, res, next);
+};
+
 const validateCreateOrder = (req, res, next) => {
   const requestId = req.requestId;
   const contentTypeError = validateJsonContentType(req);
@@ -327,6 +370,8 @@ module.exports = {
   validateOrderId,
   validateCustomerIdParam,
   validateQueryPagination,
+  validateGetAllOrders,
   validateCreateOrder,
   validateUpdateOrder,
+  validateDeleteOrder,
 };
