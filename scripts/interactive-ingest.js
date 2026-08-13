@@ -7,6 +7,7 @@
 const readline = require("readline/promises");
 const { stdin: input, stdout: output } = require("process");
 const { PrismaClient } = require("@prisma/client");
+const generateCustomerId = require("../src/utils/customerIdGenerator");
 
 const prisma = new PrismaClient();
 
@@ -15,6 +16,11 @@ const prisma = new PrismaClient();
 // ============================================================================
 const validators = {
     nonEmpty: (val) => (val && val.trim().length > 0 ? null : "Value cannot be empty."),
+
+    customerId: (val) => {
+        const regex = /^CUST-\d+-[A-Z0-9]{10}$/;
+        return regex.test(val.trim()) ? null : "Invalid Customer ID format. Expected format: CUST-{timestamp}-{10 alphanumeric characters}";
+    },
 
     email: (val) => {
         const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -109,9 +115,9 @@ async function ingestCustomerInteractively(rl) {
 
     const customerid = await promptWithValidation(
         rl,
-        "1/10. Enter Customer ID (e.g. CUST-2001)",
-        validators.nonEmpty,
-        `CUST-${Date.now().toString().slice(-6)}`
+        "1/10. Enter Customer ID (e.g., CUST-1786556582701-IU9G0VA928)",
+        validators.customerId,
+        generateCustomerId()
     );
 
     const firstname = await promptWithValidation(rl, "2/10. Enter First Name", validators.nonEmpty);
@@ -203,7 +209,7 @@ async function ingestOrderInteractively(rl) {
     console.log("🛍️ INTERACTIVE ORDER & LINE ITEMS INGESTION");
     console.log("----------------------------------------------------");
 
-    const customerid = await promptWithValidation(rl, "1/5. Enter Customer ID for this order", validators.nonEmpty);
+    const customerid = await promptWithValidation(rl, "1/5. Enter Customer ID for this order", validators.customerId);
 
     // Verify customer exists
     const customer = await prisma.customer.findUnique({ where: { customerid } });
