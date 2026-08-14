@@ -92,7 +92,7 @@ const validateOrderId = (req, res, next) => {
 
   if (!orderId?.toString().trim()) {
     errors.push('Order ID is required');
-  } else if (!ORDER_ID_REGEX.test(orderId.toString().trim())) {
+  }  else if (!/^ORD-\d+-[A-Z0-9]+$/.test(orderId.toString().trim())) {
     errors.push('Invalid orderId format. Expected: ORD-{timestamp}-{6 alphanumeric chars}');
   }
 

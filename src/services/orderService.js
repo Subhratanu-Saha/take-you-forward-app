@@ -1,7 +1,7 @@
-const prisma = require("../config/prisma");
+const prisma = require('../utils/db');
 
 const generateOrderId = () => {
-    return `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    return `ORD-${Date.now()}-${Math.floor(100000 + Math.random() * 900000)}`;
 };
 
 const generateOrderItemId = () => {
@@ -144,7 +144,11 @@ const getOrderById = async (orderid) => {
     });
 
     if (!order) {
-        throw new Error("Order not found");
+        throw Object.assign( new Error("Order not found"), {
+            statusCode: 404,
+            errorCode: "ORDER_NOT_FOUND",
+            isOperational: true
+        });
     }
 
     return order;
