@@ -3,12 +3,13 @@ const SubscriberModel = require('../models/subscriber');
 const interactionModel = require('../models/interaction');
 const prisma = require('../utils/db');
 const { generateOnboardingHTML } = require('../templates/onboardingTemplate');
+const generateRandomAlphaNumeric= require('../utils/idGenerator');
 
 
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 5 * 60 * 1000;
 
-const generateDlqId = () => `DLQ-${Date.now()}-${generateRandomAlphaNumeric(6)}`;
+const CUSTOMER_ID_REGEX = /^CUST-\d+-[A-Z0-9]{10}$/;
 
 const normalizeCustomerId = (customerData) => {
   if (!customerData || typeof customerData !== 'object') {
@@ -18,7 +19,14 @@ const normalizeCustomerId = (customerData) => {
   return customerData.customerId || customerData.customerid || customerData.customerID || null;
 };
 
-const createDlqEntry = async (customerData, subject, error, attemptCount = 1) => {
+const isValidCustomerId = (customerId) => {
+  if (!customerId || typeof customerId !== 'string') return false;
+  return CUSTOMER_ID_REGEX.test(customerId.trim());
+};
+
+const generateDlqId = () => `DLQ-${Date.now()}-${generateRandomAlphaNumeric(6)}`;
+
+const createDlqEntry = async (customerData, subject, error, attemptCount = 0) => {
   const customerId = normalizeCustomerId(customerData);
   const payload = customerData && typeof customerData === 'object' ? customerData : {};
 
@@ -50,7 +58,8 @@ const createDlqEntry = async (customerData, subject, error, attemptCount = 1) =>
 
 const sendPromotionalEmails = async (customerData, subject, options = {}) => {
   const { shouldQueueOnFailure = true, skipDlqRecord = false } = options;
-  const customerId = normalizeCustomerId(customerData) || customerData?.customerid || null;
+  const rawCustomerId = normalizeCustomerId(customerData) || customerData?.customerid || customerData?.customerID || null;
+  const customerId = rawCustomerId ? String(rawCustomerId).trim() : null;
   const recipientEmail = customerData?.emailaddress || customerData?.emailadd || null;
 
   console.info(`[PROMOTIONAL] Starting promotional email workflow for customer=${customerId || 'unknown'} subject=${subject || 'PROMOTIONAL_EMAIL'}`);
@@ -59,17 +68,19 @@ const sendPromotionalEmails = async (customerData, subject, options = {}) => {
     if (!EMAIL_USER_ID || !EMAIL_USER_PASSCODE) {
       const configError = new Error('Missing required email configuration: EMAIL_USER_ID and EMAIL_USER_PASSCODE must both be defined');
       configError.statusCode = 401;
-      console.error(`[PROMOTIONAL] ${configError.message}`);
       throw configError;
     }
 
-    if (!customerData || (!customerData.customerid && !customerId)) {
-      const validationError = new Error('Customer ID is required to send promotional email');
-      console.warn(`[PROMOTIONAL] ${validationError.message} for subject=${subject || 'PROMOTIONAL_EMAIL'}`);
+
+     if (!customerData || !customerId || !isValidCustomerId(customerId)) {
+      const validationError = new Error(
+        'Customer ID is invalid. Expected format: CUST-{timestamp}-{10 alphanumeric characters}'
+      );
+      validationError.statusCode = 400;
       throw validationError;
     }
 
-    const subscriber = await SubscriberModel.getSubscriberByCustomerId(customerId || customerData.customerid);
+    const subscriber = await SubscriberModel.getSubscriberByCustomerId(customerId);
 
     if (!subscriber || subscriber.issubscribe !== true || subscriber.emailpermstatus !== true) {
       console.warn(`[PROMOTIONAL] Skipping promotional email for customer=${customerId || customerData.customerid || 'unknown'} because subscriber opt-out or permissions are disabled`);
@@ -129,6 +140,14 @@ const sendPromotionalEmails = async (customerData, subject, options = {}) => {
     return { success: true, message: 'Promotional email sent successfully', data: result };
   } catch (mailError) {
     console.error(`[PROMOTIONAL] Failed to send promotional email for customer=${customerId || 'unknown'} subject=${subject || 'PROMOTIONAL_EMAIL'}: ${mailError.message}`);
+    
+     if (mailError.statusCode === 400) {
+      return {
+        success: false,
+        message: mailError.message,
+        statusCode: 400,
+      };
+    }
 
     if (shouldQueueOnFailure && !skipDlqRecord) {
       await createDlqEntry(customerData, subject, mailError);
@@ -144,7 +163,7 @@ const sendPromotionalEmails = async (customerData, subject, options = {}) => {
 const getFailedPromotionalEvents = async () => {
   try {
     return await prisma.promotionaldlq.findMany({
-      where: { status: 'PENDING' },
+      where: { status: { in: ['PENDING', 'FAILED'] } },
       orderBy: { createdat: 'asc' },
     });
   } catch (error) {
@@ -155,12 +174,15 @@ const getFailedPromotionalEvents = async () => {
 
 const retryFailedPromotionalEvents = async () => {
   try {
+
+    const now = new Date();
     const pendingEvents = await prisma.promotionaldlq.findMany({
       where: {
         status: 'PENDING',
+        attemptcount: { lt: MAX_RETRY_ATTEMPTS },
         OR: [
           { nextretryat: null },
-          { nextretryat: { lte: new Date() } },
+          { nextretryat: { lte: now } },
         ],
       },
       orderBy: [
@@ -184,21 +206,26 @@ const retryFailedPromotionalEvents = async () => {
           skipDlqRecord: true,
         });
 
+         const currentAttempt = Number(event.attemptcount || 0);
+        const nextAttemptCount = currentAttempt + 1;
+        const shouldMarkFailed = nextAttemptCount >= MAX_RETRY_ATTEMPTS;
+
         if (result.success) {
           await prisma.promotionaldlq.update({
             where: { eventid: event.eventid },
             data: {
+              attemptcount: nextAttemptCount,
               status: 'SENT',
               updatedat: new Date(),
               lastattemptat: new Date(),
+              nextretryat: null,
             },
           });
 
           console.info(`[PROMOTIONAL] DLQ event ${event.eventid} retried successfully`);
           results.push({ eventId: event.eventid, status: 'retried' });
-        } else {
-          const nextAttemptCount = event.attemptcount + 1;
-          const shouldMarkFailed = nextAttemptCount >= MAX_RETRY_ATTEMPTS;
+          continue;
+        } 
 
           await prisma.promotionaldlq.update({
             where: { eventid: event.eventid },
@@ -219,19 +246,24 @@ const retryFailedPromotionalEvents = async () => {
             message: result.message,
           });
         }
-      } catch (retryError) {
+        catch (retryError) {
         console.error(`[PROMOTIONAL_DLQ] Retry failed for ${event.eventid}: ${retryError.message}`);
+
+        const currentAttempt = Number(event.attemptcount || 0);
+        const nextAttemptCount = currentAttempt + 1;
+        const shouldMarkFailed = nextAttemptCount >= MAX_RETRY_ATTEMPTS;
+
 
         await prisma.promotionaldlq.update({
           where: { eventid: event.eventid },
           data: {
-            attemptcount: event.attemptcount + 1,
+            attemptcount: nextAttemptCount,
             errormessage: retryError.message,
-            status: event.attemptcount + 1 >= MAX_RETRY_ATTEMPTS ? 'FAILED' : 'PENDING',
+            status: shouldMarkFailed ? 'FAILED' : 'PENDING',
             updatedat: new Date(),
             lastattemptat: new Date(),
             nextretryat:
-              event.attemptcount + 1 >= MAX_RETRY_ATTEMPTS
+              shouldMarkFailed
                 ? null
                 : new Date(Date.now() + RETRY_DELAY_MS),
           },
@@ -239,7 +271,7 @@ const retryFailedPromotionalEvents = async () => {
 
         results.push({
           eventId: event.eventid,
-          status: 'failed',
+          status:  shouldMarkFailed ? 'failed' : 'queued',
           message: retryError.message,
         });
       }
