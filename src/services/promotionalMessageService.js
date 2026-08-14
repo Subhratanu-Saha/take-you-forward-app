@@ -3,6 +3,8 @@ const SubscriberModel = require('../models/subscriber');
 const interactionModel = require('../models/interaction');
 const prisma = require('../utils/db');
 const { generateOnboardingHTML } = require('../templates/onboardingTemplate');
+const generateRandomAlphaNumeric = require('../utils/idGenerator');
+
 
 
 const MAX_RETRY_ATTEMPTS = 3;
