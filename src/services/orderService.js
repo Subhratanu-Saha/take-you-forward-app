@@ -1,6 +1,6 @@
 const prisma = require('../utils/db');
 const loyaltyModel = require('../models/loyalty');
-const { calculateTier } = require('../utils/loyalty');
+
 
 const generateOrderId = () => {
     return `ORD-${Date.now()}-${Math.floor(100000 + Math.random() * 900000)}`;
