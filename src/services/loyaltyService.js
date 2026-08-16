@@ -3,9 +3,6 @@ const customerModel = require('../models/customer');
 const { calculateTier } = require('../utils/loyalty');
 
 
-const MAX_RETRY_ATTEMPTS = 3;
-const RETRY_DELAY_MS = 5 * 60 * 1000;
-
 // UPDATE loyalty tier
 const updateLoyaltyTier = async (customerid, totalpoints) => {
   try {
