@@ -137,9 +137,7 @@ const createLoyaltyRecord = async (req, res) => {
       message: error.message || 'Internal server error',
     });
   }
-};
-
-module.exports = {
+};module.exports = {
   getLoyaltySummary,
   updateLoyaltyTier,
   createLoyaltyRecord,

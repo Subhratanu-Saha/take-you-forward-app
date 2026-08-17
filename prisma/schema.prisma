@@ -97,3 +97,18 @@ model subscriber {
   sysmodifieddt   DateTime? @db.Timestamp(6)
   customer        customer? @relation(fields: [customerid], references: [customerid], onDelete: NoAction, onUpdate: NoAction)
 }
+
+model promotionaldlq {
+  eventid       String    @id @db.VarChar(60)
+  customerid    String?   @db.VarChar(40)
+  emailaddress  String?   @db.VarChar(100)
+  subject       String?   @db.VarChar(200)
+  payload       Json?
+  errormessage  String?
+  attemptcount  Int       @default(0)
+  status        String    @default("PENDING") @db.VarChar(20)
+  createdat     DateTime  @default(now()) @db.Timestamp(6)
+  updatedat     DateTime? @db.Timestamp(6)
+  lastattemptat DateTime? @db.Timestamp(6)
+  nextretryat   DateTime? @db.Timestamp(6)
+}

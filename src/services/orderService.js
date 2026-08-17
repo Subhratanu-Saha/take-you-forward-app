@@ -101,6 +101,64 @@ const createOrder = async (orderData) => {
             });
         }
 
+        // Credit loyalty points synchronously if order is marked for loyalty
+        if (isloyalty) {
+            const pointsToCredit = Math.floor(Number(finalAmount) / 10); // 1 point per $10 spent
+
+            if (pointsToCredit > 0) {
+                // Fetch customer's current loyalty record
+                const existingLoyalty = await tx.loyalty.findFirst({
+                    where: { customerid },
+                    orderBy: { createdat: 'desc' }
+                });
+
+                const currentPoints = existingLoyalty ? Number(existingLoyalty.totalpoints || 0) : 0;
+                const newTotalPoints = currentPoints + pointsToCredit;
+
+                const { calculateTier } = require('../utils/loyalty');
+                const newTier = calculateTier(newTotalPoints);
+
+                // Create loyalty ledger entry (audit trail)
+                await tx.loyaltyledger.create({
+                    data: {
+                        customerid,
+                        orderid,
+                        ledgertype: 'EARN',
+                        points: pointsToCredit,
+                        balanceafter: newTotalPoints,
+                        expirydate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // Expiry after 1 year
+                        createdat: new Date()
+                    }
+                });
+
+                // Update or Create loyalty record
+                if (existingLoyalty) {
+                    await tx.loyalty.update({
+                        where: { loyaltyid: existingLoyalty.loyaltyid },
+                        data: {
+                            totalpoints: newTotalPoints,
+                            tier: newTier,
+                            lastearnedat: new Date(),
+                            updatedat: new Date()
+                        }
+                    });
+                } else {
+                    await tx.loyalty.create({
+                        data: {
+                            customerid,
+                            totalpoints: newTotalPoints,
+                            tier: newTier,
+                            isactive: true,
+                            lastearnedat: new Date(),
+                            lastredeemedat: new Date(),
+                            createdat: new Date(),
+                            updatedat: new Date()
+                        }
+                    });
+                }
+            }
+        }
+
         // Return created order
         return await tx.orderheader.findUnique({
             where: {
@@ -144,7 +202,7 @@ const getOrderById = async (orderid) => {
     });
 
     if (!order) {
-        throw Object.assign( new Error("Order not found"), {
+        throw Object.assign(new Error("Order not found"), {
             statusCode: 404,
             errorCode: "ORDER_NOT_FOUND",
             isOperational: true
