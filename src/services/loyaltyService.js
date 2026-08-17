@@ -1,6 +1,5 @@
 const loyaltyModel = require('../models/loyalty');
 const customerModel = require('../models/customer');
-const prisma = require('../utils/db');
 const { calculateTier } = require('../utils/loyalty');
 
 const generateLoyaltyEventId = ({ customerid, orderid }) => {
