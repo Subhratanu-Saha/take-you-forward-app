@@ -95,20 +95,25 @@ const getTotalPurchaseAmount = async (customerid) => {
 
 const updateLoyaltyTier = async (customerid, totalpoints, newTier) => {
   try {
-    const normalizedTier = normalizeLoyaltyTier(newTier);
-
-    console.log(`[LOYALTY_MODEL] Updating loyalty tier for customerId=${customerid} to ${normalizedTier}`);
-
+    const incomingPoints = Number(totalpoints || 0);
     const existingLoyalty = await prisma.loyalty.findFirst({
       where: { customerid },
       orderBy: { createdat: 'desc' },
     });
 
+    const cumulativePoints = existingLoyalty
+      ? Number(existingLoyalty.totalpoints || 0) + incomingPoints
+      : incomingPoints;
+
+    const normalizedTier = normalizeLoyaltyTier(newTier || calculateTier(cumulativePoints));
+
+    console.log(`[LOYALTY_MODEL] Updating loyalty tier for customerId=${customerid} to ${normalizedTier} with totalpoints=${cumulativePoints}`);
+
     if (existingLoyalty) {
       const updatedRecord = await prisma.loyalty.update({
         where: { loyaltyid: existingLoyalty.loyaltyid },
         data: {
-          totalpoints: Number(totalpoints),
+          totalpoints: cumulativePoints,
           tier: normalizedTier,
           updatedat: new Date(),
         },
@@ -117,6 +122,7 @@ const updateLoyaltyTier = async (customerid, totalpoints, newTier) => {
       console.log(`[LOYALTY_MODEL] Updated existing loyalty record for customerId=${customerid}`, {
         loyaltyid: updatedRecord.loyaltyid,
         tier: updatedRecord.tier,
+        totalpoints: updatedRecord.totalpoints,
       });
 
       return updatedRecord;
@@ -126,7 +132,7 @@ const updateLoyaltyTier = async (customerid, totalpoints, newTier) => {
       data: {
         customerid,
         tier: normalizedTier,
-        totalpoints: 0,
+        totalpoints: cumulativePoints,
         isactive: true,
         lastearnedat: new Date(),
         lastredeemedat: new Date(),
@@ -137,6 +143,7 @@ const updateLoyaltyTier = async (customerid, totalpoints, newTier) => {
     console.log(`[LOYALTY_MODEL] Created new loyalty record for customerId=${customerid}`, {
       loyaltyid: createdRecord.loyaltyid,
       tier: createdRecord.tier,
+      totalpoints: createdRecord.totalpoints,
     });
 
     return createdRecord;
