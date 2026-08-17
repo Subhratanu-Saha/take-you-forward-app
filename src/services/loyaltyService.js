@@ -2,6 +2,7 @@ const loyaltyModel = require('../models/loyalty');
 const customerModel = require('../models/customer');
 const { calculateTier } = require('../utils/loyalty');
 
+
 // UPDATE loyalty tier
 const updateLoyaltyTier = async (customerid, totalpoints) => {
   try {
@@ -140,8 +141,58 @@ const createLoyaltyRecord = async (loyaltyData) => {
   }
 };
 
+const processLoyaltyEvent = async ({ eventId, customerId, type, payload }) => {
+  try {
+    if (!customerId?.trim()) {
+      throw new Error('Customer ID is required');
+    }
+
+    if (type !== 'PURCHASE') {
+      throw new Error(`Unsupported loyalty event type: ${type}`);
+    }
+
+    const totalpoints =
+      payload?.totalpoints ?? payload?.totalPoints ?? payload?.points ?? 0;
+
+    if (totalpoints === undefined || totalpoints === null || totalpoints === '') {
+      throw new Error('Total points are required');
+    }
+
+    const normalizedTotalPoints = Number(totalpoints);
+
+    if (Number.isNaN(normalizedTotalPoints)) {
+      throw new Error('Total points must be a number');
+    }
+
+    if (normalizedTotalPoints < 0) {
+      throw new Error('Total points cannot be negative');
+    }
+
+    const result = await updateLoyaltyTier(customerId, normalizedTotalPoints);
+
+    return {
+      eventId,
+      customerId,
+      type,
+      payload: { totalpoints: normalizedTotalPoints, customerId },
+      result,
+    };
+  } catch (error) {
+    console.error('[LOYALTY_SERVICE] Error processing purchase event', {
+      eventId,
+      customerId,
+      type,
+      error: error.message,
+    });
+
+    throw error;
+  }
+};
+
+
 module.exports = {
   updateLoyaltyTier,
   getLoyaltySummary,
   createLoyaltyRecord,
+  processLoyaltyEvent,
 };
