@@ -56,11 +56,13 @@ model loyaltyledger {
   ledgerid     Int       @id @default(autoincrement())
   customerid   String?   @db.VarChar(40)
   orderid      String    @db.VarChar(40)
+  eventid      String?   @unique @db.VarChar(255)
   ledgertype   String?   @db.VarChar(20)
   points       Decimal?  @db.Decimal(4, 0)
   balanceafter Int?
   expirydate   DateTime? @db.Timestamp(6)
   createdat    DateTime? @db.Timestamp(6)
+  updatedat    DateTime? @db.Timestamp(6)
   customer     customer? @relation(fields: [customerid], references: [customerid], onDelete: NoAction, onUpdate: NoAction)
 }
 

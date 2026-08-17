@@ -1,5 +1,6 @@
 const loyaltyModel = require('../models/loyalty');
 const customerModel = require('../models/customer');
+const prisma = require('../utils/db');
 const { calculateTier } = require('../utils/loyalty');
 
 
@@ -191,6 +192,8 @@ const processLoyaltyEvent = async ({ eventId, customerId, type, payload }) => {
 
 
 module.exports = {
+  generateLoyaltyEventId,
+  processPurchaseEvent,
   updateLoyaltyTier,
   getLoyaltySummary,
   createLoyaltyRecord,

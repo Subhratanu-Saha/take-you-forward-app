@@ -24,6 +24,14 @@ const createOrder = async (orderData) => {
         items
     } = orderData;
 
+    const eventId = orderData.eventId || orderData.eventid || loyaltyService.generateLoyaltyEventId({
+        customerid,
+        orderid: null,
+    });
+
+    let finalAmount = 0;
+    let createdOrder = null;
+
     return await prisma.$transaction(async (tx) => {
 
         // Check customer exists
@@ -61,10 +69,7 @@ const createOrder = async (orderData) => {
             subtotal += quantity * price;
         }
 
-        const finalAmount =
-            subtotal +
-            Number(taxamount) -
-            Number(discount);
+        finalAmount = subtotal + Number(taxamount) - Number(discount);
 
         if (finalAmount < 0) {
             throw new Error("Order total cannot be negative");
@@ -118,6 +123,26 @@ const createOrder = async (orderData) => {
                 orderlineitems: true
             }
         });
+
+        if (isloyalty) {
+            const processedPurchase = await loyaltyService.processPurchaseEvent({
+                customerid,
+                orderid,
+                totalamount: finalAmount,
+                eventId,
+                transactionClient: tx,
+            });
+
+            if (processedPurchase.duplicate) {
+                console.warn('[ORDER_SERVICE] Skipped loyalty update for duplicate purchase event', {
+                    eventId,
+                    customerid,
+                    orderid,
+                });
+            }
+        }
+
+        return createdOrder;
     });
 };
 
