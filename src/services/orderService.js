@@ -1,5 +1,6 @@
 const prisma = require('../utils/db');
-const loyaltyService = require('./loyaltyService');
+const loyaltyModel = require('../models/loyalty');
+
 
 const generateOrderId = () => {
     return `ORD-${Date.now()}-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -107,7 +108,13 @@ const createOrder = async (orderData) => {
             });
         }
 
-        createdOrder = await tx.orderheader.findUnique({
+        if (isloyalty) {
+            console.log(`[ORDER_SERVICE] Triggering loyalty calculation for customerId=${customerid} with orderAmount=${Number(finalAmount)}`);
+            await loyaltyModel.updateLoyaltyTier(customerid, Number(finalAmount));
+        }
+
+        // Return created order
+        return await tx.orderheader.findUnique({
             where: {
                 orderid
             },
@@ -169,7 +176,7 @@ const getOrderById = async (orderid) => {
     });
 
     if (!order) {
-        throw Object.assign( new Error("Order not found"), {
+        throw Object.assign(new Error("Order not found"), {
             statusCode: 404,
             errorCode: "ORDER_NOT_FOUND",
             isOperational: true
