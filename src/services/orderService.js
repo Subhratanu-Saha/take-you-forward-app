@@ -1,4 +1,5 @@
 const prisma = require('../utils/db');
+const loyaltyService = require('./loyaltyService');
 
 const generateOrderId = () => {
     return `ORD-${Date.now()}-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -21,6 +22,14 @@ const createOrder = async (orderData) => {
         isloyalty = false,
         items
     } = orderData;
+
+    const eventId = orderData.eventId || orderData.eventid || loyaltyService.generateLoyaltyEventId({
+        customerid,
+        orderid: null,
+    });
+
+    let finalAmount = 0;
+    let createdOrder = null;
 
     return await prisma.$transaction(async (tx) => {
 
@@ -59,10 +68,7 @@ const createOrder = async (orderData) => {
             subtotal += quantity * price;
         }
 
-        const finalAmount =
-            subtotal +
-            Number(taxamount) -
-            Number(discount);
+        finalAmount = subtotal + Number(taxamount) - Number(discount);
 
         if (finalAmount < 0) {
             throw new Error("Order total cannot be negative");
@@ -101,8 +107,7 @@ const createOrder = async (orderData) => {
             });
         }
 
-        // Return created order
-        return await tx.orderheader.findUnique({
+        createdOrder = await tx.orderheader.findUnique({
             where: {
                 orderid
             },
@@ -111,6 +116,26 @@ const createOrder = async (orderData) => {
                 orderlineitems: true
             }
         });
+
+        if (isloyalty) {
+            const processedPurchase = await loyaltyService.processPurchaseEvent({
+                customerid,
+                orderid,
+                totalamount: finalAmount,
+                eventId,
+                transactionClient: tx,
+            });
+
+            if (processedPurchase.duplicate) {
+                console.warn('[ORDER_SERVICE] Skipped loyalty update for duplicate purchase event', {
+                    eventId,
+                    customerid,
+                    orderid,
+                });
+            }
+        }
+
+        return createdOrder;
     });
 };
 
