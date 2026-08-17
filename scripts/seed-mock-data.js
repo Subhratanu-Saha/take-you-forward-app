@@ -1,4 +1,5 @@
 const { PrismaClient } = require("@prisma/client");
+const generateCustomerId = require("../src/utils/customerIdGenerator");
 const prisma = new PrismaClient();
 
 async function main() {
@@ -19,17 +20,22 @@ async function main() {
 
     // Sample data templates
     const customerTemplates = [
-        { customerid: "CUST-1001", firstname: "Aarav", lastname: "Sharma", emailadd: "aarav.sharma@example.com", contactnum: "+919876543210", addressline1: "42 MG Road", city: "Bengaluru", pincode: "560001", gender: "M", dob: new Date("1992-05-15"), isloyalty: true },
-        { customerid: "CUST-1002", firstname: "Priya", lastname: "Patel", emailadd: "priya.patel@example.com", contactnum: "+919812345678", addressline1: "15 Park Street", city: "Kolkata", pincode: "700016", gender: "F", dob: new Date("1995-11-20"), isloyalty: true },
-        { customerid: "CUST-1003", firstname: "Rohan", lastname: "Verma", emailadd: "rohan.verma@example.com", contactnum: "+919988776655", addressline1: "88 Connaught Place", city: "Delhi", pincode: "110001", gender: "M", dob: new Date("1988-03-10"), isloyalty: false },
-        { customerid: "CUST-1004", firstname: "Ananya", lastname: "Sen", emailadd: "ananya.sen@example.com", contactnum: "+919765432109", addressline1: "12 Marine Drive", city: "Mumbai", pincode: "400020", gender: "F", dob: new Date("1998-07-25"), isloyalty: true },
-        { customerid: "CUST-1005", firstname: "Vikram", lastname: "Singh", emailadd: "vikram.singh@example.com", contactnum: "+919654321098", addressline1: "74 Jubilee Hills", city: "Hyderabad", pincode: "500033", gender: "M", dob: new Date("1985-09-05"), isloyalty: true },
-        { customerid: "CUST-1006", firstname: "Sanya", lastname: "Gupta", emailadd: "sanya.gupta@example.com", contactnum: "+919543210987", addressline1: "29 Anna Salai", city: "Chennai", pincode: "600002", gender: "F", dob: new Date("2000-01-18"), isloyalty: false },
-        { customerid: "CUST-1007", firstname: "Kabir", lastname: "Mehta", emailadd: "kabir.mehta@example.com", contactnum: "+919432109876", addressline1: "10 Cross Cut Road", city: "Coimbatore", pincode: "641012", gender: "M", dob: new Date("1993-12-04"), isloyalty: true },
-        { customerid: "CUST-1008", firstname: "Neha", lastname: "Deshmukh", emailadd: "neha.deshmukh@example.com", contactnum: "+919321098765", addressline1: "55 FC Road", city: "Pune", pincode: "411004", gender: "F", dob: new Date("1991-08-30"), isloyalty: true },
-        { customerid: "CUST-1009", firstname: "Dev", lastname: "Nair", emailadd: "dev.nair@example.com", contactnum: "+919210987654", addressline1: "3 M.G. Marg", city: "Kochi", pincode: "682011", gender: "M", dob: new Date("1996-04-12"), isloyalty: false },
-        { customerid: "CUST-1010", firstname: "Ishita", lastname: "Roy", emailadd: "ishita.roy@example.com", contactnum: "+919109876543", addressline1: "67 Salt Lake Sector V", city: "Kolkata", pincode: "700091", gender: "F", dob: new Date("1994-06-22"), isloyalty: true }
+        { firstname: "Aarav", lastname: "Sharma", emailadd: "aarav.sharma@example.com", contactnum: "+919876543210", addressline1: "42 MG Road", city: "Bengaluru", pincode: "560001", gender: "M", dob: new Date("1992-05-15"), isloyalty: true },
+        { firstname: "Priya", lastname: "Patel", emailadd: "priya.patel@example.com", contactnum: "+919812345678", addressline1: "15 Park Street", city: "Kolkata", pincode: "700016", gender: "F", dob: new Date("1995-11-20"), isloyalty: true },
+        { firstname: "Rohan", lastname: "Verma", emailadd: "rohan.verma@example.com", contactnum: "+919988776655", addressline1: "88 Connaught Place", city: "Delhi", pincode: "110001", gender: "M", dob: new Date("1988-03-10"), isloyalty: false },
+        { firstname: "Ananya", lastname: "Sen", emailadd: "ananya.sen@example.com", contactnum: "+919765432109", addressline1: "12 Marine Drive", city: "Mumbai", pincode: "400020", gender: "F", dob: new Date("1998-07-25"), isloyalty: true },
+        { firstname: "Vikram", lastname: "Singh", emailadd: "vikram.singh@example.com", contactnum: "+919654321098", addressline1: "74 Jubilee Hills", city: "Hyderabad", pincode: "500033", gender: "M", dob: new Date("1985-09-05"), isloyalty: true },
+        { firstname: "Sanya", lastname: "Gupta", emailadd: "sanya.gupta@example.com", contactnum: "+919543210987", addressline1: "29 Anna Salai", city: "Chennai", pincode: "600002", gender: "F", dob: new Date("2000-01-18"), isloyalty: false },
+        { firstname: "Kabir", lastname: "Mehta", emailadd: "kabir.mehta@example.com", contactnum: "+919432109876", addressline1: "10 Cross Cut Road", city: "Coimbatore", pincode: "641012", gender: "M", dob: new Date("1993-12-04"), isloyalty: true },
+        { firstname: "Neha", lastname: "Deshmukh", emailadd: "neha.deshmukh@example.com", contactnum: "+919321098765", addressline1: "55 FC Road", city: "Pune", pincode: "411004", gender: "F", dob: new Date("1991-08-30"), isloyalty: true },
+        { firstname: "Dev", lastname: "Nair", emailadd: "dev.nair@example.com", contactnum: "+919210987654", addressline1: "3 M.G. Marg", city: "Kochi", pincode: "682011", gender: "M", dob: new Date("1996-04-12"), isloyalty: false },
+        { firstname: "Ishita", lastname: "Roy", emailadd: "ishita.roy@example.com", contactnum: "+919109876543", addressline1: "67 Salt Lake Sector V", city: "Kolkata", pincode: "700091", gender: "F", dob: new Date("1994-06-22"), isloyalty: true }
     ];
+
+    // Assign standard system-formatted Customer IDs (CUST-{timestamp}-{10 alphanumeric chars})
+    for (const c of customerTemplates) {
+        c.customerid = generateCustomerId();
+    }
 
     console.log(`👤 Ingesting ${customerTemplates.length} Customers...`);
     for (const c of customerTemplates) {
@@ -87,10 +93,10 @@ async function main() {
     for (const c of customerTemplates) {
         if (!c.isloyalty) continue;
 
-        const totalPoints = Math.floor(Math.random() * 20000) + 500;
+        const totalPoints = Math.floor(Math.random() * 8500) + 500;
         let tier = "Bronze";
-        if (totalPoints >= 15001) tier = "Gold";
-        else if (totalPoints >= 5001) tier = "Silver";
+        if (totalPoints >= 5000) tier = "Gold";
+        else if (totalPoints >= 2000) tier = "Silver";
 
         await prisma.loyalty.create({
             data: {
@@ -195,7 +201,7 @@ async function main() {
     await prisma.promotionaldlq.create({
         data: {
             eventid: `EVT-DLQ-1001`,
-            customerid: "CUST-1003",
+            customerid: customerTemplates[2].customerid,
             emailaddress: "rohan.verma@example.com",
             subject: "Exclusive Weekend Flash Sale - 20% Off!",
             payload: { promoCode: "FLASH20", validTill: "2026-08-31" },
