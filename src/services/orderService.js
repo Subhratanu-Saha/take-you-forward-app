@@ -1,4 +1,6 @@
 const prisma = require('../utils/db');
+const loyaltyModel = require('../models/loyalty');
+
 
 const generateOrderId = () => {
     return `ORD-${Date.now()}-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -99,6 +101,11 @@ const createOrder = async (orderData) => {
                     skuprice: Number(item.skuprice)
                 }
             });
+        }
+
+        if (isloyalty) {
+            console.log(`[ORDER_SERVICE] Triggering loyalty calculation for customerId=${customerid} with orderAmount=${Number(finalAmount)}`);
+            await loyaltyModel.updateLoyaltyTier(customerid, Number(finalAmount));
         }
 
         // Return created order
