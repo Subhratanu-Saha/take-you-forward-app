@@ -126,7 +126,16 @@ const createOrder = async (req, res, next) => {
 
   try {
     const service = getOrderService();
-    const order = await service.createOrder(req.body, requestId);
+    // Prefer validated payload if present (middleware sets `req.validated.body`)
+    const validatedBody = req.validated && req.validated.body ? req.validated.body : null;
+
+    // Ensure service receives `items` array — map `orderlineitems` from validator to `items`
+    const payload = {
+      ...(validatedBody || req.body || {}),
+      items: (validatedBody && validatedBody.orderlineitems) || (req.body && (req.body.orderlineitems || req.body.orderLineItems || req.body.items)) || [],
+    };
+
+    const order = await service.createOrder(payload, requestId);
 
     logger.info('ORDER_CONTROLLER', `createOrder succeeded for ID: ${order?.id || order?.orderid}`, {
       requestId,
