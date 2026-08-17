@@ -97,7 +97,6 @@ model subscriber {
   sysmodifieddt   DateTime? @db.Timestamp(6)
   customer        customer? @relation(fields: [customerid], references: [customerid], onDelete: NoAction, onUpdate: NoAction)
 }
-
 model promotionaldlq {
   eventid       String    @id @db.VarChar(60)
   customerid    String?   @db.VarChar(40)
