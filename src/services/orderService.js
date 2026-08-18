@@ -1,5 +1,6 @@
 const prisma = require('../utils/db');
 const loyaltyModel = require('../models/loyalty');
+const loyaltyService = require('./loyaltyService');
 
 
 const generateOrderId = () => {
