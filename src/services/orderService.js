@@ -1,6 +1,7 @@
 const prisma = require('../utils/db');
 const loyaltyModel = require('../models/loyalty');
 const loyaltyService = require('./loyaltyService');
+const eventBus = require('../utils/eventBus');
 
 
 const generateOrderId = () => {
@@ -110,8 +111,19 @@ const createOrder = async (orderData) => {
         }
 
         if (isloyalty) {
-            console.log(`[ORDER_SERVICE] Triggering loyalty calculation for customerId=${customerid} with orderAmount=${Number(finalAmount)}`);
-            await loyaltyModel.updateLoyaltyTier(customerid, Number(finalAmount));
+            console.log(`[ORDER_SERVICE] Emitting customer.purchase event for customerId=${customerid}, orderAmount=${Number(finalAmount)}`);
+            
+            // Emit purchase event to trigger loyalty update (event-driven flow)
+            eventBus.publish('customer.purchase', {
+                eventId,
+                customerId: customerid,
+                orderid,
+                totalpoints: Number(finalAmount),
+                totalamount: Number(finalAmount),
+                channel,
+                payment,
+                timestamp: new Date().toISOString(),
+            });
         }
 
         // Return created order
@@ -124,26 +136,6 @@ const createOrder = async (orderData) => {
                 orderlineitems: true
             }
         });
-
-        if (isloyalty) {
-            const processedPurchase = await loyaltyService.processPurchaseEvent({
-                customerid,
-                orderid,
-                totalamount: finalAmount,
-                eventId,
-                transactionClient: tx,
-            });
-
-            if (processedPurchase.duplicate) {
-                console.warn('[ORDER_SERVICE] Skipped loyalty update for duplicate purchase event', {
-                    eventId,
-                    customerid,
-                    orderid,
-                });
-            }
-        }
-
-        return createdOrder;
     });
 };
 

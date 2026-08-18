@@ -4,6 +4,8 @@ const cors = require('cors');
 const crypto = require('crypto');
 const { logger, ERROR_CODES } = require('./utils/db');
 const { API_SUCCESSFUL_HEALTH_MESSAGE } = require('./constants/constant');
+const eventBus = require('./utils/eventBus');
+const { loyaltyPurchaseConsumer } = require('./events/loyaltyEventConsumer');
 
 const app = express();
 
@@ -89,6 +91,43 @@ app.use('/api/v1/subscriber', require('./routes/subscriberRoutes'));
 app.use('/api/v1/promotionalmessage', require('./routes/promotionalMessageRoutes'));
 app.use('/api/v1/loyalty', require('./routes/loyaltyRoutes'));
 app.use('/api/v1/orders', require('./routes/orderRoutes'));
+
+// ============================================================================
+// EVENT SUBSCRIPTION INITIALIZATION
+// ============================================================================
+// Initialize the loyalty event consumer to listen for customer.purchase events
+// This subscribes the loyalty update process to purchase events emitted by the order service
+const initializeEventSubscriptions = () => {
+  logger.info('APP_STARTUP', 'Initializing event subscriptions', {
+    subscriptions: ['customer.purchase'],
+    timestamp: new Date().toISOString(),
+  });
+
+  // Subscribe the loyalty consumer to customer.purchase events via the event bus
+  eventBus.subscribe('customer.purchase', async (event) => {
+    logger.debug('APP_EVENTS', 'Forwarding customer.purchase event to loyalty consumer', {
+      eventId: event?.eventId || 'unknown',
+      customerId: event?.customerId || 'unknown',
+    });
+
+    // The event consumer will handle validation and processing
+    await loyaltyPurchaseConsumer.consume(event);
+  });
+
+  const listenerCount = eventBus.getListenerCount('customer.purchase');
+  logger.info('APP_STARTUP', 'Event subscriptions initialized successfully', {
+    eventName: 'customer.purchase',
+    listeners: listenerCount,
+    timestamp: new Date().toISOString(),
+  });
+};
+
+// Initialize subscriptions immediately when app is loaded
+initializeEventSubscriptions();
+
+// ============================================================================
+// ROUTES
+// ============================================================================
 
 // Catch-all 404 Route Not Found handler
 app.use((req, res) => {

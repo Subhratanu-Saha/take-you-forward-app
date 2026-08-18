@@ -40,18 +40,28 @@ const createLoyaltyPurchaseConsumer = ({
     });
 
     try {
-      const result = await loyaltyProcessor.processLoyaltyEvent({
+      // Extract orderid from event data if available
+      const orderid = event?.orderid || event?.orderId || `LOY-${Date.now()}`;
+
+      // Call processPurchaseEvent to create/update loyalty records
+      // This is different from processLoyaltyEvent which only updates tier
+      const result = await loyaltyProcessor.processPurchaseEvent({
+        customerid: customerId,
+        orderid,
+        totalamount: totalpoints,
         eventId,
-        customerId,
-        type: 'PURCHASE',
-        payload: { totalpoints, customerId },
+        points: totalpoints,
       });
 
       logger.info('LOYALTY_EVENT_CONSUMER: event processed successfully', {
         eventId,
         customerId,
         totalpoints,
-        result,
+        result: {
+          duplicate: result.duplicate,
+          loyaltyId: result.loyalty?.loyaltyid,
+          ledgerId: result.ledger?.ledgerid,
+        },
       });
 
       if (typeof ackCallback === 'function') {
