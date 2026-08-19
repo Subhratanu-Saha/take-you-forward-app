@@ -105,7 +105,7 @@ const initializeEventSubscriptions = () => {
 
   // Subscribe the loyalty consumer to customer.purchase events via the event bus
   eventBus.subscribe('customer.purchase', async (event) => {
-    logger.debug('APP_EVENTS', 'Forwarding customer.purchase event to loyalty consumer', {
+    logger.info('APP_EVENTS', 'Forwarding customer.purchase event to loyalty consumer', {
       eventId: event?.eventId || 'unknown',
       customerId: event?.customerId || 'unknown',
     });

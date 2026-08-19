@@ -34,7 +34,7 @@ const createOrder = async (orderData) => {
     let finalAmount = 0;
     let createdOrder = null;
 
-    return await prisma.$transaction(async (tx) => {
+    createdOrder = await prisma.$transaction(async (tx) => {
 
         // Check customer exists
         const customer = await tx.customer.findUnique({
@@ -110,22 +110,6 @@ const createOrder = async (orderData) => {
             });
         }
 
-        if (isloyalty) {
-            console.log(`[ORDER_SERVICE] Emitting customer.purchase event for customerId=${customerid}, orderAmount=${Number(finalAmount)}`);
-            
-            // Emit purchase event to trigger loyalty update (event-driven flow)
-            eventBus.publish('customer.purchase', {
-                eventId,
-                customerId: customerid,
-                orderid,
-                totalpoints: Number(finalAmount),
-                totalamount: Number(finalAmount),
-                channel,
-                payment,
-                timestamp: new Date().toISOString(),
-            });
-        }
-
         // Return created order
         return await tx.orderheader.findUnique({
             where: {
@@ -137,6 +121,26 @@ const createOrder = async (orderData) => {
             }
         });
     });
+
+    if (isloyalty) {
+        console.log(`[ORDER_SERVICE] Emitting customer.purchase event for customerId=${customerid}, orderAmount=${Number(finalAmount)}`);
+
+        // Publish only after the order transaction has committed.
+        eventBus.publish('customer.purchase', {
+            eventId,
+            customerId: customerid,
+            orderId: createdOrder.orderid,
+            orderid: createdOrder.orderid,
+            points: Number(finalAmount),
+            totalpoints: Number(finalAmount),
+            totalamount: Number(finalAmount),
+            channel,
+            payment,
+            timestamp: new Date().toISOString(),
+        });
+    }
+
+    return createdOrder;
 };
 
 

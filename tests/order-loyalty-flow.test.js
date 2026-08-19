@@ -16,6 +16,7 @@ const assert = require('node:assert/strict');
 
 const prisma = require('../src/utils/db');
 const { createOrder } = require('../src/services/orderService');
+require('../src/app');
 
 test('createOrder triggers loyalty update after successful order ingestion', async () => {
   const original = {
@@ -26,6 +27,9 @@ test('createOrder triggers loyalty update after successful order ingestion', asy
     loyaltyFindFirst: prisma.loyalty.findFirst,
     loyaltyCreate: prisma.loyalty.create,
     loyaltyUpdate: prisma.loyalty.update,
+    loyaltyledgerFindFirst: prisma.loyaltyledger.findFirst,
+    loyaltyledgerCreate: prisma.loyaltyledger.create,
+    loyaltyledgerUpdateMany: prisma.loyaltyledger.updateMany,
     transaction: prisma.$transaction,
   };
 
@@ -57,6 +61,12 @@ test('createOrder triggers loyalty update after successful order ingestion', asy
       calls.push('loyalty.update');
       return { loyaltyid: 1, ...args.data.data };
     };
+    prisma.loyaltyledger.findFirst = async () => null;
+    prisma.loyaltyledger.create = async (args) => {
+      calls.push('loyaltyledger.create');
+      return { ledgerid: 1, ...args.data };
+    };
+    prisma.loyaltyledger.updateMany = async () => ({ count: 1 });
     prisma.$transaction = async (callback) => callback(prisma);
 
     const order = await createOrder({
@@ -72,6 +82,8 @@ test('createOrder triggers loyalty update after successful order ingestion', asy
       }],
     });
 
+    await new Promise((resolve) => setImmediate(resolve));
+
     assert.ok(order, 'order should be created');
     assert.ok(
       calls.includes('loyalty.create') || calls.includes('loyalty.update'),
@@ -85,6 +97,9 @@ test('createOrder triggers loyalty update after successful order ingestion', asy
     prisma.loyalty.findFirst = original.loyaltyFindFirst;
     prisma.loyalty.create = original.loyaltyCreate;
     prisma.loyalty.update = original.loyaltyUpdate;
+    prisma.loyaltyledger.findFirst = original.loyaltyledgerFindFirst;
+    prisma.loyaltyledger.create = original.loyaltyledgerCreate;
+    prisma.loyaltyledger.updateMany = original.loyaltyledgerUpdateMany;
     prisma.$transaction = original.transaction;
   }
 });
