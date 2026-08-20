@@ -4,7 +4,7 @@ const cors = require('cors');
 const crypto = require('crypto');
 const { logger, ERROR_CODES } = require('./utils/db');
 const { API_SUCCESSFUL_HEALTH_MESSAGE } = require('./constants/constant');
-const { subscribeLoyaltyPurchaseEvents, consume: consumePurchaseEvent } = require('./events/loyaltyEventConsumer');
+const { subscribeLoyaltyPurchaseEvents } = require('./events/loyaltyEventConsumer');
 const { getEventEmitter } = require('./events/eventEmitter');
 
 const app = express();
@@ -95,8 +95,8 @@ app.use('/api/v1/orders', require('./routes/orderRoutes'));
 // Initialize Event Subscriber for Loyalty Purchase Events
 (() => {
   try {
-    const eventEmitter = getEventEmitter();
-    const consumer = subscribeLoyaltyPurchaseEvents();
+    getEventEmitter();
+    subscribeLoyaltyPurchaseEvents();
     
     logger.info('EVENT_SUBSCRIBER', 'Loyalty purchase event subscriber initialized', {
       eventName: 'customer.purchase',
