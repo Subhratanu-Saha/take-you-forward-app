@@ -1,6 +1,7 @@
 const prisma = require('../utils/db');
 const loyaltyModel = require('../models/loyalty');
 const loyaltyService = require('./loyaltyService');
+const { emitEvent } = require('../events/eventEmitter');
 
 
 const generateOrderId = () => {
@@ -33,7 +34,7 @@ const createOrder = async (orderData) => {
     let finalAmount = 0;
     let createdOrder = null;
 
-    return await prisma.$transaction(async (tx) => {
+    const order = await prisma.$transaction(async (tx) => {
 
         // Check customer exists
         const customer = await tx.customer.findUnique({
@@ -145,6 +146,25 @@ const createOrder = async (orderData) => {
 
         return createdOrder;
     });
+
+    // Emit customer.purchase event after order successfully created
+    if (order && order.orderid) {
+        console.info('[ORDER_SERVICE] Emitting customer.purchase event', {
+            eventId,
+            customerId: order.customerid,
+            orderId: order.orderid,
+            totalpoints: order.totalamount,
+        });
+
+        emitEvent('customer.purchase', {
+            eventId,
+            customerId: order.customerid,
+            orderId: order.orderid,
+            totalpoints: order.totalamount,
+        });
+    }
+
+    return order;
 };
 
 

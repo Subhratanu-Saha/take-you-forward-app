@@ -1,6 +1,6 @@
-const { EventEmitter } = require('events');
 const loyaltyService = require('../services/loyaltyService');
 const { validatePurchaseEvent } = require('./loyaltyEventValidator');
+const { getEventEmitter } = require('./eventEmitter');
 
 const logger = console;
 
@@ -8,7 +8,7 @@ const createLoyaltyPurchaseConsumer = ({
   eventName = 'customer.purchase',
   loyaltyProcessor = loyaltyService,
 } = {}) => {
-  const emitter = new EventEmitter();
+  const emitter = getEventEmitter();
 
   const consume = async (event, ackCallback) => {
     const validation = validatePurchaseEvent(event);
