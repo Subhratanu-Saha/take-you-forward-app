@@ -21,6 +21,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Pre Build
+        run: node server.js
+
       - name: Run build
         run: npm run build
 
