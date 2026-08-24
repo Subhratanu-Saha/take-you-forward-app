@@ -261,6 +261,10 @@ const processLoyaltyEvent = async ({ eventId, customerId, type, payload }) => {
       throw new Error('Customer ID is required');
     }
 
+    if (!eventId?.trim()) {
+      throw new Error('Event ID is required');
+    }
+
     if (type !== 'PURCHASE') {
       throw new Error(`Unsupported loyalty event type: ${type}`);
     }
@@ -282,15 +286,35 @@ const processLoyaltyEvent = async ({ eventId, customerId, type, payload }) => {
       throw new Error('Total points cannot be negative');
     }
 
+    // Check whether this event was already processed
+    const existingEvent = await loyaltyModel.findProcessedLoyaltyEvent(eventId);
+
+    if (existingEvent) {
+      console.warn('[LOYALTY_SERVICE] Duplicate loyalty event detected and skipped', {
+        eventId,
+        customerId,
+      });
+
+      return {
+        duplicate: true,
+        skipped: true,
+        eventId,
+        customerId,
+        type,
+      };
+    }
+
     const result = await updateLoyaltyTier(customerId, normalizedTotalPoints);
+    await loyaltyModel.recordProcessedLoyaltyEvent(eventId);
 
     return {
+      duplicate: false,
       eventId,
       customerId,
       type,
       payload: { totalpoints: normalizedTotalPoints, customerId },
       result,
-    };
+  };
   } catch (error) {
     console.error('[LOYALTY_SERVICE] Error processing purchase event', {
       eventId,
