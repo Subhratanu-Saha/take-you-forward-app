@@ -19,9 +19,6 @@ test('duplicate customer.purchase event should be skipped', async () => {
   const originalCustomer =
     customerModel.getCustomerById;
 
-  const originalLoyaltyFindFirst =
-    loyaltyService.updateLoyaltyTier;
-
   let updateCount = 0;
   const processedEvents = new Set();
 
