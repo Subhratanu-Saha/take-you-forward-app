@@ -15,7 +15,7 @@ const validateCreatePromotionalMessage = (req, res, next) => {
 
   const errors = [];
   const rawCustomerId = req.body.customerid ?? req.body.customerId;
-  const { title, message } = req.body;
+  const { title, message, campaignHeadline, promoCode, discountPercentage, storeUrl, expirationDate } = req.body;
 
   let normalizedCustomerId = '';
   let trimmedTitle = '';
@@ -65,6 +65,96 @@ const validateCreatePromotionalMessage = (req, res, next) => {
     }
   }
 
+  // -----------------------------
+  // Campaign Headline validation
+  // -----------------------------
+
+  if (campaignHeadline !== undefined) {
+    if (typeof campaignHeadline !== 'string') {
+      errors.push('Campaign headline must be a string');
+    } else if (campaignHeadline.trim().length > 200) {
+      errors.push(
+        'Campaign headline must not exceed 200 characters'
+      );
+    }
+  }
+
+  // -----------------------------
+  // Promo Code validation
+  // -----------------------------
+
+  if (promoCode !== undefined) {
+    if (typeof promoCode !== 'string') {
+      errors.push('Promo code must be a string');
+    } else if (!promoCode.trim()) {
+      errors.push('Promo code cannot be empty');
+    } else if (promoCode.trim().length > 50) {
+      errors.push(
+        'Promo code must not exceed 50 characters'
+      );
+    }
+  }
+
+  // -----------------------------
+  // Discount Percentage validation
+  // -----------------------------
+
+  if (discountPercentage !== undefined) {
+    if (
+      typeof discountPercentage !== 'number' ||
+      !Number.isFinite(discountPercentage) ||
+      discountPercentage < 0 ||
+      discountPercentage > 100
+    ) {
+      errors.push(
+        'Discount percentage must be between 0 and 100'
+      );
+    }
+  }
+
+  // -----------------------------
+  // Store URL validation
+  // -----------------------------
+
+  if (storeUrl !== undefined) {
+    if (typeof storeUrl !== 'string') {
+      errors.push('Store URL must be a string');
+    } else {
+      try {
+        const normalizedStoreUrl = storeUrl.trim();
+        const parsedUrl = new URL(normalizedStoreUrl);
+
+        if (parsedUrl.protocol !== 'https:') {
+          errors.push('Store URL must be a valid HTTPS URL');
+        }
+      } catch (error) {
+        errors.push('Store URL must be a valid HTTPS URL');
+      }
+    }
+  }
+
+  // -----------------------------
+  // Expiration Date validation
+  // -----------------------------
+
+  if (expirationDate !== undefined) {
+  if (typeof expirationDate !== 'string') {
+    errors.push('Expiration date must be a valid date');
+  } else {
+    const parsedDate = new Date(expirationDate);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      errors.push('Expiration date must be a valid date');
+    } else if (parsedDate <= new Date()) {
+      errors.push('Expiration date must be in the future');
+    }
+  }
+}
+
+  // -----------------------------
+  // Return validation errors
+  // -----------------------------
+
   if (errors.length > 0) {
     console.warn(`[PROMOTIONAL_VALIDATOR] Validation failed for customer=${normalizedCustomerId || 'unknown'}: ${errors.join('; ')}`);
     return res.status(400).json({
@@ -79,6 +169,25 @@ const validateCreatePromotionalMessage = (req, res, next) => {
     customerid: normalizedCustomerId,
     title: trimmedTitle,
     message: trimmedMessage,
+    ...(campaignHeadline !== undefined && {
+      campaignHeadline: campaignHeadline.trim(),
+    }),
+
+    ...(promoCode !== undefined && {
+      promoCode: promoCode.trim(),
+    }),
+
+    ...(discountPercentage !== undefined && {
+      discountPercentage,
+    }),
+
+    ...(storeUrl !== undefined && {
+      storeUrl: storeUrl.trim(),
+    }),
+
+    ...(expirationDate !== undefined && {
+      expirationDate: new Date(expirationDate).toISOString(),
+    }),
   };
 
   console.info(`[PROMOTIONAL_VALIDATOR] Request validated for customer=${normalizedCustomerId}`);

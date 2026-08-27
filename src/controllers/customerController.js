@@ -196,8 +196,17 @@ const createCustomer = async (req, res, next) => {
               body: JSON.stringify({
                 customerid: customer.customerid,
                 emailaddress: customer.emailadd,
+                firstname: customer.firstname,
+                lastname: customer.lastname,
+                city: customer.city,
                 title: PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT,
                 message: PROMOTIONAL_ONBOARDING_EMAIL_MESSAGE,
+
+                campaignHeadline: 'Your exclusive welcome offer',
+                promoCode: 'WELCOME20',
+                discountPercentage: 20,
+                storeUrl: 'https://yourwebsite.com/promotions',
+                expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
               }),
             });
             const duration = Date.now() - startTime;
