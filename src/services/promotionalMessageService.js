@@ -9,6 +9,7 @@ const generateRandomAlphaNumeric = require('../utils/idGenerator');
 
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 5 * 60 * 1000;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const generateDlqId = () => `DLQ-${Date.now()}-${generateRandomAlphaNumeric(6)}`;
 
@@ -51,7 +52,7 @@ const createDlqEntry = async (customerData, subject, error, attemptCount = 1) =>
 };
 
 const sendPromotionalEmails = async (customerData, subject, options = {}) => {
-  const { shouldQueueOnFailure = true, skipDlqRecord = false } = options;
+  const { shouldQueueOnFailure = true, skipDlqRecord = false, campaignId = null } = options;
   const customerId = normalizeCustomerId(customerData) || customerData?.customerid || null;
   const recipientEmail = customerData?.emailaddress || customerData?.emailadd || null;
 
@@ -71,6 +72,21 @@ const sendPromotionalEmails = async (customerData, subject, options = {}) => {
       throw validationError;
     }
 
+    let alreadySent = false;
+    if (campaignId) {
+      alreadySent = await interactionModel.hasPromotionalCampaignInteraction(customerId, campaignId);
+    }
+
+    if (alreadySent) {
+      console.info(`[PROMOTIONAL] Skipping duplicate campaign=${campaignId} customer=${customerId}`);
+      return {
+        success: true,
+        skipped: true,
+        message: 'Email skipped: campaign already sent to customer',
+        data: null,
+      };
+    }
+
     const subscriber = await SubscriberModel.getSubscriberByCustomerId(customerId || customerData.customerid);
 
     if (!subscriber || subscriber.issubscribe !== true || subscriber.emailpermstatus !== true) {
@@ -83,12 +99,12 @@ const sendPromotionalEmails = async (customerData, subject, options = {}) => {
       };
     }
 
-    if (!recipientEmail) {
+    if (!recipientEmail || !EMAIL_REGEX.test(recipientEmail)) {
       console.warn(`[PROMOTIONAL] Skipping promotional email for customer=${customerId || customerData.customerid || 'unknown'} because no recipient email is available`);
       return {
         success: true,
         skipped: true,
-        message: 'Email skipped: no recipient email provided',
+        message: 'Email skipped: recipient email is missing or invalid',
         data: null,
       };
     }
@@ -119,7 +135,9 @@ const sendPromotionalEmails = async (customerData, subject, options = {}) => {
           customerid: customerId,
           interactionmode: 'EMAIL',
           interactiontype: 'PROMOTIONAL',
-          interactionvalue: 'PROMOTIONAL_EMAIL',
+          interactionvalue: campaignId
+            ? interactionModel.getPromotionalCampaignValue(campaignId)
+            : 'PROMOTIONAL_EMAIL',
         });
         console.info(`[PROMOTIONAL] Recorded interaction for customer=${customerId}`);
       } catch (interactionError) {
@@ -133,7 +151,11 @@ const sendPromotionalEmails = async (customerData, subject, options = {}) => {
     console.error(`[PROMOTIONAL] Failed to send promotional email for customer=${customerId || 'unknown'} subject=${subject || 'PROMOTIONAL_EMAIL'}: ${mailError.message}`);
 
     if (shouldQueueOnFailure && !skipDlqRecord) {
-      await createDlqEntry(customerData, subject, mailError);
+      await createDlqEntry(
+        campaignId ? { ...customerData, campaignId } : customerData,
+        subject,
+        mailError
+      );
     }
 
     return { 
@@ -184,6 +206,7 @@ const retryFailedPromotionalEvents = async () => {
         const result = await sendPromotionalEmails(payload, event.subject, {
           shouldQueueOnFailure: false,
           skipDlqRecord: true,
+          campaignId: payload.campaignId || payload.campaignid || null,
         });
 
         if (result.success) {

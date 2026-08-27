@@ -1,6 +1,7 @@
 // controllers/promotionalMessageController.js
 const { PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT } = require('../constants/constant');
 const promotionalMessageService = require('../services/promotionalMessageService');
+const { sendWeeklyPromotionalCampaign } = require('../services/promotionalCampaignService');
 
 const createPromotionalMessage = async (req, res) => {
   const customerId = req.body?.customerid || req.body?.customerId || 'unknown';
@@ -76,8 +77,26 @@ const retryFailedPromotionalMessages = async (req, res) => {
   }
 };
 
+const sendPromotionalCampaign = async (req, res) => {
+  try {
+    const summary = await sendWeeklyPromotionalCampaign(req.body);
+    return res.status(200).json({
+      success: true,
+      message: 'Promotional campaign processed successfully',
+      data: summary,
+    });
+  } catch (error) {
+    console.error(`[PROMOTIONAL_CONTROLLER] Campaign failed: ${error.message}`);
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   createPromotionalMessage,
+  sendPromotionalCampaign,
   getFailedPromotionalMessages,
   retryFailedPromotionalMessages,
 };
