@@ -15,9 +15,15 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const prisma = require('../src/utils/db');
+const { getEventEmitter } = require('../src/events/eventEmitter');
 const { createOrder } = require('../src/services/orderService');
 
-test('createOrder triggers loyalty update after successful order ingestion', async () => {
+test('createOrder emits a purchase event without updating loyalty directly', async () => {
+  const emitter = getEventEmitter();
+  const purchaseEvents = [];
+  const purchaseListener = (event) => purchaseEvents.push(event);
+  emitter.on('customer.purchase', purchaseListener);
+
   const original = {
     customerFindUnique: prisma.customer.findUnique,
     orderheaderCreate: prisma.orderheader.create,
@@ -73,11 +79,13 @@ test('createOrder triggers loyalty update after successful order ingestion', asy
     });
 
     assert.ok(order, 'order should be created');
-    assert.ok(
-      calls.includes('loyalty.create') || calls.includes('loyalty.update'),
-      'loyalty should be synchronized after order creation'
-    );
+    assert.equal(purchaseEvents.length, 1);
+    assert.equal(purchaseEvents[0].customerId, 'CUST-123');
+    assert.equal(purchaseEvents[0].orderId, 'ORD-123');
+    assert.equal(calls.includes('loyalty.create'), false);
+    assert.equal(calls.includes('loyalty.update'), false);
   } finally {
+    emitter.off('customer.purchase', purchaseListener);
     prisma.customer.findUnique = original.customerFindUnique;
     prisma.orderheader.create = original.orderheaderCreate;
     prisma.orderlineitems.create = original.orderlineitemsCreate;
