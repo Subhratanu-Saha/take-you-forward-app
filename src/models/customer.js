@@ -1,5 +1,6 @@
 const prisma = require('../utils/db');
 const { logger, handlePrismaError } = require('../utils/db');
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Get all customers
 const getAllCustomers = async (requestId = null) => {
@@ -11,6 +12,35 @@ const getAllCustomers = async (requestId = null) => {
   } catch (error) {
     throw handlePrismaError(error, { operation: 'getAllCustomers', model: 'CUSTOMER_MODEL', requestId });
   }
+};
+
+// Find customers enrolled during a campaign window and currently opted in to email.
+const getEligiblePromotionalCustomers = async (startDate, endDate) => {
+  if (!(startDate instanceof Date) || Number.isNaN(startDate.getTime())) {
+    throw new Error('A valid campaign start date is required');
+  }
+  if (!(endDate instanceof Date) || Number.isNaN(endDate.getTime())) {
+    throw new Error('A valid campaign end date is required');
+  }
+  if (startDate >= endDate || endDate.getTime() - startDate.getTime() > 7 * 24 * 60 * 60 * 1000) {
+    throw new Error('Campaign window must be positive and no longer than 7 days');
+  }
+
+  const customers = await prisma.customer.findMany({
+    where: {
+      sysenrollmentdt: { gte: startDate, lte: endDate },
+      emailadd: { not: '' },
+      subscriber: {
+        some: {
+          issubscribe: true,
+          emailpermstatus: true,
+        },
+      },
+    },
+    orderBy: { sysenrollmentdt: 'asc' },
+  });
+
+  return customers.filter((customer) => EMAIL_REGEX.test(customer.emailadd));
 };
 
 // Get customer by ID
@@ -191,4 +221,5 @@ module.exports = {
   updateCustomer,
   deleteCustomer,
   searchCustomers,
+  getEligiblePromotionalCustomers,
 };
