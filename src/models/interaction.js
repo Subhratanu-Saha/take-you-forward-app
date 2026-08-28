@@ -1,5 +1,9 @@
 const prisma = require('../utils/db');
 const generateRandomAlphaNumeric = require('../utils/idGenerator');
+const crypto = require('crypto');
+
+const getPromotionalCampaignValue = (campaignId) =>
+  `PROMO_${crypto.createHash('sha256').update(campaignId).digest('hex').slice(0, 32)}`;
 
 const logModelError = (operation, details, error) => {
   console.error(`[INTERACTION_MODEL] ${operation} failed`, {
@@ -82,6 +86,18 @@ const getFirstInteractionByCustomerId = async (customerId) => {
   }
 };
 
+const hasPromotionalCampaignInteraction = async (customerId, campaignId) => {
+  return Boolean(await prisma.interaction.findFirst({
+    where: {
+      customerid: customerId,
+      interactionvalue: getPromotionalCampaignValue(campaignId),
+      interactionmode: 'EMAIL',
+      interactiontype: 'PROMOTIONAL',
+    },
+    select: { interactionid: true },
+  }));
+};
+
 // Insert a new interaction record into the downstream interaction table.
 const createInteraction = async (interactionData) => {
   const requiredFields = ['customerid', 'interactionmode', 'interactionvalue', 'interactiontype'];
@@ -160,6 +176,8 @@ module.exports = {
   getAllInteractions,
   getInteractionById,
   getFirstInteractionByCustomerId,
+  hasPromotionalCampaignInteraction,
+  getPromotionalCampaignValue,
   createInteraction,
   updateInteraction,
 };

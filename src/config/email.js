@@ -1,14 +1,22 @@
 const nodemailer = require('nodemailer');
+const dns = require('dns');
 
 const EMAIL_USER_ID = process.env.EMAIL_USER_ID ? process.env.EMAIL_USER_ID.trim() : '';
 const EMAIL_USER_PASSCODE = process.env.EMAIL_USER_PASSCODE ? process.env.EMAIL_USER_PASSCODE.trim() : '';
 
+dns.setDefaultResultOrder('ipv4first');
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false,
+  family:4,
   auth: {
     user: EMAIL_USER_ID,
     pass: EMAIL_USER_PASSCODE,
   },
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
 });
 
 const verifyEmailConfig = async () => {
