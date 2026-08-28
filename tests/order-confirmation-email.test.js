@@ -10,7 +10,6 @@ const app = require('../src/app');
 
 // Mock email transporter sendMail method directly on the configured transporter
 const sentEmails = [];
-const originalSendMail = transporter.sendMail;
 
 transporter.sendMail = async (options) => {
   sentEmails.push(options);
