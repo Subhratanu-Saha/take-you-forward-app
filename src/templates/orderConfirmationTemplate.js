@@ -17,7 +17,7 @@ const generateOrderConfirmationHTML = (order = {}) => {
   const {
     firstname = "Valued Customer",
     lastname = "",
-    emailadd = "N/A",
+    
     addressline1 = "N/A",
     addressline2 = "",
     city = "N/A",
