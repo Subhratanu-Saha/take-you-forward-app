@@ -53,7 +53,7 @@ const createDlqEntry = async (customerData, subject, error, attemptCount = 1) =>
 };
 
 const sendPromotionalEmails = async (customerData, subject, options = {}) => {
-  const { shouldQueueOnFailure = true, skipDlqRecord = false, campaignId = null } = options;
+  const { shouldQueueOnFailure = true, skipDlqRecord = false, campaignId = null, emailType = 'onboarding' } = options;
   const customerId = normalizeCustomerId(customerData) || customerData?.customerid || null;
   const recipientEmail = customerData?.emailaddress || customerData?.emailadd || null;
 
@@ -110,13 +110,18 @@ const sendPromotionalEmails = async (customerData, subject, options = {}) => {
       };
     }
 
-    const promotionalHtml = generatePromotionalEmailHTML(customerData);
+    const emailHtml =
+     emailType === 'promotional'
+       ?
+    generatePromotionalEmailHTML(customerData)
+       :
+    generateOnboardingHTML(customerData);
 
     const mailOptions = {
       from: EMAIL_USER_ID,
       to: recipientEmail,
       subject,
-      html: promotionalHtml,
+      html: emailHtml,
     };
 
     const result = await transporter.sendMail(mailOptions);
@@ -208,6 +213,7 @@ const retryFailedPromotionalEvents = async () => {
           shouldQueueOnFailure: false,
           skipDlqRecord: true,
           campaignId: payload.campaignId || payload.campaignid || null,
+          emailType: 'promotional',
         });
 
         if (result.success && !result.skipped) {

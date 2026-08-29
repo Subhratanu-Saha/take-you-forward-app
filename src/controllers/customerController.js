@@ -1,7 +1,8 @@
 const customerService = require('../services/customerService');
+const welcomeEmailService = require('../services/welcomeEmailService');
 const config = require('../config');
 const { logger, ERROR_CODES } = require('../utils/db');
-const { INTERACTION_MODE, INTERACTION_TYPE, INTERACTION_VALUE, PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT, PROMOTIONAL_ONBOARDING_EMAIL_MESSAGE } = require('../constants/constant');
+const { INTERACTION_MODE, INTERACTION_TYPE, INTERACTION_VALUE } = require('../constants/constant');
 
 // GET all customers
 const getAllCustomers = async (req, res, next) => {
@@ -183,50 +184,27 @@ const createCustomer = async (req, res, next) => {
           }
         })(),
 
-        // Promotional message event trigger
+        // Welcome onboarding email trigger
         (async () => {
           const startTime = Date.now();
           try {
-            const response = await fetch(`${config.apiBaseUrl}/api/v1/promotionalmessage`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Request-Id': requestId,
-              },
-              body: JSON.stringify({
-                customerid: customer.customerid,
-                emailaddress: customer.emailadd,
-                firstname: customer.firstname,
-                lastname: customer.lastname,
-                city: customer.city,
-                title: PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT,
-                message: PROMOTIONAL_ONBOARDING_EMAIL_MESSAGE,
-
-                campaignHeadline: 'Your exclusive welcome offer',
-                promoCode: 'WELCOME20',
-                discountPercentage: 20,
-                storeUrl: 'https://yourwebsite.com/promotions',
-                expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-              }),
-            });
+            const result = await welcomeEmailService.sendWelcomeEmail(customer);
             const duration = Date.now() - startTime;
-            if (!response.ok) {
-              throw new Error(`Promotional service returned status ${response.status}`);
-            }
-            logger.info('EXTERNAL_INTEGRATION', 'Promotional event trigger succeeded', {
+            logger.info('EXTERNAL_INTEGRATION', 'Welcome email trigger completed', {
               requestId,
-              service: 'promotional',
+              service: 'welcome',
               durationMs: duration,
-              statusCode: response.status,
+              success: result?.success,
+              skipped: result?.skipped,
             });
-            return { success: true, service: 'promotional' };
+            return { success: result?.success !== false, service: 'welcome', data: result };
           } catch (error) {
-            logger.error('EXTERNAL_INTEGRATION', `Promotional event trigger failed: ${error.message}`, {
+            logger.error('EXTERNAL_INTEGRATION', `Welcome email trigger failed: ${error.message}`, {
               requestId,
-              service: 'promotional',
+              service: 'welcome',
               error,
             });
-            return { success: false, service: 'promotional', error: error.message };
+            return { success: false, service: 'welcome', error: error.message };
           }
         })(),
       ];
