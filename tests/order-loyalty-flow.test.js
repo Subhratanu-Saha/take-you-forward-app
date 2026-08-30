@@ -88,3 +88,43 @@ test('createOrder triggers loyalty update after successful order ingestion', asy
     prisma.$transaction = original.transaction;
   }
 });
+
+test('createOrder throws ValidationError when totalamount does not match calculated total', async () => {
+  const original = {
+    customerFindUnique: prisma.customer.findUnique,
+    transaction: prisma.$transaction,
+  };
+
+  try {
+    prisma.customer.findUnique = async () => ({ customerid: 'CUST-123' });
+    prisma.$transaction = async (callback) => callback(prisma);
+
+    await assert.rejects(
+      async () => {
+        await createOrder({
+          customerid: 'CUST-123',
+          channel: 'WEB',
+          payment: 'CARD',
+          totalamount: 500, // Mismatch (calculated is 100)
+          isloyalty: true,
+          items: [{
+            skuid: 'SKU-1',
+            skuitem: 'Sample item',
+            skuquantity: 1,
+            skuprice: 100,
+          }],
+        });
+      },
+      (err) => {
+        assert.equal(err.statusCode, 400);
+        assert.equal(err.errorCode, 'ORDER_VALIDATION_FAILED');
+        assert.match(err.message, /Total amount mismatch/);
+        return true;
+      }
+    );
+  } finally {
+    prisma.customer.findUnique = original.customerFindUnique;
+    prisma.$transaction = original.transaction;
+  }
+});
+

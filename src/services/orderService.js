@@ -23,6 +23,7 @@ const createOrder = async (orderData) => {
         discount = 0,
         taxamount = 0,
         isloyalty = false,
+        totalamount,
         items
     } = orderData;
 
@@ -72,6 +73,16 @@ const createOrder = async (orderData) => {
         }
 
         finalAmount = subtotal + Number(taxamount) - Number(discount);
+
+        if (totalamount !== undefined && totalamount !== null) {
+            const incomingTotal = Number(totalamount);
+            if (Math.abs(incomingTotal - finalAmount) > 0.01) {
+                throw new prisma.ValidationError(
+                    `Total amount mismatch. Provided: ${incomingTotal}, Calculated: ${finalAmount}`,
+                    prisma.ERROR_CODES.ORDER_VALIDATION_FAILED || 'ORDER_VALIDATION_FAILED'
+                );
+            }
+        }
 
         if (finalAmount < 0) {
             throw new Error("Order total cannot be negative");
