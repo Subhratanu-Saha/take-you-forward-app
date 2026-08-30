@@ -84,10 +84,10 @@
 
  -- Interactions
  CREATE TABLE IF NOT EXISTS interaction (
-	 interactionid    VARCHAR(20) PRIMARY KEY,
-	 customerid       VARCHAR(20) REFERENCES customer(customerid),
+	 interactionid    VARCHAR(40) PRIMARY KEY,
+	 customerid       VARCHAR(40) REFERENCES customer(customerid),
 	 interactionmode  VARCHAR(20) NOT NULL,
-	 interactionvalue VARCHAR(40) NOT NULL,
+	 interactionvalue VARCHAR(100) NOT NULL,
 	 interactiontype  VARCHAR(40) NOT NULL,
 	 syslastmodifieddt TIMESTAMP
  );
@@ -119,7 +119,7 @@
  CREATE TABLE IF NOT EXISTS loyalty (
 	 loyaltyid      INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 	 customerid     VARCHAR(20) REFERENCES customer(customerid),
-	 totalpoints    NUMERIC(4,0),
+	 totalpoints    NUMERIC(10,0),
 	 tier           VARCHAR(15) NOT NULL,
 	 isactive       BOOLEAN NOT NULL,
 	 lastearnedat   TIMESTAMP NOT NULL,
@@ -133,11 +133,29 @@
 	 ledgerid     INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 	 customerid   VARCHAR(20) REFERENCES customer(customerid),
 	 orderid      VARCHAR(20) NOT NULL,
+	 eventid      VARCHAR(255) UNIQUE,
 	 ledgertype   VARCHAR(20),
-	 points       NUMERIC(4,0),
+	 points       NUMERIC(10,0),
 	 balanceafter INT,
 	 expirydate   TIMESTAMP,
-	 createdat    TIMESTAMP
+	 createdat    TIMESTAMP,
+	 updatedat    TIMESTAMP
+ );
+
+ -- Promotional Dead Letter Queue (DLQ)
+ CREATE TABLE IF NOT EXISTS promotionaldlq (
+	 eventid       VARCHAR(60) PRIMARY KEY,
+	 customerid    VARCHAR(40) REFERENCES customer(customerid),
+	 emailaddress  VARCHAR(100),
+	 subject       VARCHAR(200),
+	 payload       JSONB,
+	 errormessage  TEXT,
+	 attemptcount  INT DEFAULT 0,
+	 status        VARCHAR(20) DEFAULT 'PENDING',
+	 createdat     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	 updatedat     TIMESTAMP,
+	 lastattemptat TIMESTAMP,
+	 nextretryat   TIMESTAMP
  );
  ```
 
@@ -151,6 +169,7 @@
  5. `orderlineitems`
  6. `loyalty`
  7. `loyaltyledger`
+ 8. `promotionaldlq`
 
  ---
 
