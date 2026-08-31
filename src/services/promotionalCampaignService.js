@@ -21,6 +21,14 @@ const sendWeeklyPromotionalCampaign = async ({
   startDate,
   endDate,
   subject = PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT,
+  promoCode,
+  discountPercentage,
+  campaignHeadline,
+  storeUrl,
+  logoUrl,
+  companyAddress,
+  supportUrl,
+  unsubscribeUrl,
 }) => {
   if (typeof campaignId !== 'string' || !campaignId.trim()) {
     throw new Error('Campaign ID is required');
@@ -45,10 +53,34 @@ const sendWeeklyPromotionalCampaign = async ({
   };
 
   for (const customer of customers) {
+
+    const promotionalCustomerData = {
+    ...customer,
+
+    // Existing campaign data
+    campaignId: summary.campaignId,
+
+    // Template data
+    firstname: customer.firstname,
+    lastname: customer.lastname,
+    city: customer.city,
+    emailaddress: customer.emailadd,
+    promoCode,
+    discountPercentage,
+    campaignHeadline,
+    expirationDate: end.toISOString(),
+    storeUrl,
+    logoUrl,
+    companyAddress,
+    supportUrl,
+    unsubscribeUrl,
+  };
     const result = await promotionalMessageService.sendPromotionalEmails(
-      { ...customer, campaignId: summary.campaignId },
+      promotionalCustomerData,
       subject,
-      { campaignId: summary.campaignId },
+      { campaignId: summary.campaignId,
+        emailType: 'promotional',
+       },
     );
 
     if (result?.success && result.skipped) {

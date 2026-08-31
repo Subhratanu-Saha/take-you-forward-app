@@ -11,7 +11,13 @@ const createPromotionalMessage = async (req, res) => {
     const data = req.body;
 
     const result =
-      await promotionalMessageService.sendPromotionalEmails(data, PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT);
+      await promotionalMessageService.sendPromotionalEmails(
+        data,
+         PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT,
+        {
+          emailType: 'promotional',
+          campaignId: data.campaignId || null,
+        });
 
     if (!result || !result.success) {
       const statusCode = result?.statusCode || 500;

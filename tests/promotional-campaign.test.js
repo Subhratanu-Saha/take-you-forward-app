@@ -6,6 +6,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const customerModel = require('../src/models/customer');
+const customerController = require('../src/controllers/customerController');
+const customerService = require('../src/services/customerService');
+const welcomeEmailService = require('../src/services/welcomeEmailService');
 const promotionalMessageService = require('../src/services/promotionalMessageService');
 const { sendWeeklyPromotionalCampaign } = require('../src/services/promotionalCampaignService');
 
@@ -89,6 +92,73 @@ test('weekly campaign counts failed dispatches for DLQ processing', async () => 
   } finally {
     customerModel.getEligiblePromotionalCustomers = originalFind;
     promotionalMessageService.sendPromotionalEmails = originalSend;
+  }
+});
+
+test('customer creation triggers welcome flow without promotional trigger', async () => {
+  const originalCreateCustomer = customerService.createCustomer;
+  const originalWelcomeEmail = welcomeEmailService.sendWelcomeEmail;
+  const originalFetch = global.fetch;
+  const calls = [];
+
+  try {
+    customerService.createCustomer = async () => ({
+      customerid: 'CUST-NEW-1',
+      emailadd: 'newcustomer@example.com',
+      firstname: 'New',
+      lastname: 'Customer',
+      city: 'Bengaluru',
+    });
+
+    welcomeEmailService.sendWelcomeEmail = async (customer) => {
+      calls.push({ type: 'welcome', customer });
+      return { success: true, skipped: false };
+    };
+
+    global.fetch = async (url, options) => {
+      const body = options?.body ? JSON.parse(options.body) : {};
+      calls.push({ type: 'fetch', url, body });
+      return { ok: true, status: 200 };
+    };
+
+    const req = {
+      requestId: 'REQ-CUSTOMER-ONBOARDING',
+      body: {
+        firstname: 'New',
+        lastname: 'Customer',
+        emailadd: 'newcustomer@example.com',
+        city: 'Bengaluru',
+      },
+    };
+    const res = {
+      statusCode: null,
+      payload: null,
+      status(code) {
+        this.statusCode = code;
+        return this;
+      },
+      json(payload) {
+        this.payload = payload;
+        return this;
+      },
+    };
+
+    await customerController.createCustomer(req, res, () => {});
+
+    assert.equal(
+      calls.some((entry) => entry.type === 'fetch' && String(entry.url).includes('/api/v1/promotionalmessage')),
+      false,
+      'Customer creation should not trigger the promotional email endpoint'
+    );
+    assert.equal(
+      calls.some((entry) => entry.type === 'welcome'),
+      true,
+      'Customer creation should trigger the welcome email flow'
+    );
+  } finally {
+    customerService.createCustomer = originalCreateCustomer;
+    welcomeEmailService.sendWelcomeEmail = originalWelcomeEmail;
+    global.fetch = originalFetch;
   }
 });
 

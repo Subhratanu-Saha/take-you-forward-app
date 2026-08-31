@@ -3,6 +3,7 @@ const SubscriberModel = require('../models/subscriber');
 const interactionModel = require('../models/interaction');
 const prisma = require('../utils/db');
 const { generateOnboardingHTML } = require('../templates/onboardingTemplate');
+const {generatePromotionalEmailHTML} = require('../templates/promotionalEmailTemplate');
 const generateRandomAlphaNumeric = require('../utils/idGenerator');
 
 
@@ -52,7 +53,7 @@ const createDlqEntry = async (customerData, subject, error, attemptCount = 1) =>
 };
 
 const sendPromotionalEmails = async (customerData, subject, options = {}) => {
-  const { shouldQueueOnFailure = true, skipDlqRecord = false, campaignId = null } = options;
+  const { shouldQueueOnFailure = true, skipDlqRecord = false, campaignId = null, emailType = 'onboarding' } = options;
   const customerId = normalizeCustomerId(customerData) || customerData?.customerid || null;
   const recipientEmail = customerData?.emailaddress || customerData?.emailadd || null;
 
@@ -109,13 +110,18 @@ const sendPromotionalEmails = async (customerData, subject, options = {}) => {
       };
     }
 
-    const promotionalHtml = generateOnboardingHTML(customerData);
+    const emailHtml =
+     emailType === 'promotional'
+       ?
+    generatePromotionalEmailHTML(customerData)
+       :
+    generateOnboardingHTML(customerData);
 
     const mailOptions = {
       from: EMAIL_USER_ID,
       to: recipientEmail,
       subject,
-      html: promotionalHtml,
+      html: emailHtml,
     };
 
     const result = await transporter.sendMail(mailOptions);
@@ -207,20 +213,39 @@ const retryFailedPromotionalEvents = async () => {
           shouldQueueOnFailure: false,
           skipDlqRecord: true,
           campaignId: payload.campaignId || payload.campaignid || null,
+          emailType: 'promotional',
         });
 
-        if (result.success) {
+        if (result.success && !result.skipped) {
+         await prisma.promotionaldlq.update({
+         where: { eventid: event.eventid },
+        data: {
+      status: 'SENT',
+      updatedat: new Date(),
+      lastattemptat: new Date(),
+    },
+  });
+  console.info(`[PROMOTIONAL] DLQ event ${event.eventid} retried successfully`);
+          results.push({ eventId: event.eventid, status: 'retried' });
+
+        } else if (result.skipped) {
           await prisma.promotionaldlq.update({
             where: { eventid: event.eventid },
             data: {
-              status: 'SENT',
+              status: 'SKIPPED',
               updatedat: new Date(),
               lastattemptat: new Date(),
+              nextretryat: null,
+
             },
           });
 
-          console.info(`[PROMOTIONAL] DLQ event ${event.eventid} retried successfully`);
-          results.push({ eventId: event.eventid, status: 'retried' });
+  results.push({
+    eventId: event.eventid,
+    status: 'skipped',
+    message: result.message,
+  });
+
         } else {
           const nextAttemptCount = event.attemptcount + 1;
           const shouldMarkFailed = nextAttemptCount >= MAX_RETRY_ATTEMPTS;
@@ -247,24 +272,26 @@ const retryFailedPromotionalEvents = async () => {
       } catch (retryError) {
         console.error(`[PROMOTIONAL_DLQ] Retry failed for ${event.eventid}: ${retryError.message}`);
 
+        const nextAttemptCount = event.attemptcount + 1;
+        const permanentlyFailed = nextAttemptCount >= MAX_RETRY_ATTEMPTS;
+
         await prisma.promotionaldlq.update({
           where: { eventid: event.eventid },
           data: {
-            attemptcount: event.attemptcount + 1,
+            attemptcount: nextAttemptCount,
             errormessage: retryError.message,
-            status: event.attemptcount + 1 >= MAX_RETRY_ATTEMPTS ? 'FAILED' : 'PENDING',
+            status: permanentlyFailed ? 'FAILED' : 'PENDING',
             updatedat: new Date(),
             lastattemptat: new Date(),
             nextretryat:
-              event.attemptcount + 1 >= MAX_RETRY_ATTEMPTS
+              permanentlyFailed
                 ? null
                 : new Date(Date.now() + RETRY_DELAY_MS),
           },
         });
-
-        results.push({
+          results.push({
           eventId: event.eventid,
-          status: 'failed',
+          status: permanentlyFailed ? 'failed' : 'queued',
           message: retryError.message,
         });
       }
