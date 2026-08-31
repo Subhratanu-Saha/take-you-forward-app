@@ -1,5 +1,4 @@
 const prisma = require('../utils/db');
-const loyaltyModel = require('../models/loyalty');
 const loyaltyService = require('./loyaltyService');
 const { emitEvent } = require('../events/eventEmitter');
 
@@ -110,11 +109,6 @@ const createOrder = async (orderData) => {
             });
         }
 
-        if (isloyalty) {
-            console.log(`[ORDER_SERVICE] Triggering loyalty calculation for customerId=${customerid} with orderAmount=${Number(finalAmount)}`);
-            await loyaltyModel.updateLoyaltyTier(customerid, Number(finalAmount));
-        }
-
         // Return created order
         return await tx.orderheader.findUnique({
             where: {
@@ -126,25 +120,6 @@ const createOrder = async (orderData) => {
             }
         });
 
-        if (isloyalty) {
-            const processedPurchase = await loyaltyService.processPurchaseEvent({
-                customerid,
-                orderid,
-                totalamount: finalAmount,
-                eventId,
-                transactionClient: tx,
-            });
-
-            if (processedPurchase.duplicate) {
-                console.warn('[ORDER_SERVICE] Skipped loyalty update for duplicate purchase event', {
-                    eventId,
-                    customerid,
-                    orderid,
-                });
-            }
-        }
-
-        return createdOrder;
     });
 
     // Emit customer.purchase event after order successfully created
