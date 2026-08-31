@@ -244,8 +244,8 @@ const validateCreateOrder = (req, res, next) => {
     errors.push(`channel must be at most ${MAX_CHANNEL_LENGTH} characters`);
   }
 
-  if (totalamount === undefined || totalamount < 0) {
-    errors.push('totalamount is required and must be a non-negative number');
+  if (totalamount !== undefined && totalamount < 0) {
+    errors.push('totalamount must be a non-negative number when provided');
   }
 
   if (taxamount !== undefined && taxamount < 0) {
@@ -271,7 +271,7 @@ const validateCreateOrder = (req, res, next) => {
       customerid,
       payment,
       channel: channel || null,
-      totalamount,
+      totalamount: totalamount !== undefined ? totalamount : null,
       taxamount: taxamount !== undefined ? taxamount : null,
       discount: discount !== undefined ? discount : null,
       isloyalty: isloyalty === undefined ? false : isloyalty,
