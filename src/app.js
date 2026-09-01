@@ -6,18 +6,12 @@ const { logger, ERROR_CODES } = require('./utils/db');
 const { API_SUCCESSFUL_HEALTH_MESSAGE } = require('./constants/constant');
 const { subscribeLoyaltyPurchaseEvents } = require('./events/loyaltyEventConsumer');
 const { getEventEmitter } = require('./events/eventEmitter');
+const contextMiddleware = require('./middleware/contextMiddleware');
 
 const app = express();
 
-// Request Correlation ID Middleware (Inline)
-app.use((req, res, next) => {
-  const incomingRequestId = req.headers['x-request-id'] || req.headers['x-correlation-id'];
-  const requestId = incomingRequestId || crypto.randomUUID();
-
-  req.requestId = requestId;
-  res.setHeader('X-Request-Id', requestId);
-  next();
-});
+// Request Context & Correlation ID Propagation Middleware
+app.use(contextMiddleware);
 
 // Request Tracing & Performance Logging Middleware (Inline)
 app.use((req, res, next) => {
