@@ -143,21 +143,20 @@ const createOrder = async (req, res, next) => {
       statusCode: 201,
     });
 
-    // Dispatch order confirmation email (gracefully caught internally)
-    try {
-      const orderEmailService = require('../services/orderEmailService');
-      await orderEmailService.sendOrderConfirmationEmail(order);
-    } catch (emailError) {
-      logger.error('ORDER_CONTROLLER', `Unexpected error during confirmation email dispatch: ${emailError.message}`, {
-        requestId,
-        orderId: order?.orderid,
-      });
-    }
-
     res.status(201).json({
       success: true,
       message: 'Order created successfully',
       data: order,
+    });
+
+    // Dispatch order confirmation email asynchronously in the background (non-blocking)
+    const orderEmailService = require('../services/orderEmailService');
+    orderEmailService.sendOrderConfirmationEmail(order).catch((emailError) => {
+      logger.error('ORDER_CONTROLLER', `Background email dispatch failed for orderId: ${order?.orderid} - ${emailError.message}`, {
+        requestId,
+        orderId: order?.orderid,
+        operation: 'sendOrderConfirmationEmail',
+      });
     });
   } catch (error) {
     const statusCode = error.statusCode || 400;
