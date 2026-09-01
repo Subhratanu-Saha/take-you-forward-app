@@ -115,10 +115,10 @@ const updateSubscriber = async (subscriberid, subscriberData) => {
       if (auditEntry) {
         console.info(`[SUBSCRIBER_AUDIT] Consent audit created for customer=${updatedSubscriber.customerid}, fields=${consentChanges.join(",")}`);
       
-    } else {
+      } else {
         console.warn(`[SUBSCRIBER_AUDIT] Failed to create consrent audit for customer=${updatedSubscriber.customerid}`);
-    }
       }
+  }
 
     console.log(`Successfully updated subscriber: ${subscriberid}`);
     return updatedSubscriber;
