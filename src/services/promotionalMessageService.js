@@ -5,6 +5,7 @@ const prisma = require('../utils/db');
 const { generateOnboardingHTML } = require('../templates/onboardingTemplate');
 const {generatePromotionalEmailHTML} = require('../templates/promotionalEmailTemplate');
 const generateRandomAlphaNumeric = require('../utils/idGenerator');
+const auditService = require('./auditService');
 
 
 
@@ -209,6 +210,24 @@ const retryFailedPromotionalEvents = async () => {
         const payload = typeof event.payload === 'object' && event.payload !== null ? event.payload : {};
         console.info(`[PROMOTIONAL] Retrying DLQ event ${event.eventid} for customer=${payload.customerid || payload.customerId || 'unknown'}`);
 
+         // ✅ AUDIT DLQ RETRY ATTEMPT (BEFORE)
+        await auditService.createAuditEntry({
+          entityType: "DLQ",
+          entityId: event.eventid,
+          action: "DLQ_RETRY_ATTEMPT",
+          customerId: event.customerid,
+          oldValue: {
+            status: event.status,
+            attemptcount: event.attemptcount,
+          },
+          metadata: {
+            retryAttempt: event.attemptcount + 1,
+            subject: event.subject,
+            errorMessage: event.errormessage,
+          },
+        });
+
+
         const result = await sendPromotionalEmails(payload, event.subject, {
           shouldQueueOnFailure: false,
           skipDlqRecord: true,
@@ -225,6 +244,22 @@ const retryFailedPromotionalEvents = async () => {
       lastattemptat: new Date(),
     },
   });
+ // ✅ AUDIT DLQ SUCCESS
+          await auditService.createAuditEntry({
+            entityType: "DLQ",
+            entityId: event.eventid,
+            action: "DLQ_RETRY_SUCCESS",
+            customerId: event.customerid,
+            newValue: {
+              status: 'SENT',
+              attemptcount: event.attemptcount + 1,
+            },
+            metadata: {
+              successfulAttempt: event.attemptcount + 1,
+              subject: event.subject,
+            },
+          });
+
   console.info(`[PROMOTIONAL] DLQ event ${event.eventid} retried successfully`);
           results.push({ eventId: event.eventid, status: 'retried' });
 
@@ -237,6 +272,20 @@ const retryFailedPromotionalEvents = async () => {
               lastattemptat: new Date(),
               nextretryat: null,
 
+            },
+          });
+           // ✅ AUDIT DLQ SKIP
+          await auditService.createAuditEntry({
+            entityType: "DLQ",
+            entityId: event.eventid,
+            action: "DLQ_RETRY_SKIPPED",
+            customerId: event.customerid,
+            newValue: {
+              status: 'SKIPPED',
+            },
+            metadata: {
+              skipReason: result.message,
+              subject: event.subject,
             },
           });
 
@@ -259,6 +308,24 @@ const retryFailedPromotionalEvents = async () => {
               updatedat: new Date(),
               lastattemptat: new Date(),
               nextretryat: shouldMarkFailed ? null : new Date(Date.now() + RETRY_DELAY_MS),
+            },
+          });
+
+            // ✅ AUDIT DLQ FAILURE
+          await auditService.createAuditEntry({
+            entityType: "DLQ",
+            entityId: event.eventid,
+            action: shouldMarkFailed ? "DLQ_RETRY_FAILED_FINAL" : "DLQ_RETRY_FAILED_TEMP",
+            customerId: event.customerid,
+            newValue: {
+              status: shouldMarkFailed ? 'FAILED' : 'PENDING',
+              attemptcount: nextAttemptCount,
+            },
+            metadata: {
+              failedAttempt: nextAttemptCount,
+              maxRetries: MAX_RETRY_ATTEMPTS,
+              errorMessage: result.message,
+              isFinal: shouldMarkFailed,
             },
           });
 
@@ -289,6 +356,19 @@ const retryFailedPromotionalEvents = async () => {
                 : new Date(Date.now() + RETRY_DELAY_MS),
           },
         });
+
+         // ✅ AUDIT DLQ EXCEPTION
+        await auditService.createAuditEntry({
+          entityType: "DLQ",
+          entityId: event.eventid,
+          action: "DLQ_RETRY_ERROR",
+          customerId: event.customerid,
+          metadata: {
+            exceptionMessage: retryError.message,
+            stackTrace: retryError.stack,
+          },
+        });
+      
           results.push({
           eventId: event.eventid,
           status: permanentlyFailed ? 'failed' : 'queued',

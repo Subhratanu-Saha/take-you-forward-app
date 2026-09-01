@@ -2,6 +2,7 @@ const loyaltyModel = require('../models/loyalty');
 const customerModel = require('../models/customer');
 const { calculateTier } = require('../utils/loyalty');
 const prisma = require('../utils/db');
+const auditService = require('./auditService');
 
 const generateLoyaltyEventId = ({ customerid, orderid }) => {
   const safeCustomerId = customerid || 'unknown';
@@ -52,6 +53,7 @@ const processPurchaseEvent = async ({ customerid, orderid, totalamount, eventId,
   });
 
   const currentPoints = Number(existingLoyalty?.totalpoints ?? 0);
+  const previousTier = existingLoyalty?.tier || null;
   const nextTotalPoints = currentPoints + earnedPoints;
   const nextTier = calculateTier(nextTotalPoints);
 
@@ -93,6 +95,58 @@ const processPurchaseEvent = async ({ customerid, orderid, totalamount, eventId,
     },
   });
 
+   if (nextTier !== previousTier) {
+    await auditService.createAuditEntry({
+      entityType: "LOYALTY",
+      entityId: updatedOrCreatedLoyalty.loyaltyid,
+      action: "TIER_UPGRADED",
+      customerId: normalizedCustomerId,
+      oldValue: {
+        tier: previousTier,
+        totalpoints: currentPoints,
+      },
+      newValue: {
+        tier: nextTier,
+        totalpoints: nextTotalPoints,
+      },
+      metadata: {
+        orderId: normalizedOrderId,
+        pointsEarned: earnedPoints,
+        transitionFrom: previousTier,
+        transitionTo: nextTier,
+        eventId: normalizedEventId,
+      },
+    });
+  
+
+  console.info(`[loyalty_Audit] Tier changed from ${previousTier} to ${nextTier} for customer=${normalizedCustomerId}`);
+
+}
+
+
+  // ✅ Step 4: AUDIT POINTS EARNED (now ledgerEntry exists)
+  await auditService.createAuditEntry({
+    entityType: "LOYALTY",
+    entityId: ledgerEntry.ledgerid,
+    action: "POINTS_EARNED",
+    customerId: normalizedCustomerId,
+    oldValue: {
+ totalpoints: currentPoints,
+    },
+    newValue: {
+      totalpoints: nextTotalPoints,
+      pointsEarned: earnedPoints,
+    },
+    metadata: {
+      orderId: normalizedOrderId,
+      ledgerId: ledgerEntry.ledgerid,
+      eventId: normalizedEventId,
+    },
+  });
+
+  console.info(`[loyalty_Audit] Points earned audit created for customer=${normalizedCustomerId}`);
+
+  // ✅ Step 5: Record processed event
   await loyaltyModel.recordProcessedLoyaltyEvent(normalizedEventId, transactionClient);
 
   console.info('[LOYALTY_SERVICE] Purchase event processed successfully', {
@@ -103,8 +157,10 @@ const processPurchaseEvent = async ({ customerid, orderid, totalamount, eventId,
     totalpoints: nextTotalPoints,
     loyaltyId: updatedOrCreatedLoyalty.loyaltyid,
     ledgerId: ledgerEntry.ledgerid,
-  });
+  }
+);
 
+  
   return {
     duplicate: false,
     eventId: normalizedEventId,
@@ -115,7 +171,9 @@ const processPurchaseEvent = async ({ customerid, orderid, totalamount, eventId,
     loyalty: updatedOrCreatedLoyalty,
     ledger: ledgerEntry,
   };
+
 };
+
 
 // UPDATE loyalty tier
 const updateLoyaltyTier = async (customerid, totalpoints) => {
