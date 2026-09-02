@@ -65,12 +65,12 @@ test('Order Confirmation Email Template matches requirements', (t) => {
   assert.ok(html.includes('USB-C Cable'), 'HTML should contain item 2 name');
   
   // Assert arithmetic formatting with 2 decimal places & currency
-  assert.ok(html.includes('$99.99'), 'Item 1 unit price formatted correctly');
-  assert.ok(html.includes('$11.00'), 'Item 2 line total formatted correctly');
-  assert.ok(html.includes('$110.99'), 'Subtotal calculated and formatted correctly');
-  assert.ok(html.includes('$15.00'), 'Tax formatted correctly');
-  assert.ok(html.includes('$5.50'), 'Discount formatted correctly');
-  assert.ok(html.includes('$120.50'), 'Total formatted correctly');
+  assert.ok(html.includes('₹99.99'), 'Item 1 unit price formatted correctly');
+  assert.ok(html.includes('₹11.00'), 'Item 2 line total formatted correctly');
+  assert.ok(html.includes('₹110.99'), 'Subtotal calculated and formatted correctly');
+  assert.ok(html.includes('₹15.00'), 'Tax formatted correctly');
+  assert.ok(html.includes('₹5.50'), 'Discount formatted correctly');
+  assert.ok(html.includes('₹120.50'), 'Total formatted correctly');
   assert.ok(html.includes('CARD'), 'Payment method matches');
 });
 
@@ -98,9 +98,9 @@ test('Order Confirmation Email Template handles missing/fallback values safely',
 
   assert.ok(html.includes('Valued Customer'), 'HTML should fallback customer name to Valued Customer');
   assert.ok(html.includes('Unknown Item'), 'HTML should fallback item name to Unknown Item');
-  assert.ok(html.includes('$100.00'), 'Total formatted correctly');
-  assert.ok(html.includes('$0.00'), 'Tax defaults to 0.00');
-  assert.ok(html.includes('$0.00'), 'Discount defaults to 0.00');
+  assert.ok(html.includes('₹100.00'), 'Total formatted correctly');
+  assert.ok(html.includes('₹0.00'), 'Tax defaults to 0.00');
+  assert.ok(html.includes('₹0.00'), 'Discount defaults to 0.00');
   assert.ok(!html.includes('undefined'), 'HTML should not contain undefined strings');
 });
 
