@@ -67,7 +67,7 @@ const options = {
                         },
                         gender: {
                             type: 'string',
-                            example: 'Male',
+                            example: 'M',
                         },
                         dob: {
                             type: 'string',
