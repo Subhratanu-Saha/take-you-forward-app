@@ -2,8 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { getRequestContext, runWithContext, getRequestId, getActor, getIpAddress } = require('../src/context/requestContext');
 const contextMiddleware = require('../src/middleware/contextMiddleware');
-const { calculateDiff, recordAuditLog, getAuditLogsByEntity, getAuditLogsByRequestId } = require('../src/services/auditService');
-const { attachAuditExtension, TRACKED_ENTITIES } = require('../src/db/prisma');
+const { calculateDiff, getAuditLogsByEntity } = require('../src/services/auditService');
+const { attachAuditExtension } = require('../src/db/prisma');
 
 test('Audit Service - calculateDiff correctly detects field changes and ignores timestamps', () => {
   const oldCustomer = {
