@@ -1,13 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
 const crypto = require('crypto');
-
-// Initialize Prisma client
-const prisma = new PrismaClient({
-  log: [
-    { emit: 'event', level: 'error' },
-    { emit: 'event', level: 'warn' },
-  ],
-});
+const { prisma, rawPrisma } = require('../db/prisma');
 
 // Sensitive field names to automatically redact from log output
 const SENSITIVE_FIELDS = [
@@ -191,13 +183,15 @@ class DatabaseError extends AppError {
 }
 
 // Connect Prisma logs to central logger
-prisma.$on('error', (e) => {
-  logger.error('PRISMA_DATABASE', e.message, { target: e.target });
-});
+if (typeof rawPrisma?.$on === 'function') {
+  rawPrisma.$on('error', (e) => {
+    logger.error('PRISMA_DATABASE', e.message, { target: e.target });
+  });
 
-prisma.$on('warn', (e) => {
-  logger.warn('PRISMA_DATABASE', e.message);
-});
+  rawPrisma.$on('warn', (e) => {
+    logger.warn('PRISMA_DATABASE', e.message);
+  });
+}
 
 // Prisma error translator
 const handlePrismaError = (error, context = {}) => {

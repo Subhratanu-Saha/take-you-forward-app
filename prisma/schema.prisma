@@ -115,16 +115,19 @@ model promotionaldlq {
 }
 
 model auditlog {
-  auditlogid      Int       @id @default(autoincrement())
-  entitytype      String    @db.VarChar(50)  // "LOYALTY", "SUBSCRIBER", "DLQ"
-  entityid        String    @db.VarChar(100)
-  action          String    @db.VarChar(50)  // "POINTS_EARNED", "TIER_UPGRADED", "CONSENT_CHANGED", "DLQ_RETRY"
-  customerid      String?   @db.VarChar(40)
-  oldervalue      Json?
-  newvalue        Json?
-  metadata        Json?
-  createdby       String    @db.VarChar(100) @default("SYSTEM")
-  createdby_type  String    @db.VarChar(50)  @default("AUTOMATED") // "AUTOMATED", "MANUAL_OVERRIDE"
-  createdat       DateTime  @default(now()) @db.Timestamp(6)
-  updatedat       DateTime? @db.Timestamp(6)
+  auditid       String    @id @default(uuid()) @db.VarChar(40)
+  entityname    String    @db.VarChar(50)
+  entityid      String    @db.VarChar(100)
+  action        String    @db.VarChar(20)
+  changedfields Json?
+  oldvalues     Json?
+  newvalues     Json?
+  requestid     String?   @db.VarChar(100)
+  actor         String?   @db.VarChar(100)
+  ipaddress     String?   @db.VarChar(50)
+  createdat     DateTime  @default(now()) @db.Timestamp(6)
+
+  @@index([entityname, entityid])
+  @@index([requestid])
 }
+

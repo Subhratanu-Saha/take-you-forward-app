@@ -1,114 +1,218 @@
-const prisma = require('../utils/db');
+const { getRequestContext } = require('../context/requestContext');
+
+// Default system timestamp fields to ignore during mutation diffing
+const DEFAULT_IGNORED_FIELDS = new Set([
+  'updatedat',
+  'updatedat',
+  'updated_at',
+  'syslastmodifieddt',
+  'sysmodifieddt',
+  'createdat',
+  'createdat',
+  'created_at',
+  'sysenrollmentdt',
+  'lastattemptat',
+  'nextretryat',
+]);
 
 /**
- * Log audit entry for business compliance
- * @param {Object} params - Audit parameters
- * @param {String} params.entityType - "LOYALTY", "SUBSCRIBER", "DLQ"
- * @param {String} params.entityId - Unique entity identifier (loyaltyid, subscriberid, eventid)
- * @param {String} params.action - Action type (e.g., "TIER_UPGRADED", "CONSENT_CHANGED")
- * @param {String} params.customerId - Associated customer ID for audit trail
- * @param {Object} params.oldValue - Previous state
- * @param {Object} params.newValue - New state
- * @param {Object} params.metadata - Additional context (orderId, campaignId, etc.)
- * @param {String} params.createdBy - User/system identifier (default: "SYSTEM")
- * @param {String} params.createdByType - "AUTOMATED" or "MANUAL_OVERRIDE"
+ * Compare two values for functional equality handling Dates, Decimals, Objects, and Primitives
  */
-const createAuditEntry = async ({
-  entityType,
-  entityId,
-  action,
-  customerId,
-  oldValue,
-  newValue,
-  metadata = {},
-  createdBy = "SYSTEM",
-  createdByType = "AUTOMATED",
-}) => {
-  try {
-    if (!entityType || !entityId || !action) {
-      throw new Error("entityType, entityId, and action are required");
+const areValuesEqual = (val1, val2) => {
+  if (val1 === val2) return true;
+
+  if (val1 === null || val1 === undefined || val2 === null || val2 === undefined) {
+    return val1 === val2;
+  }
+
+  // Handle Date comparison
+  if (val1 instanceof Date && val2 instanceof Date) {
+    return val1.getTime() === val2.getTime();
+  }
+  if (val1 instanceof Date || val2 instanceof Date) {
+    const d1 = val1 instanceof Date ? val1 : new Date(val1);
+    const d2 = val2 instanceof Date ? val2 : new Date(val2);
+    if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
+      return d1.getTime() === d2.getTime();
+    }
+  }
+
+  // Handle Prisma Decimal.js comparison
+  if (typeof val1?.equals === 'function') {
+    return val1.equals(val2);
+  }
+  if (typeof val2?.equals === 'function') {
+    return val2.equals(val1);
+  }
+  if (typeof val1?.toString === 'function' && typeof val2?.toString === 'function' && (val1.constructor.name === 'Decimal' || val2.constructor.name === 'Decimal')) {
+    return val1.toString() === val2.toString();
+  }
+
+  // Handle Object & Array comparison
+  if (typeof val1 === 'object' && typeof val2 === 'object') {
+    try {
+      return JSON.stringify(val1) === JSON.stringify(val2);
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
+};
+
+/**
+ * Normalizes values for JSON serialization in audit logs
+ */
+const serializeValue = (val) => {
+  if (val === null || val === undefined) return val;
+  if (val instanceof Date) return val.toISOString();
+  if (typeof val?.toString === 'function' && val.constructor.name === 'Decimal') {
+    return val.toString();
+  }
+  return val;
+};
+
+/**
+ * Calculate field diffs between previous state and new state
+ *
+ * @param {Object} oldState - Object state before mutation
+ * @param {Object} newState - Object state after mutation
+ * @param {Object} options - Configuration options (e.g. ignoredFields)
+ * @returns {{ changedfields: string[], oldvalues: Object, newvalues: Object }}
+ */
+const calculateDiff = (oldState = {}, newState = {}, options = {}) => {
+  const ignoredFields = options.ignoredFields
+    ? new Set([...DEFAULT_IGNORED_FIELDS, ...options.ignoredFields.map((f) => f.toLowerCase())])
+    : DEFAULT_IGNORED_FIELDS;
+
+  const oldObj = oldState || {};
+  const newObj = newState || {};
+
+  const allKeys = new Set([...Object.keys(oldObj), ...Object.keys(newObj)]);
+  const changedfields = [];
+  const oldvalues = {};
+  const newvalues = {};
+
+  for (const key of allKeys) {
+    if (ignoredFields.has(key.toLowerCase())) {
+      continue;
     }
 
-    const auditEntry = await prisma.auditlog.create({
-      data: {
-        entitytype: entityType,
-        entityid: entityId.toString(),
-        action,
-        customerid: customerId,
-        oldervalue: oldValue || null,
-        newvalue: newValue || null,
-        metadata: Object.keys(metadata).length > 0 ? metadata : null,
-        createdby: createdBy,
-        createdby_type: createdByType,
-        createdat: new Date(),
-      },
-    });
+    const oldVal = oldObj[key];
+    const newVal = newObj[key];
 
-    console.info("[AUDIT_SERVICE] Audit entry created", {
-      auditlogid: auditEntry.auditlogid,
-      entitytype: auditEntry.entitytype,
-      action: auditEntry.action,
-      customerId: auditEntry.customerid,
-    });
+    if (!areValuesEqual(oldVal, newVal)) {
+      changedfields.push(key);
+      if (oldVal !== undefined) {
+        oldvalues[key] = serializeValue(oldVal);
+      }
+      if (newVal !== undefined) {
+        newvalues[key] = serializeValue(newVal);
+      }
+    }
+  }
 
-    return auditEntry;
+  return {
+    changedfields,
+    oldvalues,
+    newvalues,
+  };
+};
+
+/**
+ * Record an audit log entry in the database
+ *
+ * @param {Object} prismaClient - Prisma client instance
+ * @param {Object} auditData - Audit details
+ * @returns {Promise<Object|null>}
+ */
+const recordAuditLog = async (prismaClient, auditData = {}) => {
+  try {
+    if (!prismaClient) return null;
+
+    const ctx = getRequestContext();
+    const {
+      entityname,
+      entityid,
+      action = 'UPDATE',
+      changedfields = [],
+      oldvalues = null,
+      newvalues = null,
+      requestid = ctx.requestId || null,
+      actor = ctx.actor || 'ANONYMOUS',
+      ipaddress = ctx.ipAddress || null,
+    } = auditData;
+
+    if (!entityname || !entityid) {
+      return null;
+    }
+
+    const logData = {
+      entityname: String(entityname).toUpperCase(),
+      entityid: String(entityid),
+      action: String(action).toUpperCase(),
+      changedfields: changedfields,
+      oldvalues: oldvalues,
+      newvalues: newvalues,
+      requestid: requestid ? String(requestid) : null,
+      actor: actor ? String(actor) : 'ANONYMOUS',
+      ipaddress: ipaddress ? String(ipaddress) : null,
+      createdat: new Date(),
+    };
+
+    if (prismaClient.auditlog?.create) {
+      return await prismaClient.auditlog.create({ data: logData });
+    }
+
+    return logData;
   } catch (error) {
-    console.error("[AUDIT_SERVICE] Failed to create audit entry", {
-      entityType,
-      entityId,
-      action,
-      error: error.message,
-    });
-    // Don't throw - audit failure should not break business logic
+    console.error('[AUDIT_SERVICE] Error writing audit log:', error.message);
     return null;
   }
 };
 
 /**
- * Get audit trail for a specific entity
+ * Fetch audit logs by entity name and entity ID
  */
-const getAuditTrailByEntityId = async (entityId) => {
+const getAuditLogsByEntity = async (prismaClient, entityname, entityid) => {
   try {
-    return await prisma.auditlog.findMany({
-      where: { entityid: entityId.toString() },
-      orderBy: { createdat: "desc" },
+    if (!prismaClient?.auditlog) return [];
+    return await prismaClient.auditlog.findMany({
+      where: {
+        entityname: String(entityname).toUpperCase(),
+        entityid: String(entityid),
+      },
+      orderBy: { createdat: 'desc' },
     });
   } catch (error) {
-    console.error("[AUDIT_SERVICE] Failed to fetch audit trail", error);
-    throw error;
+    console.error('[AUDIT_SERVICE] Error fetching audit logs by entity:', error.message);
+    return [];
   }
 };
 
 /**
- * Get compliance audit trail for a customer (all entity types)
+ * Fetch audit logs by Request ID
  */
-const getCustomerAuditTrail = async (customerId, options = {}) => {
-  const { from, to, entityType } = options;
+const getAuditLogsByRequestId = async (prismaClient, requestid) => {
   try {
-    const whereClause = { customerid: customerId };
-    
-    if (entityType) {
-      whereClause.entitytype = entityType;
-    }
-    
-    if (from || to) {
-      whereClause.createdat = {};
-      if (from) whereClause.createdat.gte = new Date(from);
-      if (to) whereClause.createdat.lte = new Date(to);
-    }
-
-    return await prisma.auditlog.findMany({
-      where: whereClause,
-      orderBy: { createdat: "desc" },
+    if (!prismaClient?.auditlog) return [];
+    return await prismaClient.auditlog.findMany({
+      where: {
+        requestid: String(requestid),
+      },
+      orderBy: { createdat: 'desc' },
     });
   } catch (error) {
-    console.error("[AUDIT_SERVICE] Failed to fetch customer audit trail", error);
-    throw error;
+    console.error('[AUDIT_SERVICE] Error fetching audit logs by request ID:', error.message);
+    return [];
   }
 };
 
 module.exports = {
-  createAuditEntry,
-  getAuditTrailByEntityId,
-  getCustomerAuditTrail,
+  calculateDiff,
+  recordAuditLog,
+  getAuditLogsByEntity,
+  getAuditLogsByRequestId,
+  DEFAULT_IGNORED_FIELDS,
+  areValuesEqual,
 };
