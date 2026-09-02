@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-
+const { prisma, rawPrisma } = require('../db/prisma');
 
 // Sensitive field names to automatically redact from log output
 const SENSITIVE_FIELDS = [
