@@ -1,4 +1,5 @@
 const subscriberModel = require('../models/subscriber');
+const auditService = require('./auditService');
 
 // ==================== GET ALL SUBSCRIBERS ====================
 const getAllSubscribers = async () => {
@@ -27,8 +28,6 @@ const getSubscriberById = async (subscriberid) => {
     console.error('Error fetching subscriber:', error.message);
     throw error;
   }
-
-  return subscriber;
 };
 
 // ==================== GET SUBSCRIBER BY CUSTOMER ID ====================
@@ -49,13 +48,6 @@ const getSubscriberByCustomerId = async (customerid) => {
     throw error;
   }
 };
-//   const subscriber = await subscriberModel.getSubscriberByCustomerId(customerid);
-//   if (!subscriber) {
-//     throw new Error('Subscriber not found for this customer');
-//   }
-
-//   return subscriber;
-// };
 
 // ==================== CREATE SUBSCRIBER ====================
 const createSubscriber = async (subscriberData) => {
@@ -75,19 +67,66 @@ try {
 // ==================== UPDATE SUBSCRIBER ====================
 const updateSubscriber = async (subscriberid, subscriberData) => {
   
-console.log(`Updating subscriber with ID: ${subscriberid} and Update data:`, subscriberData);
-try {
-  const updatedSubscriber = await subscriberModel.updateSubscriber(subscriberid, subscriberData);
-  if (!updatedSubscriber) {
-    throw new Error('Subscriber not found for update');
-  }
-  console.log('Successfully updated subscriber:', updatedSubscriber);
-  return updatedSubscriber;
-} catch (error) {
-  console.error('Error updating subscriber:', error.message);
-  throw error;
-}};
+ console.log(`Updating subscriber with ID: ${subscriberid}`);
+  try {
+    // ✅ Fetch CURRENT state BEFORE update
+    const currentSubscriber = await subscriberModel.getSubscriberById(subscriberid);
+    if (!currentSubscriber) {
+      throw new Error('Subscriber not found for update');
+    }
 
+    // ✅ Perform the update using model layer
+    const updatedSubscriber = await subscriberModel.updateSubscriber(subscriberid, subscriberData);
+
+    // ✅ Detect changes
+    const consentChanges = [];
+    
+    if (updatedSubscriber.issubscribe !== currentSubscriber.issubscribe) {
+      consentChanges.push("issubscribe");
+    }
+    if (updatedSubscriber.emailpermstatus !== currentSubscriber.emailpermstatus) {
+      consentChanges.push("emailpermstatus");
+    }
+    if (updatedSubscriber.smspermstatus !== currentSubscriber.smspermstatus) {
+      consentChanges.push("smspermstatus");
+    }
+      // ✅ Audit if changes detected
+    if (consentChanges.length > 0) {
+      const auditEntry = await auditService.createAuditEntry({
+        entityType: "SUBSCRIBER",
+        entityId: subscriberid,
+        action: "CONSENT_CHANGED",
+        customerId: updatedSubscriber.customerid,
+        oldValue: {
+          issubscribe: currentSubscriber.issubscribe,
+          emailpermstatus: currentSubscriber.emailpermstatus,
+          smspermstatus: currentSubscriber.smspermstatus,
+        },
+        newValue: {
+          issubscribe: updatedSubscriber.issubscribe,
+          emailpermstatus: updatedSubscriber.emailpermstatus,
+          smspermstatus: updatedSubscriber.smspermstatus,
+        },
+        metadata: {
+          changedFields: consentChanges,
+        },
+      });
+
+      if (auditEntry) {
+        console.info(`[SUBSCRIBER_AUDIT] Consent audit created for customer=${updatedSubscriber.customerid}, fields=${consentChanges.join(",")}`);
+      
+      } else {
+        console.warn(`[SUBSCRIBER_AUDIT] Failed to create consrent audit for customer=${updatedSubscriber.customerid}`);
+      }
+  }
+
+    console.log(`Successfully updated subscriber: ${subscriberid}`);
+    return updatedSubscriber;
+  } catch (error) {
+    console.error(`Error updating subscriber ${subscriberid}:`, error.message);
+    throw new Error(`Error updating subscriber: ${error.message}`);
+  }
+};
 module.exports = {
   getAllSubscribers,
   getSubscriberById,
