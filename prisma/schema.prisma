@@ -113,3 +113,21 @@ model promotionaldlq {
   lastattemptat DateTime? @db.Timestamp(6)
   nextretryat   DateTime? @db.Timestamp(6)
 }
+
+model auditlog {
+  auditid       String    @id @default(uuid()) @db.VarChar(40)
+  entityname    String    @db.VarChar(50)
+  entityid      String    @db.VarChar(100)
+  action        String    @db.VarChar(20)
+  changedfields Json?
+  oldvalues     Json?
+  newvalues     Json?
+  requestid     String?   @db.VarChar(100)
+  actor         String?   @db.VarChar(100)
+  ipaddress     String?   @db.VarChar(50)
+  createdat     DateTime  @default(now()) @db.Timestamp(6)
+
+  @@index([entityname, entityid])
+  @@index([requestid])
+}
+
