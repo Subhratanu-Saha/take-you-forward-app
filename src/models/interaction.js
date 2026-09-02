@@ -172,23 +172,6 @@ const updateInteraction = async (interactionId, interactionData) => {
   }
 };
 
-const deleteInteraction = async (interactionId) => {
-  const normalizedId = interactionId?.trim();
-
-  if (!normalizedId) {
-    throw new Error('Interaction ID is required');
-  }
-
-  try {
-    return await prisma.interaction.delete({
-      where: { interactionid: normalizedId },
-    });
-  } catch (error) {
-    logModelError('delete interaction', { interactionId: normalizedId }, error);
-    throw new Error(`Error deleting interaction: ${error.message}`);
-  }
-};
-
 module.exports = {
   getAllInteractions,
   getInteractionById,
@@ -197,5 +180,4 @@ module.exports = {
   getPromotionalCampaignValue,
   createInteraction,
   updateInteraction,
-  deleteInteraction,
 };

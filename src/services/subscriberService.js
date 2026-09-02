@@ -128,20 +128,10 @@ const updateSubscriber = async (subscriberid, subscriberData) => {
   }
 };
 
-const deleteSubscriber = async (subscriberid) => {
-  const existingSubscriber = await subscriberModel.getSubscriberById(subscriberid);
-  if (!existingSubscriber) {
-    throw new Error('Subscriber not found');
-  }
-
-  return subscriberModel.deleteSubscriber(subscriberid);
-};
-
 module.exports = {
   getAllSubscribers,
   getSubscriberById,
   getSubscriberByCustomerId,
   createSubscriber,
   updateSubscriber,
-  deleteSubscriber,
 };

@@ -230,23 +230,6 @@ const getActiveEmailSubscribers = async () => {
   }
 };
 
-const deleteSubscriber = async (subscriberid) => {
-  const normalizedId = subscriberid?.trim();
-
-  if (!normalizedId) {
-    throw new Error('Subscriber ID is required');
-  }
-
-  try {
-    return await prisma.subscriber.delete({
-      where: { subscriberid: normalizedId },
-    });
-  } catch (error) {
-    console.error('[SubscriberModel] Error deleting subscriber:', error.message);
-    throw new Error(`Error deleting subscriber: ${error.message}`);
-  }
-};
-
 module.exports = {
   getAllSubscribers,
   getSubscriberById,
@@ -254,5 +237,4 @@ module.exports = {
   createSubscriber,
   updateSubscriber,
   getActiveEmailSubscribers,
-  deleteSubscriber,
 };

@@ -5,7 +5,6 @@ const interactionController = require('../controllers/interactionController');
 const {
   validateCreateInteraction,
   validateUpdateInteraction,
-  validateDeleteInteraction,
 } = require('../middleware/interactionValidator');
 
 /**
@@ -206,37 +205,5 @@ router.post('/', validateCreateInteraction, interactionController.createInteract
  */
 // UPDATE interaction [/api/v1/interactions/:interactionId]
 router.put('/:interactionId', validateUpdateInteraction, interactionController.updateInteractionRecord);
-
-/**
- * @swagger
- * /api/v1/interactions/{interactionId}:
- *   delete:
- *     summary: Delete an interaction record
- *     tags:
- *       - Interactions
- *     parameters:
- *       - $ref: '#/components/parameters/RequestId'
- *       - in: path
- *         name: interactionId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       204:
- *         description: Interaction deleted successfully
- *       400:
- *         description: Invalid interaction ID
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ValidationErrorResponse'
- *       404:
- *         description: Interaction not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/NotFoundErrorResponse'
- */
-router.delete('/:interactionId', validateDeleteInteraction, interactionController.deleteInteractionRecord);
 
 module.exports = router;

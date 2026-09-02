@@ -253,30 +253,4 @@ router.post('/', validateCreateSubscriber, subscriberController.createSubscriber
 // UPDATE subscriber [/api/v1/subscriber/:subscriberId]
 router.put('/:subscriberId', validateUpdateSubscriber, subscriberController.updateSubscriberRecord);
 
-/**
- * @swagger
- * /api/v1/subscriber/{subscriberId}:
- *   delete:
- *     summary: Delete a subscriber record
- *     tags:
- *       - Subscribers
- *     parameters:
- *       - $ref: '#/components/parameters/RequestId'
- *       - in: path
- *         name: subscriberId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       204:
- *         description: Subscriber deleted successfully
- *       404:
- *         description: Subscriber not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/NotFoundErrorResponse'
- */
-router.delete('/:subscriberId', validateGetSubscriberById, subscriberController.deleteSubscriberRecord);
-
 module.exports = router;
