@@ -7,6 +7,7 @@ const { API_SUCCESSFUL_HEALTH_MESSAGE } = require('./constants/constant');
 const { subscribeLoyaltyPurchaseEvents } = require('./events/loyaltyEventConsumer');
 const { getEventEmitter } = require('./events/eventEmitter');
 const contextMiddleware = require('./middleware/contextMiddleware');
+const { swaggerUi, swaggerSpec } = require('./config/swagger');
 
 const app = express();
 
@@ -108,6 +109,30 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     requestId: req.requestId,
   });
+});
+
+/**
+ * @swagger
+ * /api-docs.json:
+ *   get:
+ *     summary: Get OpenAPI specification in JSON format
+ *     tags:
+ *       - Documentation
+ *     responses:
+ *       200:
+ *         description: Returns the OpenAPI 3.0 specification for the entire API
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ */
+app.get('/api-docs.json', (req, res) => {
+  const requestId = req.requestId || 'UNKNOWN';
+  logger.info('SWAGGER_SPEC', 'OpenAPI specification requested', {
+    requestId,
+  });
+  res.setHeader('Content-Type', 'application/json');
+  res.status(200).json(swaggerSpec);
 });
 
 // Customer API Routes

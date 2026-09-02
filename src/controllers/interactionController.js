@@ -79,8 +79,23 @@ const updateInteractionRecord = async (req, res) => {
   }
 };
 
+const deleteInteractionRecord = async (req, res) => {
+  const interactionId = req?.params?.interactionId;
+
+  try {
+    await interactionService.deleteInteractionRecord(interactionId);
+    return res.status(204).send();
+  } catch (error) {
+    return res.status(404).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   getInteractionRecord,
   createInteractionRecord,
   updateInteractionRecord,
+  deleteInteractionRecord,
 };

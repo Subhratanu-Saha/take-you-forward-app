@@ -115,10 +115,26 @@ const updateInteractionRecord = async (interactionid, interactionData) => {
   }
 };
 
+const deleteInteractionRecord = async (interactionid) => {
+  const normalizedId = interactionid?.trim();
+
+  if (!normalizedId) {
+    throw new Error('Interaction ID is required');
+  }
+
+  const existingInteraction = await interactionModel.getInteractionById(normalizedId);
+  if (!existingInteraction) {
+    throw new Error('Interaction not found');
+  }
+
+  return interactionModel.deleteInteraction(normalizedId);
+};
+
 module.exports = {
   getAllInteractions,
   getInteractionRecord,
   getInteractionsBySubscriberId,
   createInteraction,
   updateInteractionRecord,
+  deleteInteractionRecord,
 };
