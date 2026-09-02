@@ -45,6 +45,11 @@ app.use((req, res, next) => {
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec)
+);
 
 // Malformed JSON syntax error handler middleware
 app.use((err, req, res, next) => {
@@ -66,6 +71,35 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
+/**
+ * @swagger
+ * /api/health:
+ *   get:
+ *     summary: Check application health
+ *     tags:
+ *       - Health
+ *     responses:
+ *       200:
+ *         description: Application is running successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Application is running
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                   example: 2026-09-01T10:30:00.000Z
+ *                 requestId:
+ *                   type: string
+ *                   example: 550e8400-e29b-41d4-a716-446655440000
+ */
 // Health check route
 app.get('/api/health', (req, res) => {
   res.status(200).json({
@@ -91,7 +125,7 @@ app.use('/api/v1/orders', require('./routes/orderRoutes'));
   try {
     getEventEmitter();
     subscribeLoyaltyPurchaseEvents();
-    
+
     logger.info('EVENT_SUBSCRIBER', 'Loyalty purchase event subscriber initialized', {
       eventName: 'customer.purchase',
     });

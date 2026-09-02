@@ -23,7 +23,9 @@
     "cors": "2.8.5",
     "dotenv": "16.3.1",
     "express": "5.2.1",
-    "nodemailer": "8.0.8"
+    "nodemailer": "8.0.8",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "nodemon": "3.0.1",
