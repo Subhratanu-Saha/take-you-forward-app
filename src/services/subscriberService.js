@@ -1,4 +1,5 @@
 const subscriberModel = require('../models/subscriber');
+const prisma = require('../utils/db');
 const auditService = require('./auditService');
 
 // ==================== GET ALL SUBSCRIBERS ====================
@@ -92,17 +93,18 @@ const updateSubscriber = async (subscriberid, subscriberData) => {
     }
       // ✅ Audit if changes detected
     if (consentChanges.length > 0) {
-      const auditEntry = await auditService.createAuditEntry({
-        entityType: "SUBSCRIBER",
-        entityId: subscriberid,
+      const auditEntry = await auditService.recordAuditLog(prisma, {
+        entityname: "SUBSCRIBER",
+        entityid: String(subscriberid),
         action: "CONSENT_CHANGED",
-        customerId: updatedSubscriber.customerid,
-        oldValue: {
+        customerid: updatedSubscriber.customerid,
+        changedfields: consentChanges,
+        oldvalues: {
           issubscribe: currentSubscriber.issubscribe,
           emailpermstatus: currentSubscriber.emailpermstatus,
           smspermstatus: currentSubscriber.smspermstatus,
         },
-        newValue: {
+        newvalues: {
           issubscribe: updatedSubscriber.issubscribe,
           emailpermstatus: updatedSubscriber.emailpermstatus,
           smspermstatus: updatedSubscriber.smspermstatus,
@@ -116,7 +118,7 @@ const updateSubscriber = async (subscriberid, subscriberData) => {
         console.info(`[SUBSCRIBER_AUDIT] Consent audit created for customer=${updatedSubscriber.customerid}, fields=${consentChanges.join(",")}`);
       
       } else {
-        console.warn(`[SUBSCRIBER_AUDIT] Failed to create consrent audit for customer=${updatedSubscriber.customerid}`);
+        console.warn(`[SUBSCRIBER_AUDIT] Failed to create consent audit for customer=${updatedSubscriber.customerid}`);
       }
   }
 

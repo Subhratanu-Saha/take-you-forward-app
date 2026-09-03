@@ -15,14 +15,21 @@ const processPurchaseEvent = async ({ customerid, orderid, totalamount, eventId,
   const normalizedEventId = (eventId || points?.eventId || '').toString().trim() || generateLoyaltyEventId({ customerid, orderid });
   const normalizedCustomerId = customerid?.trim();
   const normalizedOrderId = orderid?.trim();
-  const amount = Number(totalamount ?? points ?? 0);
-  const earnedPoints = Number(points ?? Math.max(0, amount));
+
+  if (!normalizedOrderId) {
+    throw new Error('Order ID is required for purchase events');
+  }
+  const earnedPoints = Number(points ?? Math.max(0, Number(totalamount ?? 0)));
+
+  if (!Number.isFinite(earnedPoints) || earnedPoints < 0) {
+    throw new Error('Earned points must be a valid non-negative number');
+  }
 
   if (!normalizedCustomerId) {
     throw new Error('Customer ID is required');
   }
 
-  const existingEvent = await loyaltyModel.findProcessedLoyaltyEvent(normalizedEventId);
+  const existingEvent = await loyaltyModel.findProcessedLoyaltyEvent(normalizedEventId, transactionClient);
 
   if (existingEvent) {
     console.warn('[LOYALTY_SERVICE] Duplicate purchase event detected and skipped', {
@@ -96,55 +103,50 @@ const processPurchaseEvent = async ({ customerid, orderid, totalamount, eventId,
   });
 
    if (nextTier !== previousTier) {
-    await auditService.createAuditEntry({
-      entityType: "LOYALTY",
-      entityId: updatedOrCreatedLoyalty.loyaltyid,
+    await auditService.recordAuditLog(transactionClient, {
+      entityname: "LOYALTY",
+      entityid: String(updatedOrCreatedLoyalty.loyaltyid),
       action: "TIER_UPGRADED",
-      customerId: normalizedCustomerId,
-      oldValue: {
+      changedfields: ["tier", "totalpoints"],
+      oldvalues: {
         tier: previousTier,
         totalpoints: currentPoints,
       },
-      newValue: {
+      newvalues: {
         tier: nextTier,
         totalpoints: nextTotalPoints,
-      },
-      metadata: {
-        orderId: normalizedOrderId,
+        orderid: normalizedOrderId,
+        eventid: normalizedEventId,
         pointsEarned: earnedPoints,
-        transitionFrom: previousTier,
-        transitionTo: nextTier,
-        eventId: normalizedEventId,
       },
+     
     });
   
 
-  console.info(`[loyalty_Audit] Tier changed from ${previousTier} to ${nextTier} for customer=${normalizedCustomerId}`);
+  console.info(`[LOYALTY_AUDIT] Tier changed from ${previousTier} to ${nextTier} for customer=${normalizedCustomerId}`);
 
 }
 
 
   // ✅ Step 4: AUDIT POINTS EARNED (now ledgerEntry exists)
-  await auditService.createAuditEntry({
-    entityType: "LOYALTY",
-    entityId: ledgerEntry.ledgerid,
+  await auditService.recordAuditLog(transactionClient, {
+    entityname: "LOYALTY",
+    entityid: String(ledgerEntry.ledgerid),
     action: "POINTS_EARNED",
-    customerId: normalizedCustomerId,
-    oldValue: {
- totalpoints: currentPoints,
+    changedfields: ['points', 'balanceafter'],
+    oldvalues: {
+      balanceafter: currentPoints,
     },
-    newValue: {
-      totalpoints: nextTotalPoints,
-      pointsEarned: earnedPoints,
-    },
-    metadata: {
-      orderId: normalizedOrderId,
-      ledgerId: ledgerEntry.ledgerid,
-      eventId: normalizedEventId,
+    newvalues: {
+      points: earnedPoints,
+      balanceafter: nextTotalPoints,
+      orderid: normalizedOrderId,
+      eventid: normalizedEventId,
+      customerid: normalizedCustomerId,
     },
   });
 
-  console.info(`[loyalty_Audit] Points earned audit created for customer=${normalizedCustomerId}`);
+  console.info(`[LOYALTY_AUDIT] Points earned audit created for customer=${normalizedCustomerId}`);
 
   // ✅ Step 5: Record processed event
   await loyaltyModel.recordProcessedLoyaltyEvent(normalizedEventId, transactionClient);
@@ -173,7 +175,221 @@ const processPurchaseEvent = async ({ customerid, orderid, totalamount, eventId,
   };
 
 };
+const processRedemptionEvent = async ({
+  customerid,
+  orderid,
+  eventId,
+  points,
+  transactionClient = prisma,
+}) => {
+  const normalizedCustomerId = customerid?.trim();
+  const normalizedOrderId = orderid?.trim();
 
+  const normalizedEventId =
+    (eventId || '').toString().trim() ||
+    `RED-${normalizedCustomerId}-${Date.now()}`;
+
+  const redeemedPoints = Number(points);
+
+  //  Validate customer ID
+  if (!normalizedCustomerId) {
+    throw new Error('Customer ID is required');
+  }
+
+  //  Validate redemption points
+  if (!Number.isFinite(redeemedPoints) || redeemedPoints <= 0) {
+    throw new Error(
+      'Redeemed points must be a valid positive number'
+    );
+  }
+
+  //  Check duplicate event
+  const existingEvent =
+    await loyaltyModel.findProcessedLoyaltyEvent(
+      normalizedEventId,
+      transactionClient
+    );
+
+  if (existingEvent) {
+    return {
+      duplicate: true,
+      skipped: true,
+      eventId: normalizedEventId,
+      customerid: normalizedCustomerId,
+    };
+  }
+
+  // Check customer
+  const customer =
+    await customerModel.getCustomerById(
+      normalizedCustomerId
+    );
+
+  if (!customer) {
+    throw new Error('Customer not found');
+  }
+
+  //  Get loyalty record
+  const existingLoyalty =
+    await transactionClient.loyalty.findFirst({
+      where: {
+        customerid: normalizedCustomerId,
+      },
+      orderBy: {
+        createdat: 'desc',
+      },
+    });
+
+  if (!existingLoyalty) {
+    throw new Error('Loyalty record not found');
+  }
+
+  const currentPoints =
+    Number(existingLoyalty.totalpoints ?? 0);
+
+  //  Check available balance
+  if (redeemedPoints > currentPoints) {
+    throw new Error('Insufficient loyalty points');
+  }
+
+  const previousTier = existingLoyalty.tier;
+
+  const nextTotalPoints =
+    currentPoints - redeemedPoints;
+
+  const nextTier =
+    calculateTier(nextTotalPoints);
+
+  //  Update loyalty balance
+  const updatedLoyalty =
+    await transactionClient.loyalty.update({
+      where: {
+        loyaltyid: existingLoyalty.loyaltyid,
+      },
+
+      data: {
+        totalpoints: nextTotalPoints,
+        tier: nextTier,
+        lastredeemedat: new Date(),
+        updatedat: new Date(),
+      },
+    });
+
+  //  Create redemption ledger
+  const ledgerEntry =
+    await transactionClient.loyaltyledger.create({
+      data: {
+        customerid: normalizedCustomerId,
+
+        orderid:
+          normalizedOrderId ||
+          `REDEMPTION-${Date.now()}`,
+
+        eventid: normalizedEventId,
+
+        ledgertype: 'REDEEMED',
+
+        points: -redeemedPoints,
+
+        balanceafter: nextTotalPoints,
+
+        createdat: new Date(),
+
+        updatedat: new Date(),
+      },
+    });
+
+  // Create redemption audit
+  await auditService.recordAuditLog(
+    transactionClient,
+    {
+      entityname: 'LOYALTY',
+
+      entityid: String(ledgerEntry.ledgerid),
+
+      action: 'POINTS_REDEEMED',
+
+      customerid: normalizedCustomerId,
+
+      changedfields: [
+        'points',
+        'balanceafter',
+      ],
+
+      oldvalues: {
+        balanceafter: currentPoints,
+      },
+
+      newvalues: {
+        points: redeemedPoints,
+        balanceafter: nextTotalPoints,
+      },
+
+      metadata: {
+        orderid: normalizedOrderId,
+        eventid: normalizedEventId,
+      },
+    }
+  );
+
+  //  Audit tier change if applicable
+  if (nextTier !== previousTier) {
+    await auditService.recordAuditLog(
+      transactionClient,
+      {
+        entityname: 'LOYALTY',
+
+        entityid: String(updatedLoyalty.loyaltyid),
+
+        action: 'TIER_DOWNGRADED',
+
+        customerid: normalizedCustomerId,
+
+        changedfields: [
+          'tier',
+          'totalpoints',
+        ],
+
+        oldvalues: {
+          tier: previousTier,
+          totalpoints: currentPoints,
+        },
+
+        newvalues: {
+          tier: nextTier,
+          totalpoints: nextTotalPoints,
+        },
+
+        metadata: {
+          reason: 'POINTS_REDEMPTION',
+          eventid: normalizedEventId,
+        },
+      }
+    );
+  }
+
+  //  Record processed event
+  await loyaltyModel.recordProcessedLoyaltyEvent(
+    normalizedEventId,
+    transactionClient
+  );
+
+  return {
+    duplicate: false,
+
+    eventId: normalizedEventId,
+
+    customerid: normalizedCustomerId,
+
+    redeemedPoints,
+
+    totalPoints: nextTotalPoints,
+
+    loyalty: updatedLoyalty,
+
+    ledger: ledgerEntry,
+  };
+};
 
 // UPDATE loyalty tier
 const updateLoyaltyTier = async (customerid, totalpoints) => {
@@ -323,37 +539,38 @@ const processLoyaltyEvent = async ({ eventId, customerId, type, payload }) => {
       throw new Error('Event ID is required');
     }
 
-    if (type !== 'PURCHASE') {
+    if (type !== 'PURCHASE' && type !== 'REDEMPTION') {
       throw new Error(`Unsupported loyalty event type: ${type}`);
     }
 
-    const totalpoints =
-      payload?.totalpoints ?? payload?.totalPoints ?? payload?.points ?? 0;
+   const points =
+      payload?.points ??
+      payload?.totalpoints ??
+      payload?.totalPoints;
 
-    if (totalpoints === undefined || totalpoints === null || totalpoints === '') {
-      throw new Error('Total points are required');
+    if (
+      points === undefined ||
+      points === null ||
+      points === ''
+    ) {
+      throw new Error('Points are required');
     }
 
-    const normalizedTotalPoints = Number(totalpoints);
+    const normalizedPoints = Number(points);
 
-    if (Number.isNaN(normalizedTotalPoints)) {
-      throw new Error('Total points must be a number');
+    if (Number.isNaN(normalizedPoints)) {
+      throw new Error('Points must be a number');
     }
 
-    if (normalizedTotalPoints < 0) {
-      throw new Error('Total points cannot be negative');
+    if (normalizedPoints < 0) {
+      throw new Error('Points cannot be negative');
     }
 
-    // Check whether this event was already processed
-    const existingEvent = await loyaltyModel.findProcessedLoyaltyEvent(eventId);
+   const result = await prisma.$transaction(async (tx) => {
+    const existingEvent = await loyaltyModel.findProcessedLoyaltyEvent(eventId, tx);
 
     if (existingEvent) {
-      console.warn('[LOYALTY_SERVICE] Duplicate loyalty event detected and skipped', {
-        eventId,
-        customerId,
-      });
-
-      return {
+       return {
         duplicate: true,
         skipped: true,
         eventId,
@@ -362,19 +579,43 @@ const processLoyaltyEvent = async ({ eventId, customerId, type, payload }) => {
       };
     }
 
-    const result = await updateLoyaltyTier(customerId, normalizedTotalPoints);
-    await loyaltyModel.recordProcessedLoyaltyEvent(eventId);
+    if (type === 'PURCHASE') {
+      return await processPurchaseEvent({
+        customerid: customerId,
+        orderid: payload?.orderid || payload?.orderId,
+        totalamount: payload?.totalamount || payload?.totalAmount,
+        eventId,
+      points: normalizedPoints,
+      transactionClient: tx,
+    });
+  } 
+    if (type === 'REDEMPTION') {
+    return await processRedemptionEvent({
+      customerid: customerId,
+      orderid: payload?.orderid || payload?.orderId,
+      eventId,
+      points: normalizedPoints,
+      transactionClient: tx,
+    });
+  }
+
+  throw new Error(`Unsupported loyalty event type: ${type}`);
+  });
 
     return {
-      duplicate: false,
+      duplicate: result.duplicate ?? false,
+      skipped: result.skipped ?? false,
       eventId,
       customerId,
       type,
-      payload: { totalpoints: normalizedTotalPoints, customerId },
+      payload: { 
+      totalpoints: normalizedPoints, customerId,
+      orderid: payload?.orderid || payload?.orderId,
+      },
       result,
   };
   } catch (error) {
-    console.error('[LOYALTY_SERVICE] Error processing purchase event', {
+    console.error('[LOYALTY_SERVICE] Error processing loyalty event', {
       eventId,
       customerId,
       type,
@@ -389,6 +630,7 @@ const processLoyaltyEvent = async ({ eventId, customerId, type, payload }) => {
 module.exports = {
   generateLoyaltyEventId,
   processPurchaseEvent,
+  processRedemptionEvent,
   updateLoyaltyTier,
   getLoyaltySummary,
   createLoyaltyRecord,

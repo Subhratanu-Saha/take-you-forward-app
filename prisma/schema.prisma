@@ -118,14 +118,19 @@ model auditlog {
   auditid       String    @id @default(uuid()) @db.VarChar(40)
   entityname    String    @db.VarChar(50)
   entityid      String    @db.VarChar(100)
-  action        String    @db.VarChar(20)
+  action        String    @db.VarChar(50)
+  customerid    String?   @db.VarChar(40)
   changedfields Json?
   oldvalues     Json?
   newvalues     Json?
+  metadata      Json?
   requestid     String?   @db.VarChar(100)
   actor         String?   @db.VarChar(100)
   ipaddress     String?   @db.VarChar(50)
+  createdby     String    @db.VarChar(100) @default("SYSTEM")
+  createdby_type String   @db.VarChar(50)  @default("AUTOMATED")
   createdat     DateTime  @default(now()) @db.Timestamp(6)
+  updatedat     DateTime? @db.Timestamp(6)
 
   @@index([entityname, entityid])
   @@index([requestid])

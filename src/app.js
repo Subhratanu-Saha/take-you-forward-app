@@ -4,6 +4,7 @@ const cors = require('cors');
 const crypto = require('crypto');
 const { logger, ERROR_CODES } = require('./utils/db');
 const { API_SUCCESSFUL_HEALTH_MESSAGE } = require('./constants/constant');
+const { swaggerSpec, swaggerUi } = require('./config/swagger');
 const { subscribeLoyaltyPurchaseEvents } = require('./events/loyaltyEventConsumer');
 const { getEventEmitter } = require('./events/eventEmitter');
 const contextMiddleware = require('./middleware/contextMiddleware');
