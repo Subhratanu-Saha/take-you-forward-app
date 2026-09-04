@@ -20,6 +20,18 @@ const options = {
         ],
 
         components: {
+            parameters: {
+                RequestId: {
+                    name: 'X-Request-Id',
+                    in: 'header',
+                    required: false,
+                    description: 'Optional client-supplied correlation ID. A UUID is generated when omitted.',
+                    schema: {
+                        type: 'string',
+                        example: '550e8400-e29b-41d4-a716-446655440000',
+                    },
+                },
+            },
             schemas: {
 
                 // =========================
@@ -150,6 +162,225 @@ const options = {
                         },
                     },
                 },
+
+                // =========================
+                // STANDARDIZED ERROR RESPONSES
+                // =========================
+                ValidationErrorResponse: {
+                    type: 'object',
+                    properties: {
+                        success: {
+                            type: 'boolean',
+                            example: false,
+                        },
+                        message: {
+                            type: 'string',
+                            example: 'Validation failed',
+                        },
+                        errorCode: {
+                            type: 'string',
+                            example: 'VALIDATION_ERROR',
+                        },
+                        errors: {
+                            type: 'array',
+                            items: {
+                                type: 'string',
+                            },
+                            example: [
+                                'Interaction mode must be one of: SIGNUP',
+                            ],
+                        },
+                    },
+                },
+
+                NotFoundErrorResponse: {
+                    type: 'object',
+                    properties: {
+                        success: {
+                            type: 'boolean',
+                            example: false,
+                        },
+                        message: {
+                            type: 'string',
+                            example: 'Resource not found',
+                        },
+                        errorCode: {
+                            type: 'string',
+                            example: 'ROUTE_NOT_FOUND',
+                        },
+                        path: {
+                            type: 'string',
+                            example: '/api/v1/invalid-route',
+                        },
+                    },
+                },
+
+                ServerErrorResponse: {
+                    type: 'object',
+                    properties: {
+                        success: {
+                            type: 'boolean',
+                            example: false,
+                        },
+                        message: {
+                            type: 'string',
+                            example: 'Internal server error',
+                        },
+                        errorCode: {
+                            type: 'string',
+                            example: 'INTERNAL_SERVER_ERROR',
+                        },
+                    },
+                },
+
+                // =========================
+                // INTERACTION SCHEMA
+                // =========================
+                Interaction: {
+                    type: 'object',
+                    properties: {
+                        interactionid: {
+                            type: 'string',
+                            example: 'INT-1750000000000-ABC123',
+                        },
+                        customerid: {
+                            type: 'string',
+                            example: 'CUST-1750000000000-ABC123',
+                        },
+                        interactionmode: {
+                            type: 'string',
+                            enum: ['SIGNUP'],
+                            example: 'SIGNUP',
+                        },
+                        interactiontype: {
+                            type: 'string',
+                            enum: ['SYSTEM'],
+                            example: 'SYSTEM',
+                        },
+                        interactionvalue: {
+                            type: 'string',
+                            enum: ['ACCOUNT_CREATION'],
+                            example: 'ACCOUNT_CREATION',
+                        },
+                        syslastmodifieddt: {
+                            type: 'string',
+                            format: 'date-time',
+                            example: '2026-09-01T10:30:00.000Z',
+                        },
+                    },
+                },
+
+                // =========================
+                // SUBSCRIBER SCHEMA
+                // =========================
+                Subscriber: {
+                    type: 'object',
+                    properties: {
+                        subscriberid: {
+                            type: 'string',
+                            example: 'SUB-1750000000000-ABC123',
+                        },
+                        customerid: {
+                            type: 'string',
+                            example: 'CUST-1750000000000-ABC123',
+                        },
+                        issubscribe: {
+                            type: 'boolean',
+                            example: true,
+                        },
+                        emailpermstatus: {
+                            type: 'boolean',
+                            example: true,
+                        },
+                        smspermstatus: {
+                            type: 'boolean',
+                            example: false,
+                        },
+                        sysmodifieddt: {
+                            type: 'string',
+                            format: 'date-time',
+                            example: '2026-09-01T10:30:00.000Z',
+                        },
+                    },
+                },
+
+                // =========================
+                // PROMOTIONAL MESSAGE SCHEMA
+                // =========================
+                PromotionalMessage: {
+                    type: 'object',
+                    properties: {
+                        promotionalmessageid: {
+                            type: 'string',
+                            example: 'PM-1750000000000-ABC123',
+                        },
+                        campaignid: {
+                            type: 'string',
+                            example: 'CAM-1750000000000-XYZ789',
+                        },
+                        customerid: {
+                            type: 'string',
+                            example: 'CUST-1750000000000-ABC123',
+                        },
+                        channel: {
+                            type: 'string',
+                            enum: ['EMAIL', 'SMS', 'PUSH'],
+                            example: 'EMAIL',
+                        },
+                        status: {
+                            type: 'string',
+                            enum: ['SENT', 'PENDING', 'FAILED', 'DLQED'],
+                            example: 'SENT',
+                        },
+                        createdat: {
+                            type: 'string',
+                            format: 'date-time',
+                            example: '2026-09-01T10:30:00.000Z',
+                        },
+                    },
+                },
+
+                // =========================
+                // PROMOTIONAL DLQ SCHEMA
+                // =========================
+                PromotionalDLQ: {
+                    type: 'object',
+                    properties: {
+                        dlqid: {
+                            type: 'string',
+                            example: 'DLQ-1750000000000-ABC123',
+                        },
+                        promotionalmessageid: {
+                            type: 'string',
+                            example: 'PM-1750000000000-ABC123',
+                        },
+                        customerid: {
+                            type: 'string',
+                            example: 'CUST-1750000000000-ABC123',
+                        },
+                        reason: {
+                            type: 'string',
+                            example: 'Network timeout after 3 retries',
+                        },
+                        payload: {
+                            type: 'object',
+                            example: {
+                                email: 'customer@example.com',
+                                subject: 'Special Offer',
+                                body: 'Get 50% discount',
+                            },
+                        },
+                        retrycount: {
+                            type: 'integer',
+                            example: 3,
+                        },
+                        createdat: {
+                            type: 'string',
+                            format: 'date-time',
+                            example: '2026-09-01T10:30:00.000Z',
+                        },
+                    },
+                },
             },
         },
     },
@@ -159,6 +390,9 @@ const options = {
         path.join(__dirname, '../routes/customerRoutes.js'),
         path.join(__dirname, '../routes/loyaltyRoutes.js'),
         path.join(__dirname, '../routes/orderRoutes.js'),
+        path.join(__dirname, '../routes/interactionRoutes.js'),
+        path.join(__dirname, '../routes/subscriberRoutes.js'),
+        path.join(__dirname, '../routes/promotionalMessageRoutes.js'),
     ],
 };
 

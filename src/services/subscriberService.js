@@ -129,6 +129,7 @@ const updateSubscriber = async (subscriberid, subscriberData) => {
     throw new Error(`Error updating subscriber: ${error.message}`);
   }
 };
+
 module.exports = {
   getAllSubscribers,
   getSubscriberById,
