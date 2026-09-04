@@ -3,11 +3,9 @@ const { getRequestContext } = require('../context/requestContext');
 // Default system timestamp fields to ignore during mutation diffing
 const DEFAULT_IGNORED_FIELDS = new Set([
   'updatedat',
-  'updatedat',
   'updated_at',
   'syslastmodifieddt',
   'sysmodifieddt',
-  'createdat',
   'createdat',
   'created_at',
   'sysenrollmentdt',
@@ -128,46 +126,58 @@ const calculateDiff = (oldState = {}, newState = {}, options = {}) => {
  */
 const recordAuditLog = async (prismaClient, auditData = {}) => {
   try {
-    if (!prismaClient) return null;
+    if (!prismaClient) {
+      throw new Error('Prisma client is required to record audit log');
+    }
 
     const ctx = getRequestContext();
     const {
       entityname,
       entityid,
       action = 'UPDATE',
+      customerid = null,
       changedfields = [],
       oldvalues = null,
       newvalues = null,
+      metadata = null,
       requestid = ctx.requestId || null,
       actor = ctx.actor || 'ANONYMOUS',
       ipaddress = ctx.ipAddress || null,
+      createdby = 'SYSTEM',
+      createdby_type = 'AUTOMATED'
     } = auditData;
 
     if (!entityname || !entityid) {
-      return null;
+      throw new Error('Both entityname and entityid are required to record audit logging');
     }
 
     const logData = {
       entityname: String(entityname).toUpperCase(),
       entityid: String(entityid),
       action: String(action).toUpperCase(),
-      changedfields: changedfields,
-      oldvalues: oldvalues,
-      newvalues: newvalues,
+      customerid,
+      changedfields,
+      oldvalues,
+      newvalues,
+      metadata,
       requestid: requestid ? String(requestid) : null,
       actor: actor ? String(actor) : 'ANONYMOUS',
       ipaddress: ipaddress ? String(ipaddress) : null,
+      createdby:  String(createdby),
+      createdby_type: String(createdby_type).toUpperCase(),
       createdat: new Date(),
     };
 
-    if (prismaClient.auditlog?.create) {
-      return await prismaClient.auditlog.create({ data: logData });
+    if (!prismaClient.auditlog?.create) {
+      throw new Error('AuditLog Prisma model is not available');
     }
 
-    return logData;
+    const auditLog = await prismaClient.auditlog.create({ data: logData });
+    console.info(`[AUDIT_SERVICE] Audit recorded successfully: ${logData.entityname} | ${logData.entityid} | ${logData.action}`);
+    return auditLog;
   } catch (error) {
     console.error('[AUDIT_SERVICE] Error writing audit log:', error.message);
-    return null;
+    throw error;
   }
 };
 

@@ -184,7 +184,11 @@ const getFailedPromotionalEvents = async () => {
   }
 };
 
-const retryFailedPromotionalEvents = async () => {
+const retryFailedPromotionalEvents = async (options = {}) => {
+  const {
+    createdBy = 'SYSTEM',
+    createdByType = 'AUTOMATED',
+  } = options;
   try {
     const pendingEvents = await prisma.promotionaldlq.findMany({
       where: {
@@ -211,18 +215,25 @@ const retryFailedPromotionalEvents = async () => {
         console.info(`[PROMOTIONAL] Retrying DLQ event ${event.eventid} for customer=${payload.customerid || payload.customerId || 'unknown'}`);
 
          // ✅ AUDIT DLQ RETRY ATTEMPT (BEFORE)
-        await auditService.createAuditEntry({
-          entityType: "DLQ",
-          entityId: event.eventid,
-          action: "DLQ_RETRY_ATTEMPT",
-          customerId: event.customerid,
-          oldValue: {
+        await auditService.recordAuditLog(prisma, {
+          entityname: "DLQ",
+          entityid: String(event.eventid),
+          action: "RETRY_ATTEMPT",
+          customerid: event.customerid,
+          createdby: createdBy,
+          createdby_type: createdByType,
+          changedfields: ['attemptcount'],
+          oldvalues: {
             status: event.status,
             attemptcount: event.attemptcount,
           },
+          newvalues: {
+            status: event.status,
+            attemptcount: event.attemptcount + 1,
+            subject: event.subject,
+          },
           metadata: {
             retryAttempt: event.attemptcount + 1,
-            subject: event.subject,
             errorMessage: event.errormessage,
           },
         });
@@ -240,17 +251,26 @@ const retryFailedPromotionalEvents = async () => {
          where: { eventid: event.eventid },
         data: {
       status: 'SENT',
+      attemptcount: event.attemptcount + 1,
       updatedat: new Date(),
       lastattemptat: new Date(),
+      nextretryat: null,
     },
   });
  // ✅ AUDIT DLQ SUCCESS
-          await auditService.createAuditEntry({
-            entityType: "DLQ",
-            entityId: event.eventid,
-            action: "DLQ_RETRY_SUCCESS",
-            customerId: event.customerid,
-            newValue: {
+          await auditService.recordAuditLog(prisma, {
+            entityname: "DLQ",
+            entityid: String(event.eventid),
+            action: "RETRY_SUCCESS",
+            customerid: event.customerid,
+            createdby: createdBy,
+            createdby_type: createdByType,
+            changedfields: ['status', 'attemptcount'],
+            oldvalues: {
+              status: event.status,
+              attemptcount: event.attemptcount,
+            },
+            newvalues: {
               status: 'SENT',
               attemptcount: event.attemptcount + 1,
             },
@@ -264,10 +284,12 @@ const retryFailedPromotionalEvents = async () => {
           results.push({ eventId: event.eventid, status: 'retried' });
 
         } else if (result.skipped) {
+          const nextAttemptCount = event.attemptcount + 1;
           await prisma.promotionaldlq.update({
             where: { eventid: event.eventid },
             data: {
               status: 'SKIPPED',
+              attemptcount: nextAttemptCount,
               updatedat: new Date(),
               lastattemptat: new Date(),
               nextretryat: null,
@@ -275,13 +297,21 @@ const retryFailedPromotionalEvents = async () => {
             },
           });
            // ✅ AUDIT DLQ SKIP
-          await auditService.createAuditEntry({
-            entityType: "DLQ",
-            entityId: event.eventid,
-            action: "DLQ_RETRY_SKIPPED",
-            customerId: event.customerid,
-            newValue: {
+          await auditService.recordAuditLog(prisma, {
+            entityname: "DLQ",
+            entityid: String(event.eventid),
+            action: "RETRY_SKIPPED",
+            customerid: event.customerid,
+            createdby: createdBy,
+            createdby_type: createdByType,
+            changedfields: ['status', 'attemptcount'],
+            oldvalues: {
+              status: event.status,
+              attemptcount: event.attemptcount,
+            },
+            newvalues: {
               status: 'SKIPPED',
+              attemptcount: nextAttemptCount,
             },
             metadata: {
               skipReason: result.message,
@@ -312,12 +342,19 @@ const retryFailedPromotionalEvents = async () => {
           });
 
             // ✅ AUDIT DLQ FAILURE
-          await auditService.createAuditEntry({
-            entityType: "DLQ",
-            entityId: event.eventid,
-            action: shouldMarkFailed ? "DLQ_RETRY_FAILED_FINAL" : "DLQ_RETRY_FAILED_TEMP",
-            customerId: event.customerid,
-            newValue: {
+          await auditService.recordAuditLog(prisma, {
+            entityname: "DLQ",
+            entityid: String(event.eventid),
+            action: shouldMarkFailed ? "RETRY_FAILED_FINAL" : "RETRY_FAILED",
+            customerid: event.customerid,
+            createdby: createdBy,
+            createdby_type: createdByType,
+            changedfields: ['status', 'attemptcount'],
+            oldvalues: {
+              status: event.status,
+              attemptcount: event.attemptcount,
+            },
+            newvalues: {
               status: shouldMarkFailed ? 'FAILED' : 'PENDING',
               attemptcount: nextAttemptCount,
             },
@@ -358,14 +395,26 @@ const retryFailedPromotionalEvents = async () => {
         });
 
          // ✅ AUDIT DLQ EXCEPTION
-        await auditService.createAuditEntry({
-          entityType: "DLQ",
-          entityId: event.eventid,
-          action: "DLQ_RETRY_ERROR",
-          customerId: event.customerid,
+        await auditService.recordAuditLog(prisma, {
+          entityname: "DLQ",
+          entityid: String(event.eventid),
+          action: "RETRY_ERROR",
+          customerid: event.customerid,
+          createdby: createdBy,
+          createdby_type: createdByType,
+          changedfields: ['status', 'attemptcount'],
+          oldvalues: {
+            status: event.status,
+            attemptcount: event.attemptcount,
+          },
+          newvalues: {
+            status: permanentlyFailed ? 'FAILED' : 'PENDING',
+            attemptcount: nextAttemptCount,
+          },
           metadata: {
             exceptionMessage: retryError.message,
-            stackTrace: retryError.stack,
+            errorType: retryError.name,
+            isFinal: permanentlyFailed,
           },
         });
       

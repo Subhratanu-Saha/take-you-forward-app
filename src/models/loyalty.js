@@ -1,36 +1,16 @@
 const prisma = require('../utils/db');
 const { normalizeLoyaltyTier, calculateTier } = require('../utils/loyalty');
 
-const processedLoyaltyEventIds = new Set();
 
 const normalizeEventId = (eventId) => {
-  if (eventId === undefined || eventId === null || eventId === '') {
+  if (eventId === undefined || eventId === null ) {
     return null;
   }
-
-  return String(eventId).trim();
+ const normalizedId = String(eventId).trim();
+  return normalizedId || null;
+  
 };
 
-const isLoyaltyEventProcessed = (eventId) => {
-  const normalizedEventId = normalizeEventId(eventId);
-
-  if (!normalizedEventId) {
-    return false;
-  }
-
-  return processedLoyaltyEventIds.has(normalizedEventId);
-};
-
-const markLoyaltyEventProcessed = (eventId) => {
-  const normalizedEventId = normalizeEventId(eventId);
-
-  if (!normalizedEventId) {
-    return false;
-  }
-
-  processedLoyaltyEventIds.add(normalizedEventId);
-  return true;
-};
 
 const getLoyaltyByCustomerId = async (customerid) => {
   try {
@@ -219,58 +199,39 @@ const createLoyaltyRecord = async (loyaltyData) => {
   }
 };
 
-const findProcessedLoyaltyEvent = async (eventId) => {
+const findProcessedLoyaltyEvent = async (eventId, transactionClient = prisma) => {
   const normalizedEventId = normalizeEventId(eventId);
 
   if (!normalizedEventId) {
     return null;
   }
 
-  if (isLoyaltyEventProcessed(normalizedEventId)) {
-    return { eventid: normalizedEventId, source: 'memory' };
-  }
-
-  try {
-    const existingLedgerEntry = await prisma.loyaltyledger.findFirst({
+    const existingLedgerEntry = await transactionClient.loyaltyledger.findFirst({
       where: { eventid: normalizedEventId },
       select: { eventid: true },
     });
 
-    if (existingLedgerEntry) {
-      markLoyaltyEventProcessed(existingLedgerEntry.eventid);
-      return { eventid: existingLedgerEntry.eventid, source: 'database' };
+    if (!existingLedgerEntry) {
+      return null;
+    
     }
-  } catch (error) {
-    console.warn('[LOYALTY_MODEL] Could not check event store for duplicate event detection', {
-      eventId: normalizedEventId,
-      message: error.message,
-    });
-  }
 
-  return null;
+  return {
+    eventid: existingLedgerEntry.eventid,
+    source: 'database',
+  };
 };
 
 const recordProcessedLoyaltyEvent = async (eventId, transactionClient = prisma) => {
   const normalizedEventId = normalizeEventId(eventId);
 
   if (!normalizedEventId) {
-    return false;
+    throw new Error('Invalid event ID provided for recording processed loyalty event');
   }
-
-  markLoyaltyEventProcessed(normalizedEventId);
-
-  try {
     await transactionClient.loyaltyledger.updateMany({
       where: { eventid: normalizedEventId },
       data: { updatedat: new Date() },
     });
-  } catch (error) {
-    console.warn('[LOYALTY_MODEL] Event ID is tracked in memory because the ledger record was already created for this processing cycle', {
-      eventId: normalizedEventId,
-      message: error.message,
-    });
-  }
-
   return true;
 };
 
@@ -280,8 +241,6 @@ module.exports = {
   getTotalPurchaseAmount,
   updateLoyaltyTier,
   createLoyaltyRecord,
-  isLoyaltyEventProcessed,
-  markLoyaltyEventProcessed,
   findProcessedLoyaltyEvent,
   recordProcessedLoyaltyEvent,
 };

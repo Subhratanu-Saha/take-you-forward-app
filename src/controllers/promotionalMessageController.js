@@ -66,7 +66,10 @@ const getFailedPromotionalMessages = async (req, res) => {
 const retryFailedPromotionalMessages = async (req, res) => {
   try {
     console.info('[PROMOTIONAL_CONTROLLER] Starting promotional DLQ retry process');
-    const results = await promotionalMessageService.retryFailedPromotionalEvents();
+    const results = await promotionalMessageService.retryFailedPromotionalEvents({
+      createdBy: req.user?.id || 'MANUAL_USER',
+      createdByType: 'MANUAL',
+    });
 
     console.info(`[PROMOTIONAL_CONTROLLER] DLQ retry process completed with ${results.length} event(s)`);
     return res.status(200).json({
