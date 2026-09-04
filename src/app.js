@@ -8,7 +8,6 @@ const { swaggerSpec, swaggerUi } = require('./config/swagger');
 const { subscribeLoyaltyPurchaseEvents } = require('./events/loyaltyEventConsumer');
 const { getEventEmitter } = require('./events/eventEmitter');
 const contextMiddleware = require('./middleware/contextMiddleware');
-const { swaggerUi, swaggerSpec } = require('./config/swagger');
 
 const app = express();
 
