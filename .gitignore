@@ -1,8 +1,11 @@
 node_modules
 .env
 .env.example
-prisma/migrations
 .postman
 postman
-prisma/schema.prisma
-prisma
+prisma/*
+!prisma/schema.prisma
+!prisma/migrations/
+prisma/migrations/*
+!prisma/migrations/20260904120000_widen_loyalty_totalpoints/
+!prisma/migrations/20260904120000_widen_loyalty_totalpoints/migration.sql
