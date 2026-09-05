@@ -340,6 +340,15 @@ const validateUpdateOrder = (req, res, next) => {
     }
   }
 
+  if (body.totalamount !== undefined) {
+    const totalamount = normalizeNumber(body.totalamount);
+    if (totalamount === undefined || totalamount < 0) {
+      errors.push('totalamount must be a non-negative number when provided');
+    } else {
+      updatePayload.totalamount = totalamount;
+    }
+  }
+
   if (body.isloyalty !== undefined) {
     const isloyalty = normalizeBoolean(body.isloyalty);
     if (isloyalty === undefined) {

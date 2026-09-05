@@ -200,11 +200,18 @@ const updateOrder = async (orderid, orderData) => {
     const existingOrder = await prisma.orderheader.findUnique({
         where: {
             orderid
+        },
+        include: {
+            orderlineitems: true
         }
     });
 
     if (!existingOrder) {
-        throw new Error("Order not found");
+        throw Object.assign(new Error("Order not found"), {
+            statusCode: 404,
+            errorCode: "ORDER_NOT_FOUND",
+            isOperational: true
+        });
     }
 
     const {
@@ -212,21 +219,58 @@ const updateOrder = async (orderid, orderData) => {
         payment,
         discount,
         taxamount,
-        isloyalty
+        isloyalty,
+        totalamount
     } = orderData;
+
+    // Calculate subtotal from existing order line items
+    let subtotal = 0;
+    const items = existingOrder.orderlineitems || [];
+    for (const item of items) {
+        const quantity = Number(item.skuquantity);
+        const price = Number(item.skuprice);
+        subtotal += quantity * price;
+    }
+
+    const effectiveTax = taxamount !== undefined ? Number(taxamount) : Number(existingOrder.taxamount || 0);
+    const effectiveDiscount = discount !== undefined ? Number(discount) : Number(existingOrder.discount || 0);
+
+    const calculatedTotal = subtotal + effectiveTax - effectiveDiscount;
+
+    if (totalamount !== undefined && totalamount !== null) {
+        const incomingTotal = Number(totalamount);
+        if (Math.abs(incomingTotal - calculatedTotal) > 0.01) {
+            throw new prisma.ValidationError(
+                `Total amount mismatch. Provided: ${incomingTotal}, Calculated: ${calculatedTotal}`,
+                prisma.ERROR_CODES?.ORDER_VALIDATION_FAILED || 'ORDER_VALIDATION_FAILED'
+            );
+        }
+    }
+
+    if (calculatedTotal < 0) {
+        throw Object.assign(new Error("Order total cannot be negative"), {
+            statusCode: 400,
+            errorCode: prisma.ERROR_CODES?.ORDER_VALIDATION_FAILED || 'ORDER_VALIDATION_FAILED',
+            isOperational: true,
+        });
+    }
+
+    const updateData = {
+        totalamount: calculatedTotal,
+        syslastmodifieddt: new Date()
+    };
+
+    if (channel !== undefined) updateData.channel = channel;
+    if (payment !== undefined) updateData.payment = payment;
+    if (discount !== undefined) updateData.discount = Number(discount);
+    if (taxamount !== undefined) updateData.taxamount = Number(taxamount);
+    if (isloyalty !== undefined) updateData.isloyalty = isloyalty;
 
     return await prisma.orderheader.update({
         where: {
             orderid
         },
-        data: {
-            channel,
-            payment,
-            discount,
-            taxamount,
-            isloyalty,
-            syslastmodifieddt: new Date()
-        },
+        data: updateData,
         include: {
             customer: true,
             orderlineitems: true
