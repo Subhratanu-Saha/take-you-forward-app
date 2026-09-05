@@ -27,7 +27,7 @@ const getAllOrders = async (req, res, next) => {
 
   try {
     const service = getOrderService();
-    const orders = await service.getAllOrders(requestId);
+    const orders = await service.getAllOrders(requestId, req.validated?.query);
 
     logger.info('ORDER_CONTROLLER', `getAllOrders succeeded with ${orders.length} records`, {
       requestId,
