@@ -16,7 +16,8 @@ const assert = require('node:assert/strict');
 
 const prisma = require('../src/utils/db');
 const { getEventEmitter } = require('../src/events/eventEmitter');
-const { createOrder } = require('../src/services/orderService');
+const { createOrder, updateOrder } = require('../src/services/orderService');
+const app = require('../src/app');
 
 test('createOrder emits a purchase event without updating loyalty directly', async () => {
   const emitter = getEventEmitter();
@@ -195,6 +196,191 @@ test('createOrder succeeds and calculates total server-side when totalamount is 
     prisma.loyalty.create = original.loyaltyCreate;
     prisma.loyalty.update = original.loyaltyUpdate;
     prisma.$transaction = original.transaction;
+  }
+});
+
+test('updateOrder recalculates totalamount when taxamount and discount are updated without totalamount', async () => {
+  const original = {
+    orderheaderFindUnique: prisma.orderheader.findUnique,
+    orderheaderUpdate: prisma.orderheader.update,
+  };
+
+  try {
+    let updatedOrderPayload = null;
+    prisma.orderheader.findUnique = async () => ({
+      orderid: 'ORD-123',
+      customerid: 'CUST-123',
+      taxamount: 10,
+      discount: 5,
+      totalamount: 205,
+      orderlineitems: [
+        { skuid: 'SKU-1', skuitem: 'Item 1', skuquantity: '2', skuprice: 100 }, // Subtotal: 200
+      ],
+      customer: { customerid: 'CUST-123' },
+    });
+
+    prisma.orderheader.update = async (args) => {
+      updatedOrderPayload = args.data;
+      return {
+        orderid: 'ORD-123',
+        ...args.data,
+      };
+    };
+
+    const updated = await updateOrder('ORD-123', {
+      taxamount: 20,
+      discount: 10,
+    });
+
+    assert.ok(updated, 'order should be updated');
+    assert.equal(updatedOrderPayload.taxamount, 20);
+    assert.equal(updatedOrderPayload.discount, 10);
+    assert.equal(
+      updatedOrderPayload.totalamount,
+      210,
+      'totalamount should be recalculated as 200 + 20 - 10 = 210'
+    );
+  } finally {
+    prisma.orderheader.findUnique = original.orderheaderFindUnique;
+    prisma.orderheader.update = original.orderheaderUpdate;
+  }
+});
+
+test('updateOrder succeeds when matching totalamount is provided', async () => {
+  const original = {
+    orderheaderFindUnique: prisma.orderheader.findUnique,
+    orderheaderUpdate: prisma.orderheader.update,
+  };
+
+  try {
+    let updatedOrderPayload = null;
+    prisma.orderheader.findUnique = async () => ({
+      orderid: 'ORD-123',
+      customerid: 'CUST-123',
+      taxamount: 10,
+      discount: 5,
+      totalamount: 205,
+      orderlineitems: [
+        { skuid: 'SKU-1', skuitem: 'Item 1', skuquantity: '2', skuprice: 100 },
+      ],
+      customer: { customerid: 'CUST-123' },
+    });
+
+    prisma.orderheader.update = async (args) => {
+      updatedOrderPayload = args.data;
+      return {
+        orderid: 'ORD-123',
+        ...args.data,
+      };
+    };
+
+    const updated = await updateOrder('ORD-123', {
+      taxamount: 20,
+      discount: 10,
+      totalamount: 210,
+    });
+
+    assert.ok(updated, 'order should be updated');
+    assert.equal(updatedOrderPayload.totalamount, 210);
+  } finally {
+    prisma.orderheader.findUnique = original.orderheaderFindUnique;
+    prisma.orderheader.update = original.orderheaderUpdate;
+  }
+});
+
+test('updateOrder throws ValidationError when totalamount does not match calculated total', async () => {
+  const original = {
+    orderheaderFindUnique: prisma.orderheader.findUnique,
+    orderheaderUpdate: prisma.orderheader.update,
+  };
+
+  try {
+    prisma.orderheader.findUnique = async () => ({
+      orderid: 'ORD-123',
+      customerid: 'CUST-123',
+      taxamount: 10,
+      discount: 5,
+      totalamount: 205,
+      orderlineitems: [
+        { skuid: 'SKU-1', skuitem: 'Item 1', skuquantity: '2', skuprice: 100 },
+      ],
+      customer: { customerid: 'CUST-123' },
+    });
+
+    await assert.rejects(
+      async () => {
+        await updateOrder('ORD-123', {
+          taxamount: 20,
+          discount: 10,
+          totalamount: 999, // Mismatch with 210
+        });
+      },
+      (err) => {
+        assert.equal(err.statusCode, 400);
+        assert.equal(err.errorCode, 'ORDER_VALIDATION_FAILED');
+        assert.match(err.message, /Total amount mismatch/);
+        return true;
+      }
+    );
+  } finally {
+    prisma.orderheader.findUnique = original.orderheaderFindUnique;
+    prisma.orderheader.update = original.orderheaderUpdate;
+  }
+});
+
+test('Order API PUT /api/v1/orders/:orderId recalculates totalamount and supports optional totalamount', async () => {
+  const original = {
+    orderheaderFindUnique: prisma.orderheader.findUnique,
+    orderheaderUpdate: prisma.orderheader.update,
+  };
+
+  const server = app.listen(0);
+  const port = server.address().port;
+
+  try {
+    prisma.orderheader.findUnique = async () => ({
+      orderid: 'ORD-1788590000000-ABCDEF',
+      customerid: 'CUST-123',
+      taxamount: 10,
+      discount: 5,
+      totalamount: 205,
+      payment: 'CARD',
+      orderlineitems: [
+        { skuid: 'SKU-1', skuitem: 'Item 1', skuquantity: '2', skuprice: 100 },
+      ],
+      customer: { customerid: 'CUST-123' },
+    });
+
+    prisma.orderheader.update = async (args) => ({
+      orderid: 'ORD-1788590000000-ABCDEF',
+      ...args.data,
+    });
+
+    // 1. PUT without totalamount
+    const resWithoutTotal = await fetch(`http://localhost:${port}/api/v1/orders/ORD-1788590000000-ABCDEF`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taxamount: 20, discount: 10 }),
+    });
+    const bodyWithoutTotal = await resWithoutTotal.json();
+    assert.equal(resWithoutTotal.status, 200);
+    assert.equal(bodyWithoutTotal.success, true);
+    assert.equal(bodyWithoutTotal.data.totalamount, 210);
+
+    // 2. PUT with mismatching totalamount
+    const resMismatch = await fetch(`http://localhost:${port}/api/v1/orders/ORD-1788590000000-ABCDEF`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taxamount: 20, discount: 10, totalamount: 500 }),
+    });
+    const bodyMismatch = await resMismatch.json();
+    assert.equal(resMismatch.status, 400);
+    assert.equal(bodyMismatch.success, false);
+    assert.equal(bodyMismatch.errorCode, 'ORDER_VALIDATION_FAILED');
+  } finally {
+    server.close();
+    prisma.orderheader.findUnique = original.orderheaderFindUnique;
+    prisma.orderheader.update = original.orderheaderUpdate;
   }
 });
 
