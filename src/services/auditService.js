@@ -218,10 +218,70 @@ const getAuditLogsByRequestId = async (prismaClient, requestid) => {
   }
 };
 
+const getAuditLogs = async (prismaClient, page = 1, pageSize = 10) => {
+  const safePage = Math.max(Number(page) || 1, 1);
+  const safePageSize = Math.min(Math.max(Number(pageSize) || 10, 1), 20);
+  const skip = (safePage - 1) * safePageSize;
+
+  const [data, total] = await Promise.all([
+    prismaClient.auditlog.findMany({
+      orderBy: { createdat: 'desc' },
+      skip,
+      take: safePageSize,
+      select: {
+        auditid: true,
+        createdat: true,
+        entityname: true,
+        entityid: true,
+        action: true,
+        actor: true,
+        createdby: true,
+      },
+    }),
+    prismaClient.auditlog.count(),
+  ]);
+
+  return {
+    data,
+    pagination: {
+      page: safePage,
+      pageSize: safePageSize,
+      total,
+      totalPages: Math.ceil(total / safePageSize),
+    },
+  };
+};
+
+const getAuditStats = async (prismaClient) => {
+  const startOfToday = new Date();
+  startOfToday.setUTCHours(0, 0, 0, 0);
+
+  const [totalEvents, updatesToday, deletions] = await Promise.all([
+    prismaClient.auditlog.count(),
+    prismaClient.auditlog.count({
+      where: {
+        action: 'UPDATE',
+        createdat: { gte: startOfToday },
+      },
+    }),
+    prismaClient.auditlog.count({
+      where: { action: 'DELETE' },
+    }),
+  ]);
+
+  return {
+    totalEvents,
+    updatesToday,
+    deletions,
+  };
+};
+
 module.exports = {
   calculateDiff,
   recordAuditLog,
   getAuditLogsByEntity,
+  getAuditLogs,
+  getAuditStats,
   getAuditLogsByRequestId,
   DEFAULT_IGNORED_FIELDS,
   areValuesEqual,
