@@ -159,12 +159,15 @@ test('Prisma Change-Capture Engine - records audit logs on entity update with di
     auditlog: {
       create: async ({ data }) => {
         auditLogsCreated.push(data);
-        return { auditid: 'AUDIT-LOG-1', ...data };
+        return { auditlogid: 1, ...data };
       },
       findMany: async ({ where }) => {
-        return auditLogsCreated.filter(
-          (log) => log.entityname === where.entityname && log.entityid === where.entityid
-        );
+        return auditLogsCreated.filter((log) => {
+          const matchesEntity = where.OR
+            ? where.OR.some((cond) => (cond.entitytype && log.entitytype === cond.entitytype) || (cond.entityname && log.entityname === cond.entityname))
+            : (log.entitytype === where.entitytype || log.entityname === where.entitytype);
+          return matchesEntity && log.entityid === where.entityid;
+        });
       },
     },
     $extends(extensionConfig) {
@@ -214,15 +217,15 @@ test('Prisma Change-Capture Engine - records audit logs on entity update with di
 
   assert.equal(auditLogsCreated.length, 1, 'One audit log should have been recorded');
   const loggedAudit = auditLogsCreated[0];
-  assert.equal(loggedAudit.entityname, 'CUSTOMER');
+  assert.equal(loggedAudit.entitytype, 'CUSTOMER');
   assert.equal(loggedAudit.entityid, 'CUST-100');
   assert.equal(loggedAudit.action, 'UPDATE');
-  assert.deepEqual(loggedAudit.changedfields.sort(), ['emailadd', 'firstname'].sort());
-  assert.equal(loggedAudit.oldvalues.firstname, 'OriginalFirst');
-  assert.equal(loggedAudit.newvalues.firstname, 'UpdatedFirst');
-  assert.equal(loggedAudit.requestid, 'REQ-DIFF-TEST-999');
-  assert.equal(loggedAudit.actor, 'SYS_ADMIN');
-  assert.equal(loggedAudit.ipaddress, '10.0.0.1');
+  assert.deepEqual(loggedAudit.metadata.changedfields.sort(), ['emailadd', 'firstname'].sort());
+  assert.equal(loggedAudit.oldervalue.firstname, 'OriginalFirst');
+  assert.equal(loggedAudit.newvalue.firstname, 'UpdatedFirst');
+  assert.equal(loggedAudit.metadata.requestid, 'REQ-DIFF-TEST-999');
+  assert.equal(loggedAudit.metadata.actor, 'SYS_ADMIN');
+  assert.equal(loggedAudit.metadata.ipaddress, '10.0.0.1');
 
   // Verify querying helper
   const queriedLogs = await getAuditLogsByEntity(mockBaseClient, 'CUSTOMER', 'CUST-100');
