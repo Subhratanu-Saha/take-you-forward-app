@@ -228,10 +228,28 @@ const recordProcessedLoyaltyEvent = async (eventId, transactionClient = prisma) 
   if (!normalizedEventId) {
     throw new Error('Invalid event ID provided for recording processed loyalty event');
   }
-    await transactionClient.loyaltyledger.updateMany({
-      where: { eventid: normalizedEventId },
-      data: { updatedat: new Date() },
-    });
+
+  const existingLedgerEntry = await transactionClient.loyaltyledger.findFirst({
+    where: { eventid: normalizedEventId },
+    select: { ledgerid: true, eventid: true },
+  });
+
+  if (existingLedgerEntry) {
+    return true;
+  }
+
+  await transactionClient.loyaltyledger.create({
+    data: {
+      orderid: `EVENT-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`,
+      eventid: normalizedEventId,
+      ledgertype: 'EVENT',
+      points: 0,
+      balanceafter: 0,
+      createdat: new Date(),
+      updatedat: new Date(),
+    },
+  });
+
   return true;
 };
 

@@ -9,6 +9,29 @@ const loyaltyService = require('../src/services/loyaltyService');
 const loyaltyModel = require('../src/models/loyalty');
 const customerModel = require('../src/models/customer');
 
+test('recordProcessedLoyaltyEvent creates a ledger entry when the event has not been recorded yet', async () => {
+  const created = [];
+  const tx = {
+    loyaltyledger: {
+      findFirst: async () => null,
+      create: async ({ data }) => {
+        created.push(data);
+        return { ...data, ledgerid: 42 };
+      },
+      updateMany: async () => {
+        throw new Error('updateMany should not be used to record a missing event');
+      },
+    },
+  };
+
+  const result = await loyaltyModel.recordProcessedLoyaltyEvent('EVENT-TRACK-001', tx);
+
+  assert.equal(result, true);
+  assert.equal(created.length, 1);
+  assert.equal(created[0].eventid, 'EVENT-TRACK-001');
+  assert.equal(created[0].ledgertype, 'EVENT');
+});
+
 test('duplicate customer.purchase event should be skipped', async () => {
   const originalFindProcessed =
     loyaltyModel.findProcessedLoyaltyEvent;
@@ -40,32 +63,40 @@ test('duplicate customer.purchase event should be skipped', async () => {
       processedEvents.add(eventId);
     };
 
-    // Mock database operations used by updateLoyaltyTier
     const prisma = require('../src/utils/db');
 
-    const originalLoyaltyFindFirst = prisma.loyalty.findFirst;
-    const originalLoyaltyUpdate = prisma.loyalty.update;
-    const originalLoyaltyCreate = prisma.loyalty.create;
-
-    prisma.loyalty.findFirst = async () => null;
-
-    prisma.loyalty.create = async ({ data }) => {
-      updateCount++;
-
-      return {
-        loyaltyid: 1,
-        ...data,
-      };
+    const tx = {
+      customer: {
+        findUnique: async () => ({ customerid: 'CUST-123' }),
+      },
+      loyalty: {
+        findFirst: async () => null,
+        create: async ({ data }) => {
+          updateCount++;
+          return {
+            loyaltyid: 1,
+            ...data,
+          };
+        },
+        update: async ({ data }) => {
+          updateCount++;
+          return {
+            loyaltyid: 1,
+            ...data,
+          };
+        },
+      },
+      loyaltyledger: {
+        findFirst: async () => null,
+        create: async ({ data }) => ({ ledgerid: 1, ...data }),
+      },
+      auditlog: {
+        create: async ({ data }) => ({ auditid: 'AUD-1', ...data }),
+      },
     };
 
-    prisma.loyalty.update = async ({ data }) => {
-      updateCount++;
-
-      return {
-        loyaltyid: 1,
-        ...data,
-      };
-    };
+    const originalTransaction = prisma.$transaction;
+    prisma.$transaction = async (callback) => callback(tx);
 
     const consumer = createLoyaltyPurchaseConsumer({
       loyaltyProcessor: loyaltyService,
@@ -111,10 +142,7 @@ test('duplicate customer.purchase event should be skipped', async () => {
       'loyalty should be updated only once'
     );
 
-    // Restore Prisma mocks
-    prisma.loyalty.findFirst = originalLoyaltyFindFirst;
-    prisma.loyalty.update = originalLoyaltyUpdate;
-    prisma.loyalty.create = originalLoyaltyCreate;
+    prisma.$transaction = originalTransaction;
 
   } finally {
     loyaltyModel.findProcessedLoyaltyEvent =
