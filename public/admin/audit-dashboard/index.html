@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Live system audit activity dashboard">
+  <title>Audit Activity | Admin</title>
+  <link rel="stylesheet" href="/admin/audit-dashboard/styles.css">
+</head>
+<body>
+  <main class="dashboard">
+    <header class="dashboard-header">
+      <div>
+        <p class="eyebrow">Operations console</p>
+        <h1>Audit activity</h1>
+        <p class="subtitle">Monitor recent customer, order, and loyalty changes.</p>
+      </div>
+
+      <div class="live-status" aria-live="polite">
+        <span class="live-dot"></span>
+        <span id="liveStatus">Live feed</span>
+      </div>
+    </header>
+
+    <section class="summary-grid" aria-label="Audit summary">
+      <article class="summary-card summary-card-total">
+        <div class="card-label">
+          <span class="card-icon">#</span>
+          <span>Total events</span>
+        </div>
+        <strong id="totalEvents">0</strong>
+        <small>All recorded events</small>
+      </article>
+
+      <article class="summary-card summary-card-update">
+        <div class="card-label">
+          <span class="card-icon">U</span>
+          <span>Updates today</span>
+        </div>
+        <strong id="updatesToday">0</strong>
+        <small>Changes since midnight</small>
+      </article>
+
+      <article class="summary-card summary-card-delete">
+        <div class="card-label">
+          <span class="card-icon">D</span>
+          <span>Deletions</span>
+        </div>
+        <strong id="deletions">0</strong>
+        <small>Recorded delete actions</small>
+      </article>
+    </section>
+
+    <section class="activity-panel" aria-labelledby="activity-title">
+      <div class="panel-header">
+        <div>
+          <p class="section-kicker">Event stream</p>
+          <h2 id="activity-title">Latest activity</h2>
+        </div>
+
+        <button id="refreshButton" class="refresh-button" type="button">
+          Refresh
+        </button>
+      </div>
+
+      <div class="panel-meta">
+        <span id="status" role="status">Loading activity...</span>
+        <span id="lastUpdated"></span>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <caption class="sr-only">Recent system audit events</caption>
+          <thead>
+            <tr>
+              <th scope="col">Timestamp</th>
+              <th scope="col">Entity</th>
+              <th scope="col">Entity ID</th>
+              <th scope="col">Action</th>
+              <th scope="col">Performed by</th>
+            </tr>
+          </thead>
+          <tbody id="activityBody"></tbody>
+        </table>
+      </div>
+
+      <footer class="pagination">
+        <button id="previousButton" type="button">Previous</button>
+        <span id="pageLabel" aria-live="polite"></span>
+        <button id="nextButton" type="button">Next</button>
+      </footer>
+    </section>
+  </main>
+
+  <script src="/admin/audit-dashboard/dashboard.js"></script>
+</body>
+</html>
