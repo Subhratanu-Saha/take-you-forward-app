@@ -155,9 +155,13 @@ const createOrder = async (orderData) => {
 
 
 // Get All Orders
-const getAllOrders = async () => {
+const getAllOrders = async (requestId, pagination = {}) => {
+    const page = pagination.page || 1;
+    const limit = pagination.limit || 20;
 
     return await prisma.orderheader.findMany({
+        skip: (page - 1) * limit,
+        take: limit,
         include: {
             customer: true,
             orderlineitems: true
