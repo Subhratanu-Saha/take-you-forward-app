@@ -115,8 +115,9 @@ model promotionaldlq {
 }
 
 model auditlog {
-  auditid        String?   @default(uuid()) @db.VarChar(40)
+ auditid        String    @id @default(uuid()) @db.VarChar(40)
   entityname     String?   @db.VarChar(50)
+  entitytype     String?   @db.VarChar(50)
   entityid       String    @db.VarChar(100)
   action         String    @db.VarChar(50)
   customerid     String?   @db.VarChar(40)
@@ -135,4 +136,3 @@ model auditlog {
   @@index([entityname, entityid])
   @@index([requestid])
 }
-
