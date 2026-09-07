@@ -46,11 +46,13 @@ app.use((req, res, next) => {
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(
-  '/api-docs',
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerSpec)
-);
+if (swaggerUi && swaggerSpec) {
+  app.use(
+    '/api-docs',
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec)
+  );
+}
 
 // Malformed JSON syntax error handler middleware
 app.use((err, req, res, next) => {

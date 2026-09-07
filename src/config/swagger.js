@@ -1,5 +1,14 @@
-const swaggerJsDoc = require('swagger-jsdoc');
-const swaggerUi = require('swagger-ui-express');
+let swaggerJsDoc;
+let swaggerUi;
+
+try {
+    swaggerJsDoc = require('swagger-jsdoc');
+    swaggerUi = require('swagger-ui-express');
+} catch (err) {
+    swaggerJsDoc = null;
+    swaggerUi = null;
+}
+
 const path = require('path');
 
 const options = {
@@ -396,7 +405,7 @@ const options = {
     ],
 };
 
-const swaggerSpec = swaggerJsDoc(options);
+const swaggerSpec = swaggerJsDoc ? swaggerJsDoc(options) : null;
 
 module.exports = {
     swaggerSpec,

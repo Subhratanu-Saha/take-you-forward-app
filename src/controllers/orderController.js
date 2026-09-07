@@ -195,7 +195,9 @@ const updateOrder = async (req, res, next) => {
 
   try {
     const service = getOrderService();
-    const order = await service.updateOrder(orderId, req.body, requestId);
+    const validatedBody = req.validated && req.validated.body ? req.validated.body : null;
+    const payload = validatedBody || req.body || {};
+    const order = await service.updateOrder(orderId, payload, requestId);
 
     logger.info('ORDER_CONTROLLER', `updateOrder succeeded for ID: ${orderId}`, {
       requestId,
