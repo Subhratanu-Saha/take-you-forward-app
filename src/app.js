@@ -10,7 +10,7 @@ const { getEventEmitter } = require('./events/eventEmitter');
 const contextMiddleware = require('./middleware/contextMiddleware');
 
 const app = express();
-
+const path = require('path');
 // Request Context & Correlation ID Propagation Middleware
 app.use(contextMiddleware);
 
@@ -46,11 +46,13 @@ app.use((req, res, next) => {
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(
-  '/api-docs',
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerSpec)
-);
+if (swaggerUi && swaggerSpec) {
+  app.use(
+    '/api-docs',
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec)
+  );
+}
 
 // Malformed JSON syntax error handler middleware
 app.use((err, req, res, next) => {
@@ -160,6 +162,21 @@ app.use('/api/v1/orders', require('./routes/orderRoutes'));
     });
   }
 })();
+
+
+const dashboardDirectory = path.join(
+  __dirname,
+  '../public/admin/audit-dashboard'
+);
+
+app.use(
+  '/admin/audit-dashboard',
+  express.static(dashboardDirectory, { index: false })
+);
+
+app.get('/admin/audit-dashboard', (req, res) => {
+  res.sendFile(path.join(dashboardDirectory, 'index.html'));
+});
 
 // Catch-all 404 Route Not Found handler
 app.use((req, res) => {

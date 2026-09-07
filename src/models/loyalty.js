@@ -2,13 +2,27 @@ const prisma = require('../utils/db');
 const { normalizeLoyaltyTier, calculateTier } = require('../utils/loyalty');
 
 
+const processedLoyaltyEventIds = new Set();
+
 const normalizeEventId = (eventId) => {
-  if (eventId === undefined || eventId === null ) {
+  if (eventId === undefined || eventId === null || eventId === '') {
     return null;
   }
- const normalizedId = String(eventId).trim();
+  const normalizedId = String(eventId).trim();
   return normalizedId || null;
-  
+};
+
+const isLoyaltyEventProcessed = (eventId) => {
+  const normalizedEventId = normalizeEventId(eventId);
+  if (!normalizedEventId) return false;
+  return processedLoyaltyEventIds.has(normalizedEventId);
+};
+
+const markLoyaltyEventProcessed = (eventId) => {
+  const normalizedEventId = normalizeEventId(eventId);
+  if (!normalizedEventId) return false;
+  processedLoyaltyEventIds.add(normalizedEventId);
+  return true;
 };
 
 
@@ -206,20 +220,11 @@ const findProcessedLoyaltyEvent = async (eventId, transactionClient = prisma) =>
     return null;
   }
 
-    const existingLedgerEntry = await transactionClient.loyaltyledger.findFirst({
-      where: { eventid: normalizedEventId },
-      select: { eventid: true },
-    });
+  if (isLoyaltyEventProcessed(normalizedEventId)) {
+    return { eventid: normalizedEventId, source: 'memory' };
+  }
 
-    if (!existingLedgerEntry) {
-      return null;
-    
-    }
-
-  return {
-    eventid: existingLedgerEntry.eventid,
-    source: 'database',
-  };
+  return null;
 };
 
 const recordProcessedLoyaltyEvent = async (eventId, transactionClient = prisma) => {
@@ -250,6 +255,7 @@ const recordProcessedLoyaltyEvent = async (eventId, transactionClient = prisma) 
     },
   });
 
+  markLoyaltyEventProcessed(normalizedEventId);
   return true;
 };
 
@@ -259,6 +265,8 @@ module.exports = {
   getTotalPurchaseAmount,
   updateLoyaltyTier,
   createLoyaltyRecord,
+  isLoyaltyEventProcessed,
+  markLoyaltyEventProcessed,
   findProcessedLoyaltyEvent,
   recordProcessedLoyaltyEvent,
 };

@@ -89,13 +89,11 @@ const processPurchaseEvent = async ({ customerid, orderid, totalamount, eventId,
     data: {
       customerid: normalizedCustomerId,
       orderid: normalizedOrderId || `LOY-${Date.now()}`,
-      eventid: normalizedEventId,
       ledgertype: 'EARNED',
       points: Number(earnedPoints),
       balanceafter: Number(nextTotalPoints),
       expirydate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       createdat: new Date(),
-      updatedat: new Date(),
     },
   });
 
@@ -282,8 +280,6 @@ const processRedemptionEvent = async ({
           normalizedOrderId ||
           `REDEMPTION-${Date.now()}`,
 
-        eventid: normalizedEventId,
-
         ledgertype: 'REDEEMED',
 
         points: -redeemedPoints,
@@ -291,8 +287,6 @@ const processRedemptionEvent = async ({
         balanceafter: nextTotalPoints,
 
         createdat: new Date(),
-
-        updatedat: new Date(),
       },
     });
 

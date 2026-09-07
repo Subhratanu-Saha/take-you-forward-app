@@ -27,7 +27,7 @@ const getAllOrders = async (req, res, next) => {
 
   try {
     const service = getOrderService();
-    const orders = await service.getAllOrders(requestId);
+    const orders = await service.getAllOrders(requestId, req.validated?.query);
 
     logger.info('ORDER_CONTROLLER', `getAllOrders succeeded with ${orders.length} records`, {
       requestId,
@@ -195,7 +195,9 @@ const updateOrder = async (req, res, next) => {
 
   try {
     const service = getOrderService();
-    const order = await service.updateOrder(orderId, req.body, requestId);
+    const validatedBody = req.validated && req.validated.body ? req.validated.body : null;
+    const payload = validatedBody || req.body || {};
+    const order = await service.updateOrder(orderId, payload, requestId);
 
     logger.info('ORDER_CONTROLLER', `updateOrder succeeded for ID: ${orderId}`, {
       requestId,

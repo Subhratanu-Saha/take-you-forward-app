@@ -93,10 +93,44 @@ test('duplicate customer.purchase event should be skipped', async () => {
       auditlog: {
         create: async ({ data }) => ({ auditid: 'AUD-1', ...data }),
       },
+    const originalTransaction = prisma.$transaction;
+    const originalLoyaltyFindFirst = prisma.loyalty.findFirst;
+    const originalLoyaltyUpdate = prisma.loyalty.update;
+    const originalLoyaltyCreate = prisma.loyalty.create;
+    const originalLedgerCreate = prisma.loyaltyledger?.create;
+    const originalAuditCreate = prisma.auditlog?.create;
+
+    prisma.$transaction = async (callback) => {
+      return await callback(prisma);
+    };
+
+    prisma.loyalty.findFirst = async () => null;
+
+    prisma.loyalty.create = async ({ data }) => {
+      updateCount++;
+
+      return {
+        loyaltyid: 1,
+        ...data,
+      };
     };
 
     const originalTransaction = prisma.$transaction;
     prisma.$transaction = async (callback) => callback(tx);
+
+    if (prisma.loyaltyledger) {
+      prisma.loyaltyledger.create = async ({ data }) => ({
+        ledgerid: 1,
+        ...data,
+      });
+    }
+
+    if (prisma.auditlog) {
+      prisma.auditlog.create = async ({ data }) => ({
+        auditlogid: 1,
+        ...data,
+      });
+    }
 
     const consumer = createLoyaltyPurchaseConsumer({
       loyaltyProcessor: loyaltyService,
@@ -142,7 +176,13 @@ test('duplicate customer.purchase event should be skipped', async () => {
       'loyalty should be updated only once'
     );
 
+    // Restore Prisma mocks
     prisma.$transaction = originalTransaction;
+    prisma.loyalty.findFirst = originalLoyaltyFindFirst;
+    prisma.loyalty.update = originalLoyaltyUpdate;
+    prisma.loyalty.create = originalLoyaltyCreate;
+    if (originalLedgerCreate) prisma.loyaltyledger.create = originalLedgerCreate;
+    if (originalAuditCreate) prisma.auditlog.create = originalAuditCreate;
 
   } finally {
     loyaltyModel.findProcessedLoyaltyEvent =

@@ -157,6 +157,22 @@
 	 lastattemptat TIMESTAMP,
 	 nextretryat   TIMESTAMP
  );
+
+ -- Audit Log
+ CREATE TABLE IF NOT EXISTS auditlog (
+	 auditlogid     INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	 entitytype     VARCHAR(50) NOT NULL,
+	 entityid       VARCHAR(100) NOT NULL,
+	 action         VARCHAR(50) NOT NULL,
+	 customerid     VARCHAR(40),
+	 oldervalue     JSONB,
+	 newvalue       JSONB,
+	 metadata       JSONB,
+	 createdby      VARCHAR(100) DEFAULT 'SYSTEM',
+	 createdby_type VARCHAR(50) DEFAULT 'AUTOMATED',
+	 createdat      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	 updatedat      TIMESTAMP
+ );
  ```
 
  ---
@@ -170,6 +186,7 @@
  6. `loyalty`
  7. `loyaltyledger`
  8. `promotionaldlq`
+ 9. `auditlog`
 
  ---
 
