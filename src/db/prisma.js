@@ -3,10 +3,10 @@ const { calculateDiff, recordAuditLog } = require('../services/auditService');
 
 // Map of tracked entity models and their configuration
 const TRACKED_ENTITIES = {
-  customer: { entityname: 'CUSTOMER', idField: 'customerid' },
-  orderheader: { entityname: 'ORDER', idField: 'orderid' },
-  order: { entityname: 'ORDER', idField: 'orderid' },
-  loyalty: { entityname: 'LOYALTY', idField: 'loyaltyid' },
+  customer: { entitytype: 'CUSTOMER', entityname: 'CUSTOMER', idField: 'customerid' },
+  orderheader: { entitytype: 'ORDER', entityname: 'ORDER', idField: 'orderid' },
+  order: { entitytype: 'ORDER', entityname: 'ORDER', idField: 'orderid' },
+  loyalty: { entitytype: 'LOYALTY', entityname: 'LOYALTY', idField: 'loyaltyid' },
 };
 
 /**
@@ -56,13 +56,21 @@ const attachAuditExtension = (baseClient) => {
                 args.where?.id ||
                 'UNKNOWN';
 
+              const customerId =
+                result?.customerid ||
+                oldState?.customerid ||
+                args.data?.customerid ||
+                args.where?.customerid ||
+                (modelLower === 'customer' ? entityId : null);
+
               await recordAuditLog(baseClient, {
-                entityname: entityConfig.entityname,
+                entitytype: entityConfig.entitytype,
                 entityid: String(entityId),
                 action: 'UPDATE',
+                customerid: customerId,
+                oldervalue: oldvalues,
+                newvalue: newvalues,
                 changedfields,
-                oldvalues,
-                newvalues,
               });
             }
           } catch (auditErr) {
@@ -83,13 +91,19 @@ const attachAuditExtension = (baseClient) => {
               const entityId = result?.[entityConfig.idField] || result?.id || 'UNKNOWN';
               const { changedfields, newvalues } = calculateDiff({}, result);
 
+              const customerId =
+                result?.customerid ||
+                args.data?.customerid ||
+                (modelLower === 'customer' ? entityId : null);
+
               await recordAuditLog(baseClient, {
-                entityname: entityConfig.entityname,
+                entitytype: entityConfig.entitytype,
                 entityid: String(entityId),
                 action: 'CREATE',
+                customerid: customerId,
+                oldervalue: null,
+                newvalue: newvalues,
                 changedfields,
-                oldvalues: null,
-                newvalues,
               });
             } catch (auditErr) {
               console.error(`[AUDIT_EXTENSION] Error recording create audit log for ${model}:`, auditErr.message);
@@ -128,15 +142,21 @@ const attachAuditExtension = (baseClient) => {
               result?.id ||
               'UNKNOWN';
 
+            const customerId =
+              result?.customerid ||
+              oldState?.customerid ||
+              (modelLower === 'customer' ? entityId : null);
+
             const { changedfields, oldvalues } = calculateDiff(oldState || result, {});
 
             await recordAuditLog(baseClient, {
-              entityname: entityConfig.entityname,
+              entitytype: entityConfig.entitytype,
               entityid: String(entityId),
               action: 'DELETE',
+              customerid: customerId,
+              oldervalue: oldvalues,
+              newvalue: null,
               changedfields,
-              oldvalues,
-              newvalues: null,
             });
           } catch (auditErr) {
             console.error(`[AUDIT_EXTENSION] Error recording delete audit log for ${model}:`, auditErr.message);
