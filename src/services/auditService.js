@@ -175,13 +175,10 @@ const recordAuditLog = async (prismaClient, auditData = {}) => {
 
     const normalizedEntityType = String(entitytype).toUpperCase();
     const logData = {
-      entitytype: normalizedEntityType,
       entityname: normalizedEntityType,
       entityid: String(entityid),
       action: String(action).toUpperCase(),
       customerid: customerid ? String(customerid) : null,
-      oldervalue: oldervalue !== null && oldervalue !== undefined ? oldervalue : null,
-      newvalue: newvalue !== null && newvalue !== undefined ? newvalue : null,
       oldvalues: oldervalue !== null && oldervalue !== undefined ? oldervalue : null,
       newvalues: newvalue !== null && newvalue !== undefined ? newvalue : null,
       changedfields: changedfields && Array.isArray(changedfields) ? changedfields : null,
