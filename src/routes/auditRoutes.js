@@ -5,5 +5,6 @@ const router = express.Router();
 
 router.get('/stats', controller.auditStats);
 router.get('/', controller.listAuditLogs);
+router.get('/export', controller.exportAuditLogs);
 
 module.exports = router;

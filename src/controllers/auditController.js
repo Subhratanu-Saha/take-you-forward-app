@@ -9,7 +9,14 @@ const listAuditLogs = async (req, res, next) => {
     const result = await getAuditLogs(
       prisma,
       req.query.page,
-      req.query.pageSize
+      req.query.pageSize,
+      {
+         entityname: req.query.entityname,
+         action: req.query.action,
+         search: req.query.search,
+         startDate: req.query.startDate,
+         endDate: req.query.endDate,
+      }
     );
 
     res.json({
@@ -34,7 +41,59 @@ const auditStats = async (req, res, next) => {
   }
 };
 
+const exportAuditLogs = async (req, res, next) => {
+  try {
+    const result = await getAuditLogs(
+      prisma,
+      1,
+      100000,
+      {
+        entityname: req.query.entityname,
+        action: req.query.action,
+        search: req.query.search,
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
+      }
+    );
+
+    const escapeCsv = (value) =>
+      `"${String(value ?? '').replaceAll('"', '""')}"`;
+
+    const headers = [
+      'Timestamp',
+      'Entity',
+      'Entity ID',
+      'Action',
+      'Actor',
+      'Customer ID',
+    ];
+
+    const rows = result.data.map((log) => [
+      log.createdat?.toISOString(),
+      log.entityname,
+      log.entityid,
+      log.action,
+      log.actor || log.createdby,
+      log.customerid,
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map(escapeCsv).join(','))
+      .join('\r\n');
+
+    res
+      .type('text/csv')
+      .attachment(
+        `audit-logs-export-${new Date().toISOString().slice(0, 10)}.csv`
+      )
+      .send(csv);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   listAuditLogs,
   auditStats,
+  exportAuditLogs,
 };

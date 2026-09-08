@@ -7,6 +7,19 @@ const statusElement = document.querySelector('#status');
 const liveStatusElement = document.querySelector('#liveStatus');
 const lastUpdatedElement = document.querySelector('#lastUpdated');
 const refreshButton = document.querySelector('#refreshButton');
+const filterForm = document.querySelector('#filterForm');
+const resetButton = document.querySelector('#resetButton');
+const exportButton = document.querySelector('#exportButton');
+
+const getFilters = () => {
+  const params = new URLSearchParams(new FormData(filterForm));
+
+  for (const [key, value] of [...params.entries()]) {
+    if (!value) params.delete(key);
+  }
+
+  return params;
+};
 
 const formatTimestamp = (value) =>
   new Intl.DateTimeFormat(undefined, {
@@ -52,9 +65,14 @@ const loadStats = async () => {
 };
 
 const loadLogs = async () => {
+
+   const params = getFilters();
+
+  params.set('page', currentPage);
+  params.set('pageSize', pageSize);
+
   const response = await fetch(
-    `/api/v1/audit-logs?page=${currentPage}&pageSize=${pageSize}`
-  );
+    `/api/v1/audit-logs?${params.toString()}`);
 
   if (!response.ok) {
     throw new Error('Unable to load audit activity.');
@@ -123,5 +141,37 @@ document.querySelector('#nextButton').addEventListener('click', () => {
 });
 
 refreshButton.addEventListener('click', loadDashboard);
+
+let searchTimer;
+
+filterForm.addEventListener('input', (event) => {
+  if (event.target.id !== 'searchInput') return;
+
+  clearTimeout(searchTimer);
+
+  searchTimer = setTimeout(() => {
+    currentPage = 1;
+    loadLogs();
+  }, 250);
+});
+
+filterForm.addEventListener('change', () => {
+  currentPage = 1;
+  loadLogs();
+});
+
+resetButton.addEventListener('click', () => {
+  setTimeout(() => {
+    currentPage = 1;
+    loadLogs();
+  });
+});
+
+exportButton.addEventListener('click', () => {
+  const params = getFilters();
+
+  window.location.href =
+    `/api/v1/audit-logs/export?${params.toString()}`;
+});
 
 loadDashboard();

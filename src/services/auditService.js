@@ -330,13 +330,58 @@ const getAuditLogsByRequestId = async (prismaClient, requestid) => {
   }
 };
 
-const getAuditLogs = async (prismaClient, page = 1, pageSize = 10) => {
+const getAuditLogs = async (prismaClient, page = 1, pageSize = 10, filters = {}) => {
   const safePage = Math.max(Number(page) || 1, 1);
-  const safePageSize = Math.min(Math.max(Number(pageSize) || 10, 1), 20);
+  const safePageSize = Math.min(Math.max(Number(pageSize) || 10, 1), 10000);
+
+   const where = {};
+  const { entityname, action, search, startDate, endDate } = filters;
+
+  if (entityname) {
+    const normalizedEntity = entityname === 'PROMOTIONAL_DLQ'
+      ? 'DLQ'
+      : entityname.toUpperCase();
+
+    where.OR = [
+      { entityname: normalizedEntity },
+      { entitytype: normalizedEntity },
+    ];
+  }
+
+  if (action) {
+    where.action = action.toUpperCase();
+  }
+
+  const searchConditions = [];
+   if (search) {
+    searchConditions.push(
+      { entityid: { contains: search, mode: 'insensitive' } },
+      { customerid: { contains: search, mode: 'insensitive' } }
+    );
+  }
+
+  if (searchConditions.length) {
+    where.AND = [{ OR: searchConditions }];
+  }
+
+  if (startDate || endDate) {
+    where.createdat = {};
+
+    if (startDate) {
+      where.createdat.gte = new Date(`${startDate}T00:00:00.000Z`);
+    }
+
+    if (endDate) {
+      where.createdat.lt = new Date(`${endDate}T00:00:00.000Z`);
+      where.createdat.lt.setUTCDate(where.createdat.lt.getUTCDate() + 1);
+    }
+  }
+
   const skip = (safePage - 1) * safePageSize;
 
   const [data, total] = await Promise.all([
     prismaClient.auditlog.findMany({
+      where,
       orderBy: { createdat: 'desc' },
       skip,
       take: safePageSize,
@@ -344,13 +389,15 @@ const getAuditLogs = async (prismaClient, page = 1, pageSize = 10) => {
         auditid: true,
         createdat: true,
         entityname: true,
+        entitytype: true,
         entityid: true,
         action: true,
         actor: true,
         createdby: true,
+        customerid: true,
       },
     }),
-    prismaClient.auditlog.count(),
+    prismaClient.auditlog.count({where}),
   ]);
 
   return {
