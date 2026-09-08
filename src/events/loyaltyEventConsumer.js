@@ -31,7 +31,7 @@ const createLoyaltyPurchaseConsumer = ({
       };
     }
 
-    const { eventId, customerId, totalpoints } = validation.normalized;
+    const { eventId, customerId, orderId, totalpoints } = validation.normalized;
 
     logger.info('LOYALTY_EVENT_CONSUMER: received valid purchase event', {
       eventId,
@@ -44,7 +44,7 @@ const createLoyaltyPurchaseConsumer = ({
         eventId,
         customerId,
         type: 'PURCHASE',
-        payload: { totalpoints, customerId },
+        payload: { totalpoints, customerId, orderid: orderId },
       });
 
       logger.info('LOYALTY_EVENT_CONSUMER: event processed successfully', {

@@ -139,6 +139,7 @@ test('duplicate customer.purchase event should be skipped', async () => {
     const event = {
       eventId: 'EVENT-001',
       customerId: 'CUST-123',
+      orderId: 'ORDER-001',
       totalpoints: 100,
     };
 
