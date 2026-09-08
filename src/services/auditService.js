@@ -180,8 +180,6 @@ const recordAuditLog = async (prismaClient, auditData = {}) => {
       entityid: String(entityid),
       action: String(action).toUpperCase(),
       customerid: customerid ? String(customerid) : null,
-      oldervalue: oldervalue !== null && oldervalue !== undefined ? oldervalue : null,
-      newvalue: newvalue !== null && newvalue !== undefined ? newvalue : null,
       oldvalues: oldervalue !== null && oldervalue !== undefined ? oldervalue : null,
       newvalues: newvalue !== null && newvalue !== undefined ? newvalue : null,
       changedfields: changedfields && Array.isArray(changedfields) ? changedfields : null,
@@ -200,7 +198,10 @@ const recordAuditLog = async (prismaClient, auditData = {}) => {
 
     const auditLog = await prismaClient.auditlog.create({ data: logData });
     console.info(`[AUDIT_SERVICE] Audit recorded successfully: ${logData.entitytype} | ${logData.entityid} | ${logData.action}`);
-    return auditLog;
+    return {
+      ...auditLog,
+      auditlogid: auditLog.auditid,
+    };
   } catch (error) {
     console.error('[AUDIT_SERVICE] Error writing audit log:', error.message);
     throw error;
@@ -304,7 +305,7 @@ const getAuditLogsByEntity = async (prismaClient, entityname, entityid) => {
 };
 
 /**
- * Fetch audit logs by Request ID
+ * Fetch audit logs by Request ID (ordered chronologically for event flow)
  */
 const getAuditLogsByRequestId = async (prismaClient, requestid) => {
   try {
@@ -322,7 +323,7 @@ const getAuditLogsByRequestId = async (prismaClient, requestid) => {
           },
         ],
       },
-      orderBy: { createdat: 'desc' },
+      orderBy: { createdat: 'asc' },
     });
   } catch (error) {
     console.error('[AUDIT_SERVICE] Error fetching audit logs by request ID:', error.message);
@@ -330,13 +331,50 @@ const getAuditLogsByRequestId = async (prismaClient, requestid) => {
   }
 };
 
-const getAuditLogs = async (prismaClient, page = 1, pageSize = 10) => {
+/**
+ * Fetch single audit log by auditid
+ */
+const getAuditLogById = async (prismaClient, auditId) => {
+  try {
+    const client = prismaClient?.auditlog ? prismaClient : require('../utils/db');
+    if (!client?.auditlog) return null;
+    return await client.auditlog.findUnique({
+      where: { auditid: String(auditId) },
+    });
+  } catch (error) {
+    console.error('[AUDIT_SERVICE] Error fetching audit log by ID:', error.message);
+    return null;
+  }
+};
+
+const getAuditLogs = async (prismaClient, page = 1, pageSize = 10, options = {}) => {
   const safePage = Math.max(Number(page) || 1, 1);
-  const safePageSize = Math.min(Math.max(Number(pageSize) || 10, 1), 20);
+  const safePageSize = Math.min(Math.max(Number(pageSize) || 10, 1), 50);
   const skip = (safePage - 1) * safePageSize;
+
+  const where = {};
+  if (options.requestId) {
+    where.OR = [
+      { requestid: String(options.requestId) },
+      {
+        metadata: {
+          path: ['requestid'],
+          equals: String(options.requestId),
+        },
+      },
+    ];
+  }
+  if (options.entityType || options.entityname) {
+    const entity = options.entityType || options.entityname;
+    where.OR = [
+      { entitytype: String(entity).toUpperCase() },
+      { entityname: String(entity).toUpperCase() },
+    ];
+  }
 
   const [data, total] = await Promise.all([
     prismaClient.auditlog.findMany({
+      where,
       orderBy: { createdat: 'desc' },
       skip,
       take: safePageSize,
@@ -344,13 +382,19 @@ const getAuditLogs = async (prismaClient, page = 1, pageSize = 10) => {
         auditid: true,
         createdat: true,
         entityname: true,
+        entitytype: true,
         entityid: true,
         action: true,
         actor: true,
         createdby: true,
+        requestid: true,
+        oldvalues: true,
+        newvalues: true,
+        changedfields: true,
+        metadata: true,
       },
     }),
-    prismaClient.auditlog.count(),
+    prismaClient.auditlog.count({ where }),
   ]);
 
   return {
@@ -396,6 +440,7 @@ module.exports = {
   getCustomerAuditTrail,
   getAuditLogsByEntity,
   getAuditLogs,
+  getAuditLogById,
   getAuditStats,
   getAuditLogsByRequestId,
   DEFAULT_IGNORED_FIELDS,

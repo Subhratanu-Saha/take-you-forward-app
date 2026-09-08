@@ -112,6 +112,13 @@ h2 {
   gap: 8px;
   padding: 9px 13px;
   text-transform: uppercase;
+  transition: all 0.2s ease-in-out;
+}
+
+.live-status.is-refreshing {
+  border-color: #d3a800;
+  color: var(--amber);
+  background: #fffdf5;
 }
 
 .live-dot {
@@ -119,6 +126,22 @@ h2 {
   border-radius: 50%;
   height: 8px;
   width: 8px;
+}
+
+.refresh-spinner-icon {
+  animation: spinSymbol 0.75s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+  color: var(--amber);
+}
+
+@keyframes spinSymbol {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .summary-grid {
@@ -320,3 +343,609 @@ td:nth-child(3) {
     padding: 18px;
   }
 }
+
+/* ==========================================================================
+   TUF-170: Visual Diff Inspector & Request Correlation Styles
+   ========================================================================== */
+
+.hidden {
+  display: none !important;
+}
+
+.mono-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8rem;
+  background: #f0f4ee;
+  border: 1px solid var(--line);
+  padding: 2px 7px;
+  border-radius: 4px;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+/* Request ID Interactive Badge in Table */
+.request-id-badge {
+  background: #f0f4ee;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  text-decoration: none;
+  transition: all 0.15s ease-in-out;
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.request-id-badge:hover {
+  background: var(--green-soft);
+  border-color: var(--green);
+  color: var(--green);
+  transform: translateY(-1px);
+}
+
+.request-id-empty {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+/* View Diff Row Action Button */
+.view-diff-btn {
+  background: var(--ink);
+  border-radius: 5px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  transition: background 0.15s ease-in-out;
+  white-space: nowrap;
+}
+
+.view-diff-btn:hover {
+  background: var(--green);
+}
+
+/* Filter Banner */
+.filter-banner {
+  align-items: center;
+  background: var(--green-soft);
+  border: 1px solid #b7dfc3;
+  border-radius: 6px;
+  color: var(--green);
+  display: flex;
+  font-size: 0.85rem;
+  font-weight: 600;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 10px 16px;
+}
+
+.filter-info {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.clear-filter-btn {
+  background: transparent;
+  border: 1px solid var(--green);
+  border-radius: 4px;
+  color: var(--green);
+  font-size: 0.75rem;
+  padding: 4px 10px;
+}
+
+.clear-filter-btn:hover {
+  background: var(--green);
+  color: #fff;
+}
+
+/* Modal Overlay & Backdrop */
+.modal-backdrop {
+  align-items: center;
+  backdrop-filter: blur(4px);
+  background: rgba(23, 33, 27, 0.65);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-dialog {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.diff-modal {
+  width: min(980px, 100%);
+}
+
+.tracer-modal {
+  width: min(760px, 100%);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.97) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Modal Header */
+.modal-header {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  background: #fafbfa;
+}
+
+.modal-title-group h3 {
+  font-family: Georgia, serif;
+  font-size: 1.45rem;
+  margin: 6px 0 2px;
+}
+
+.modal-subtitle {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.modal-badges {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.entity-badge {
+  background: var(--ink);
+  border-radius: 4px;
+  color: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  text-transform: uppercase;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.3rem;
+  font-weight: 400;
+  line-height: 1;
+  padding: 6px 10px;
+  transition: all 0.15s;
+}
+
+.modal-close-btn:hover {
+  background: #eef2eb;
+  color: var(--ink);
+}
+
+/* Metadata Bar */
+.diff-metadata-bar,
+.tracer-summary-bar {
+  align-items: center;
+  background: #f7f9f6;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 10px 24px;
+}
+
+.meta-item {
+  align-items: center;
+  display: flex;
+  font-size: 0.8rem;
+  gap: 8px;
+}
+
+.meta-label {
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+}
+
+.meta-value {
+  font-weight: 600;
+}
+
+/* View Controls & Legend */
+.diff-view-controls {
+  align-items: center;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 24px;
+  font-size: 0.82rem;
+}
+
+.diff-legend {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+}
+
+.legend-item {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.legend-swatch {
+  border-radius: 3px;
+  display: inline-block;
+  height: 12px;
+  width: 12px;
+}
+
+.legend-old {
+  background: var(--red-soft);
+  border: 1px solid var(--red);
+}
+
+.legend-new {
+  background: var(--green-soft);
+  border: 1px solid var(--green);
+}
+
+.diff-toggle-label {
+  align-items: center;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 6px;
+  user-select: none;
+}
+
+/* Modal Body & Side-by-Side Diff Columns */
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+
+.diff-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.diff-column {
+  background: #fafbfa;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.diff-column-header {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #f1f5f0;
+}
+
+.diff-column-old .diff-column-header {
+  border-left: 4px solid var(--red);
+}
+
+.diff-column-new .diff-column-header {
+  border-left: 4px solid var(--green);
+}
+
+.diff-column-header h4 {
+  font-size: 0.92rem;
+  margin: 0;
+  font-weight: 800;
+}
+
+.diff-col-tag {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.diff-field-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+}
+
+/* Field Cards */
+.diff-field-card {
+  background: #fff;
+  border: 1px solid #e0e5de;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 14px;
+  transition: all 0.15s ease-in-out;
+}
+
+.diff-field-card .field-name {
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.76rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.diff-field-card .field-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.84rem;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.diff-field-card .field-empty {
+  color: var(--muted);
+  font-style: italic;
+  font-size: 0.8rem;
+}
+
+/* Red Highlighting: Old values that were modified or deleted */
+.diff-field-card.field-old-changed {
+  background: #fdf2f0;
+  border-color: #f1bdb7;
+  border-left: 4px solid var(--red);
+}
+
+.diff-field-card.field-old-changed .field-name {
+  color: var(--red);
+}
+
+.diff-field-card.field-old-changed .field-value {
+  color: var(--red);
+  background: #fbe6e3;
+  padding: 3px 6px;
+  border-radius: 3px;
+  display: inline-block;
+  text-decoration: line-through;
+}
+
+/* Green Highlighting: New values that were modified or created */
+.diff-field-card.field-new-changed {
+  background: #f0f8f3;
+  border-color: #b7e2c6;
+  border-left: 4px solid var(--green);
+}
+
+.diff-field-card.field-new-changed .field-name {
+  color: var(--green);
+}
+
+.diff-field-card.field-new-changed .field-value {
+  color: var(--green);
+  font-weight: 700;
+  background: #dbeef0;
+  padding: 3px 6px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+/* Empty State Card (e.g. CREATE has no old value, DELETE has no new value) */
+.diff-state-card {
+  align-items: center;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  font-size: 0.86rem;
+  gap: 6px;
+  justify-content: center;
+  min-height: 180px;
+  padding: 24px;
+  text-align: center;
+}
+
+.diff-state-icon {
+  font-size: 1.8rem;
+  opacity: 0.6;
+}
+
+/* Request Tracer Timeline */
+.tracer-summary-bar {
+  justify-content: space-between;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.tracer-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  padding-left: 28px;
+}
+
+.tracer-timeline::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 11px;
+  width: 2px;
+  background: var(--line);
+}
+
+.tracer-item {
+  position: relative;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  transition: border-color 0.15s;
+}
+
+.tracer-item:hover {
+  border-color: var(--green);
+}
+
+.tracer-step-node {
+  position: absolute;
+  left: -28px;
+  top: 16px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  box-shadow: 0 0 0 4px var(--surface);
+}
+
+.tracer-item-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tracer-item-top {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tracer-entity {
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.tracer-entity-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.tracer-item-meta {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.tracer-item-diff-btn {
+  background: transparent;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  color: var(--ink);
+  font-size: 0.74rem;
+  padding: 5px 10px;
+}
+
+.tracer-item-diff-btn:hover {
+  background: var(--ink);
+  color: #fff;
+}
+
+/* Modal Footer */
+.modal-footer {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 24px;
+  background: #fafbfa;
+}
+
+.shortcut-hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.shortcut-hint kbd {
+  background: #eef2ec;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: inherit;
+  font-size: 0.75rem;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.button-secondary {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.button-secondary:hover:not(:disabled) {
+  background: #eef2eb;
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+@media (max-width: 768px) {
+  .diff-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .diff-view-controls {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .modal-dialog {
+    max-height: 95vh;
+  }
+}
