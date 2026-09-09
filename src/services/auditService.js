@@ -175,7 +175,6 @@ const recordAuditLog = async (prismaClient, auditData = {}) => {
 
     const normalizedEntityType = String(entitytype).toUpperCase();
     const logData = {
-      entitytype: normalizedEntityType,
       entityname: normalizedEntityType,
       entityid: String(entityid),
       action: String(action).toUpperCase(),
