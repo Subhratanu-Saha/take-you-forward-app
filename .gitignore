@@ -9,3 +9,5 @@ prisma/*
 prisma/migrations/*
 !prisma/migrations/20260904120000_widen_loyalty_totalpoints/
 !prisma/migrations/20260904120000_widen_loyalty_totalpoints/migration.sql
+!prisma/migrations/20260904210000_widen_interaction_interactionvalue/
+!prisma/migrations/20260904210000_widen_interaction_interactionvalue/migration.sql
