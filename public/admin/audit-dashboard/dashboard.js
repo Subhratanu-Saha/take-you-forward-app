@@ -13,9 +13,19 @@ const liveDot = document.querySelector('#liveDot');
 const refreshSpinnerIcon = document.querySelector('#refreshSpinnerIcon');
 const lastUpdatedElement = document.querySelector('#lastUpdated');
 const refreshButton = document.querySelector('#refreshButton');
-const previousButton = document.querySelector('#previousButton');
-const nextButton = document.querySelector('#nextButton');
-const pageLabel = document.querySelector('#pageLabel');
+const filterForm = document.querySelector('#filterForm');
+const resetButton = document.querySelector('#resetButton');
+const exportButton = document.querySelector('#exportButton');
+
+const getFilters = () => {
+  const params = new URLSearchParams(new FormData(filterForm));
+
+  for (const [key, value] of [...params.entries()]) {
+    if (!value) params.delete(key);
+  }
+
+  return params;
+};
 
 // Filter Banner Elements
 const filterBanner = document.querySelector('#filterBanner');
@@ -453,12 +463,14 @@ const loadStats = async () => {
 };
 
 const loadLogs = async () => {
-  let url = `/api/v1/audit-logs?page=${currentPage}&pageSize=${pageSize}`;
-  if (activeRequestIdFilter) {
-    url += `&requestId=${encodeURIComponent(activeRequestIdFilter)}`;
-  }
 
-  const response = await fetch(url);
+   const params = getFilters();
+
+  params.set('page', currentPage);
+  params.set('pageSize', pageSize);
+
+  const response = await fetch(
+    `/api/v1/audit-logs?${params.toString()}`);
 
   if (!response.ok) {
     throw new Error('Unable to load audit activity.');
@@ -618,5 +630,36 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Initialize Dashboard
+let searchTimer;
+
+filterForm.addEventListener('input', (event) => {
+  if (event.target.id !== 'searchInput') return;
+
+  clearTimeout(searchTimer);
+
+  searchTimer = setTimeout(() => {
+    currentPage = 1;
+    loadLogs();
+  }, 250);
+});
+
+filterForm.addEventListener('change', () => {
+  currentPage = 1;
+  loadLogs();
+});
+
+resetButton.addEventListener('click', () => {
+  setTimeout(() => {
+    currentPage = 1;
+    loadLogs();
+  });
+});
+
+exportButton.addEventListener('click', () => {
+  const params = getFilters();
+
+  window.location.href =
+    `/api/v1/audit-logs/export?${params.toString()}`;
+});
+
 loadDashboard();

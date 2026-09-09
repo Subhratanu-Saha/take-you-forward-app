@@ -2,67 +2,26 @@ const prisma = require('../db/prisma');
 const {
   getAuditLogs,
   getAuditStats,
-  getAuditLogsByRequestId,
-  getAuditLogById: fetchAuditLogById,
 } = require('../services/auditService');
 
 const listAuditLogs = async (req, res, next) => {
   try {
-    const { page, pageSize, requestId, entityType } = req.query;
     const result = await getAuditLogs(
       prisma,
-      page,
-      pageSize,
-      { requestId, entityType }
+      req.query.page,
+      req.query.pageSize,
+      {
+         entityname: req.query.entityname,
+         action: req.query.action,
+         search: req.query.search,
+         startDate: req.query.startDate,
+         endDate: req.query.endDate,
+      }
     );
 
     res.json({
       success: true,
       ...result,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const getLogsByRequestId = async (req, res, next) => {
-  try {
-    const { requestId } = req.params;
-    if (!requestId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Request ID parameter is required',
-      });
-    }
-
-    const logs = await getAuditLogsByRequestId(prisma, requestId);
-
-    res.json({
-      success: true,
-      requestId,
-      count: logs.length,
-      data: logs,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-const getAuditLogById = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const log = await fetchAuditLogById(prisma, id);
-
-    if (!log) {
-      return res.status(404).json({
-        success: false,
-        message: 'Audit log not found',
-      });
-    }
-
-    res.json({
-      success: true,
-      data: log,
     });
   } catch (error) {
     next(error);
@@ -82,9 +41,59 @@ const auditStats = async (req, res, next) => {
   }
 };
 
+const exportAuditLogs = async (req, res, next) => {
+  try {
+    const result = await getAuditLogs(
+      prisma,
+      1,
+      100000,
+      {
+        entityname: req.query.entityname,
+        action: req.query.action,
+        search: req.query.search,
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
+      }
+    );
+
+    const escapeCsv = (value) =>
+      `"${String(value ?? '').replaceAll('"', '""')}"`;
+
+    const headers = [
+      'Timestamp',
+      'Entity',
+      'Entity ID',
+      'Action',
+      'Actor',
+      'Customer ID',
+    ];
+
+    const rows = result.data.map((log) => [
+      log.createdat?.toISOString(),
+      log.entityname,
+      log.entityid,
+      log.action,
+      log.actor || log.createdby,
+      log.customerid,
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map(escapeCsv).join(','))
+      .join('\r\n');
+
+    res
+      .type('text/csv')
+      .attachment(
+        `audit-logs-export-${new Date().toISOString().slice(0, 10)}.csv`
+      )
+      .send(csv);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   listAuditLogs,
   auditStats,
-  getLogsByRequestId,
-  getAuditLogById,
-};
+  exportAuditLogs,
+};

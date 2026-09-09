@@ -7,5 +7,6 @@ router.get('/stats', controller.auditStats);
 router.get('/request/:requestId', controller.getLogsByRequestId);
 router.get('/:id', controller.getAuditLogById);
 router.get('/', controller.listAuditLogs);
+router.get('/export', controller.exportAuditLogs);
 
 module.exports = router;

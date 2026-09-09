@@ -330,25 +330,53 @@ const getAuditLogsByRequestId = async (prismaClient, requestid) => {
   }
 };
 
-/**
- * Fetch single audit log by auditid
- */
-const getAuditLogById = async (prismaClient, auditId) => {
-  try {
-    const client = prismaClient?.auditlog ? prismaClient : require('../utils/db');
-    if (!client?.auditlog) return null;
-    return await client.auditlog.findUnique({
-      where: { auditid: String(auditId) },
-    });
-  } catch (error) {
-    console.error('[AUDIT_SERVICE] Error fetching audit log by ID:', error.message);
-    return null;
-  }
-};
-
-const getAuditLogs = async (prismaClient, page = 1, pageSize = 10, options = {}) => {
+const getAuditLogs = async (prismaClient, page = 1, pageSize = 10, filters = {}) => {
   const safePage = Math.max(Number(page) || 1, 1);
-  const safePageSize = Math.min(Math.max(Number(pageSize) || 10, 1), 50);
+  const safePageSize = Math.min(Math.max(Number(pageSize) || 10, 1), 10000);
+
+   const where = {};
+  const { entityname, action, search, startDate, endDate } = filters;
+
+  if (entityname) {
+    const normalizedEntity = entityname === 'PROMOTIONAL_DLQ'
+      ? 'DLQ'
+      : entityname.toUpperCase();
+
+    where.OR = [
+      { entityname: normalizedEntity },
+      { entitytype: normalizedEntity },
+    ];
+  }
+
+  if (action) {
+    where.action = action.toUpperCase();
+  }
+
+  const searchConditions = [];
+   if (search) {
+    searchConditions.push(
+      { entityid: { contains: search, mode: 'insensitive' } },
+      { customerid: { contains: search, mode: 'insensitive' } }
+    );
+  }
+
+  if (searchConditions.length) {
+    where.AND = [{ OR: searchConditions }];
+  }
+
+  if (startDate || endDate) {
+    where.createdat = {};
+
+    if (startDate) {
+      where.createdat.gte = new Date(`${startDate}T00:00:00.000Z`);
+    }
+
+    if (endDate) {
+      where.createdat.lt = new Date(`${endDate}T00:00:00.000Z`);
+      where.createdat.lt.setUTCDate(where.createdat.lt.getUTCDate() + 1);
+    }
+  }
+
   const skip = (safePage - 1) * safePageSize;
 
   const where = {};
@@ -386,14 +414,10 @@ const getAuditLogs = async (prismaClient, page = 1, pageSize = 10, options = {})
         action: true,
         actor: true,
         createdby: true,
-        requestid: true,
-        oldvalues: true,
-        newvalues: true,
-        changedfields: true,
-        metadata: true,
+        customerid: true,
       },
     }),
-    prismaClient.auditlog.count({ where }),
+    prismaClient.auditlog.count({where}),
   ]);
 
   return {
