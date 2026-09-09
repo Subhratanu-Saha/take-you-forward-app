@@ -14,7 +14,7 @@ const generateLoyaltyEventId = ({ customerid, orderid }) => {
 const processPurchaseEvent = async ({ customerid, orderid, totalamount, eventId, points, transactionClient = prisma }) => {
   const normalizedEventId = (eventId || points?.eventId || '').toString().trim() || generateLoyaltyEventId({ customerid, orderid });
   const normalizedCustomerId = customerid?.trim();
-  const normalizedOrderId = orderid?.trim() || `PURCHASE-${normalizedCustomerId || 'unknown'}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+  const normalizedOrderId = orderid?.trim() || `PUR-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
 
   const earnedPoints = Number(points ?? Math.max(0, Number(totalamount ?? 0)));
 
@@ -89,6 +89,7 @@ const processPurchaseEvent = async ({ customerid, orderid, totalamount, eventId,
     data: {
       customerid: normalizedCustomerId,
       orderid: normalizedOrderId || `LOY-${Date.now()}`,
+      eventid: normalizedEventId,
       ledgertype: 'EARNED',
       points: Number(earnedPoints),
       balanceafter: Number(nextTotalPoints),

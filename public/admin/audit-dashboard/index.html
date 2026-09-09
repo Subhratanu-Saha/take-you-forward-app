@@ -16,8 +16,11 @@
         <p class="subtitle">Monitor recent customer, order, and loyalty changes.</p>
       </div>
 
-      <div class="live-status" aria-live="polite">
-        <span class="live-dot"></span>
+      <div class="live-status" id="liveStatusBadge" aria-live="polite">
+        <span class="live-dot" id="liveDot"></span>
+        <svg class="refresh-spinner-icon hidden" id="refreshSpinnerIcon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+        </svg>
         <span id="liveStatus">Live feed</span>
       </div>
     </header>
@@ -115,6 +118,8 @@
               <th scope="col">Entity ID</th>
               <th scope="col">Action</th>
               <th scope="col">Performed by</th>
+              <th scope="col">Request ID</th>
+              <th scope="col">Actions</th>
             </tr>
           </thead>
           <tbody id="activityBody"></tbody>
@@ -128,6 +133,105 @@
       </footer>
     </section>
   </main>
+
+  <!-- Side-by-Side Visual Diff Inspector Modal -->
+  <div id="diffModalBackdrop" class="modal-backdrop hidden" aria-hidden="true">
+    <div id="diffModal" class="modal-dialog diff-modal" role="dialog" aria-modal="true" aria-labelledby="diffModalTitle">
+      <header class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-badges">
+            <span id="diffEntityBadge" class="entity-badge"></span>
+            <span id="diffActionBadge" class="action"></span>
+          </div>
+          <h3 id="diffModalTitle">Audit Diff Inspection</h3>
+          <p class="modal-subtitle" id="diffModalSubtitle">Side-by-side comparison of field-level changes</p>
+        </div>
+        <button id="closeDiffModalBtn" class="modal-close-btn" type="button" aria-label="Close diff modal">✕</button>
+      </header>
+
+      <div class="diff-metadata-bar">
+        <div class="meta-item">
+          <span class="meta-label">Request ID</span>
+          <span id="diffRequestId" class="meta-value mono-badge">None</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Performed by</span>
+          <span id="diffActor" class="meta-value">SYSTEM</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Timestamp</span>
+          <span id="diffTimestamp" class="meta-value">-</span>
+        </div>
+      </div>
+
+      <div class="diff-view-controls">
+        <div class="diff-legend">
+          <span class="legend-item"><span class="legend-swatch legend-old"></span> Old value (Red)</span>
+          <span class="legend-item"><span class="legend-swatch legend-new"></span> New value (Green)</span>
+        </div>
+        <label class="diff-toggle-label">
+          <input type="checkbox" id="toggleOnlyChanged" checked>
+          <span>Only show changed fields</span>
+        </label>
+      </div>
+
+      <div class="modal-body diff-modal-body">
+        <div class="diff-columns">
+          <div class="diff-column diff-column-old">
+            <div class="diff-column-header">
+              <span class="diff-col-tag">Previous state</span>
+              <h4>Old Values (Before)</h4>
+            </div>
+            <div id="diffOldFields" class="diff-field-list"></div>
+          </div>
+
+          <div class="diff-column diff-column-new">
+            <div class="diff-column-header">
+              <span class="diff-col-tag">Modified state</span>
+              <h4>New Values (After)</h4>
+            </div>
+            <div id="diffNewFields" class="diff-field-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <span class="shortcut-hint">Press <kbd>Esc</kbd> to close</span>
+        <div class="modal-actions">
+          <button id="diffModalTraceBtn" class="button-secondary" type="button">Trace Request Events</button>
+          <button id="closeDiffModalBottomBtn" type="button">Close</button>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Single Request Event Tracer Modal -->
+  <div id="tracerModalBackdrop" class="modal-backdrop hidden" aria-hidden="true">
+    <div id="tracerModal" class="modal-dialog tracer-modal" role="dialog" aria-modal="true" aria-labelledby="tracerModalTitle">
+      <header class="modal-header">
+        <div>
+          <p class="section-kicker">Correlation Inspector</p>
+          <h3 id="tracerModalTitle">Single Request Event Tracer</h3>
+          <p class="modal-subtitle">All mutations triggered during request <code id="tracerRequestId" class="mono-badge"></code></p>
+        </div>
+        <button id="closeTracerModalBtn" class="modal-close-btn" type="button" aria-label="Close tracer modal">✕</button>
+      </header>
+
+      <div class="tracer-summary-bar">
+        <span id="tracerCountSummary">0 events triggered in this request</span>
+        <button id="filterByThisRequestBtn" class="button-secondary" type="button">Filter table by this Request</button>
+      </div>
+
+      <div class="modal-body tracer-modal-body">
+        <div id="tracerTimeline" class="tracer-timeline"></div>
+      </div>
+
+      <footer class="modal-footer">
+        <span class="shortcut-hint">Press <kbd>Esc</kbd> to close</span>
+        <button id="closeTracerModalBottomBtn" type="button">Close</button>
+      </footer>
+    </div>
+  </div>
 
   <script src="/admin/audit-dashboard/dashboard.js"></script>
 </body>

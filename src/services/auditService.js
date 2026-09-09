@@ -175,13 +175,10 @@ const recordAuditLog = async (prismaClient, auditData = {}) => {
 
     const normalizedEntityType = String(entitytype).toUpperCase();
     const logData = {
-      entitytype: normalizedEntityType,
       entityname: normalizedEntityType,
       entityid: String(entityid),
       action: String(action).toUpperCase(),
       customerid: customerid ? String(customerid) : null,
-      oldervalue: oldervalue !== null && oldervalue !== undefined ? oldervalue : null,
-      newvalue: newvalue !== null && newvalue !== undefined ? newvalue : null,
       oldvalues: oldervalue !== null && oldervalue !== undefined ? oldervalue : null,
       newvalues: newvalue !== null && newvalue !== undefined ? newvalue : null,
       changedfields: changedfields && Array.isArray(changedfields) ? changedfields : null,
@@ -200,7 +197,10 @@ const recordAuditLog = async (prismaClient, auditData = {}) => {
 
     const auditLog = await prismaClient.auditlog.create({ data: logData });
     console.info(`[AUDIT_SERVICE] Audit recorded successfully: ${logData.entitytype} | ${logData.entityid} | ${logData.action}`);
-    return auditLog;
+    return {
+      ...auditLog,
+      auditlogid: auditLog.auditid,
+    };
   } catch (error) {
     console.error('[AUDIT_SERVICE] Error writing audit log:', error.message);
     throw error;
@@ -304,7 +304,7 @@ const getAuditLogsByEntity = async (prismaClient, entityname, entityid) => {
 };
 
 /**
- * Fetch audit logs by Request ID
+ * Fetch audit logs by Request ID (ordered chronologically for event flow)
  */
 const getAuditLogsByRequestId = async (prismaClient, requestid) => {
   try {
@@ -322,7 +322,7 @@ const getAuditLogsByRequestId = async (prismaClient, requestid) => {
           },
         ],
       },
-      orderBy: { createdat: 'desc' },
+      orderBy: { createdat: 'asc' },
     });
   } catch (error) {
     console.error('[AUDIT_SERVICE] Error fetching audit logs by request ID:', error.message);
@@ -378,6 +378,26 @@ const getAuditLogs = async (prismaClient, page = 1, pageSize = 10, filters = {})
   }
 
   const skip = (safePage - 1) * safePageSize;
+
+  const where = {};
+  if (options.requestId) {
+    where.OR = [
+      { requestid: String(options.requestId) },
+      {
+        metadata: {
+          path: ['requestid'],
+          equals: String(options.requestId),
+        },
+      },
+    ];
+  }
+  if (options.entityType || options.entityname) {
+    const entity = options.entityType || options.entityname;
+    where.OR = [
+      { entitytype: String(entity).toUpperCase() },
+      { entityname: String(entity).toUpperCase() },
+    ];
+  }
 
   const [data, total] = await Promise.all([
     prismaClient.auditlog.findMany({
@@ -443,6 +463,7 @@ module.exports = {
   getCustomerAuditTrail,
   getAuditLogsByEntity,
   getAuditLogs,
+  getAuditLogById,
   getAuditStats,
   getAuditLogsByRequestId,
   DEFAULT_IGNORED_FIELDS,

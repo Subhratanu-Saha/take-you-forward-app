@@ -25,6 +25,7 @@ const validatePurchaseEvent = (event) => {
   const customerId = asString(
     event.customerId ?? event.customerid ?? event.customer ?? event.customer_id
   );
+  const orderId = asString(event.orderId ?? event.orderid ?? event.order_id);
 
   const rawTotalPoints =
     event.totalpoints ??
@@ -71,6 +72,7 @@ const validatePurchaseEvent = (event) => {
     normalized: {
       eventId,
       customerId,
+      orderId,
       totalpoints,
     },
   };

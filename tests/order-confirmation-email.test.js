@@ -145,6 +145,44 @@ test('sendOrderConfirmationEmail dispatches email and creates interaction', asyn
   prisma.interaction.create = originalCreateInteraction;
 });
 
+test('sendOrderConfirmationEmail logs interaction with long order ID exceeding 40 chars', async (t) => {
+  sentEmails.length = 0;
+
+  const createdInteractions = [];
+  const originalCreateInteraction = prisma.interaction.create;
+  prisma.interaction.create = async (args) => {
+    createdInteractions.push(args.data);
+    return { interactionid: 'INT-MOCK-2', ...args.data };
+  };
+
+  const longOrderId = 'ORD-1788529804877-748157';
+  const mockOrder = {
+    orderid: longOrderId,
+    totalamount: 150.00,
+    payment: 'CARD',
+    customer: {
+      customerid: 'CUST-1787839925128-ABCDE12345',
+      firstname: 'Alice',
+      emailadd: 'alice@example.com',
+      addressline1: '999 Street',
+      city: 'Delhi',
+      pincode: '110001',
+    },
+    orderlineitems: []
+  };
+
+  const result = await sendOrderConfirmationEmail(mockOrder);
+
+  assert.ok(result.success, 'Email sending should report success');
+  assert.equal(createdInteractions.length, 1, 'One interaction should be recorded');
+  const expectedInteractionValue = `ORDER_CONFIRMATION_${longOrderId}`;
+  assert.equal(createdInteractions[0].interactionvalue, expectedInteractionValue);
+  assert.ok(expectedInteractionValue.length > 40, 'Interaction value exceeds 40 chars');
+  assert.ok(expectedInteractionValue.length <= 100, 'Interaction value is within 100 chars schema limit');
+
+  prisma.interaction.create = originalCreateInteraction;
+});
+
 test('Order API POST /api/v1/orders integration dispatches email', async (t) => {
   sentEmails.length = 0;
 

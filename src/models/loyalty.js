@@ -224,6 +224,26 @@ const findProcessedLoyaltyEvent = async (eventId, transactionClient = prisma) =>
     return { eventid: normalizedEventId, source: 'memory' };
   }
 
+  try {
+    const client = transactionClient || prisma;
+    if (client?.loyaltyledger?.findFirst) {
+      const existingLedgerEntry = await client.loyaltyledger.findFirst({
+        where: { eventid: normalizedEventId },
+        select: { ledgerid: true, eventid: true },
+      });
+
+      if (existingLedgerEntry) {
+        markLoyaltyEventProcessed(normalizedEventId);
+        return { ...existingLedgerEntry, source: 'database' };
+      }
+    }
+  } catch (error) {
+    console.warn('[LOYALTY_MODEL] Failed to query processed loyalty event from the database', {
+      eventId: normalizedEventId,
+      error: error.message,
+    });
+  }
+
   return null;
 };
 
@@ -234,16 +254,23 @@ const recordProcessedLoyaltyEvent = async (eventId, transactionClient = prisma) 
     throw new Error('Invalid event ID provided for recording processed loyalty event');
   }
 
-  const existingLedgerEntry = await transactionClient.loyaltyledger.findFirst({
+  if (isLoyaltyEventProcessed(normalizedEventId)) {
+    return true;
+  }
+
+  const client = transactionClient || prisma;
+
+  const existingLedgerEntry = await client.loyaltyledger.findFirst({
     where: { eventid: normalizedEventId },
     select: { ledgerid: true, eventid: true },
   });
 
   if (existingLedgerEntry) {
+    markLoyaltyEventProcessed(normalizedEventId);
     return true;
   }
 
-  await transactionClient.loyaltyledger.create({
+  await client.loyaltyledger.create({
     data: {
       orderid: `EVENT-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`,
       eventid: normalizedEventId,
