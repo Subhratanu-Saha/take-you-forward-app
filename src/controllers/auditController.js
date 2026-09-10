@@ -3,7 +3,7 @@ const {
   getAuditLogs,
   getAuditStats,
   getAuditLogById: findAuditLogById,
-  getLogsByRequestId: getAuditLogsByRequestId,
+  getAuditLogsByRequestId: findAuditLogsByRequestId,
 } = require('../services/auditService');
 
 const listAuditLogs = async (req, res, next) => {
@@ -63,7 +63,7 @@ const getAuditLogById = async (req, res, next) => {
   }
 };
 
-const getLogsByRequestId = async (req, res, next) => {
+const getAuditLogsByRequestId = async (req, res, next) => {
   try {
     const logs = await findAuditLogsByRequestId(
       prisma,
@@ -135,5 +135,5 @@ module.exports = {
   auditStats,
   exportAuditLogs,
   getAuditLogById,
-  getLogsByRequestId
+  getAuditLogsByRequestId
 };
