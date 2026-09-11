@@ -14,11 +14,8 @@ const generateLoyaltyEventId = ({ customerid, orderid }) => {
 const processPurchaseEvent = async ({ customerid, orderid, totalamount, eventId, points, transactionClient = prisma }) => {
   const normalizedEventId = (eventId || points?.eventId || '').toString().trim() || generateLoyaltyEventId({ customerid, orderid });
   const normalizedCustomerId = customerid?.trim();
-  const normalizedOrderId = orderid?.trim();
+  const normalizedOrderId = orderid?.trim() || `PUR-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
 
-  if (!normalizedOrderId) {
-    throw new Error('Order ID is required for purchase events');
-  }
   const earnedPoints = Number(points ?? Math.max(0, Number(totalamount ?? 0)));
 
   if (!Number.isFinite(earnedPoints) || earnedPoints < 0) {
@@ -98,7 +95,6 @@ const processPurchaseEvent = async ({ customerid, orderid, totalamount, eventId,
       balanceafter: Number(nextTotalPoints),
       expirydate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
       createdat: new Date(),
-      updatedat: new Date(),
     },
   });
 
@@ -285,8 +281,6 @@ const processRedemptionEvent = async ({
           normalizedOrderId ||
           `REDEMPTION-${Date.now()}`,
 
-        eventid: normalizedEventId,
-
         ledgertype: 'REDEEMED',
 
         points: -redeemedPoints,
@@ -294,8 +288,6 @@ const processRedemptionEvent = async ({
         balanceafter: nextTotalPoints,
 
         createdat: new Date(),
-
-        updatedat: new Date(),
       },
     });
 
