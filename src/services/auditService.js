@@ -218,11 +218,107 @@ const getAuditLogsByRequestId = async (prismaClient, requestid) => {
   }
 };
 
+const buildAuditLogWhere = ({ entityname, entityid, action, actor, search, startDate, endDate } = {}) => {
+  const where = {};
+
+  if (entityname) where.entityname = String(entityname).toUpperCase();
+  if (entityid) where.entityid = String(entityid);
+  if (action) where.action = String(action).toUpperCase();
+  if (actor) where.actor = { contains: String(actor), mode: 'insensitive' };
+
+  if (startDate || endDate) {
+    where.createdat = {};
+    if (startDate) where.createdat.gte = startDate;
+    if (endDate) where.createdat.lte = endDate;
+  }
+
+  if (search) {
+    where.OR = [
+      { entityname: { contains: String(search), mode: 'insensitive' } },
+      { entityid: { contains: String(search), mode: 'insensitive' } },
+      { actor: { contains: String(search), mode: 'insensitive' } },
+      { requestid: { contains: String(search), mode: 'insensitive' } },
+    ];
+  }
+
+  return where;
+};
+
+const toAuditLogResponse = (auditLog) => ({
+  ...auditLog,
+  performedby: auditLog.actor || auditLog.createdby,
+});
+
+const findAuditLogs = async (prismaClient, filters = {}) => {
+  const { page = 1, limit = 10 } = filters;
+  const where = buildAuditLogWhere(filters);
+  const [totalRecords, auditLogs] = await Promise.all([
+    prismaClient.auditlog.count({ where }),
+    prismaClient.auditlog.findMany({
+      where,
+      orderBy: { createdat: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+  ]);
+
+  return {
+    logs: auditLogs.map(toAuditLogResponse),
+    totalRecords,
+  };
+};
+
+const getAuditLogById = async (prismaClient, auditid) => {
+  const auditLog = await prismaClient.auditlog.findUnique({ where: { auditid: String(auditid) } });
+  return auditLog ? toAuditLogResponse(auditLog) : null;
+};
+
+const getAuditTimeline = async (prismaClient, entityname, entityid) => {
+  const auditLogs = await prismaClient.auditlog.findMany({
+    where: {
+      entityname: String(entityname).toUpperCase(),
+      entityid: String(entityid),
+    },
+    orderBy: [{ createdat: 'asc' }, { auditid: 'asc' }],
+  });
+  return auditLogs.map(toAuditLogResponse);
+};
+
+const getAuditStats = async (prismaClient, filters = {}) => {
+  const where = buildAuditLogWhere(filters);
+  const startOfToday = new Date();
+  startOfToday.setUTCHours(0, 0, 0, 0);
+  const todayWhere = { ...where, createdat: { gte: startOfToday } };
+
+  const [totalRecords, recordsToday, actionGroups, entityGroups] = await Promise.all([
+    prismaClient.auditlog.count({ where }),
+    prismaClient.auditlog.count({ where: todayWhere }),
+    prismaClient.auditlog.groupBy({ by: ['action'], where, _count: { _all: true } }),
+    prismaClient.auditlog.groupBy({ by: ['entityname'], where, _count: { _all: true }, orderBy: { _count: { entityname: 'desc' } }, take: 1 }),
+  ]);
+
+  return {
+    totalRecords,
+    recordsToday,
+    byAction: Object.fromEntries(actionGroups.map((group) => [group.action, group._count._all])),
+    mostActiveEntity: entityGroups[0] ? {
+      entityname: entityGroups[0].entityname,
+      totalRecords: entityGroups[0]._count._all,
+    } : null,
+  };
+};
+
 module.exports = {
   calculateDiff,
   recordAuditLog,
   getAuditLogsByEntity,
   getAuditLogsByRequestId,
+  buildAuditLogWhere,
+  findAuditLogs,
+  getAuditLogById,
+  getAuditTimeline,
+  getAuditStats,
+  toAuditLogResponse,
   DEFAULT_IGNORED_FIELDS,
   areValuesEqual,
 };

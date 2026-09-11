@@ -144,6 +144,7 @@ app.use('/api/v1/subscriber', require('./routes/subscriberRoutes'));
 app.use('/api/v1/promotionalmessage', require('./routes/promotionalMessageRoutes'));
 app.use('/api/v1/loyalty', require('./routes/loyaltyRoutes'));
 app.use('/api/v1/orders', require('./routes/orderRoutes'));
+app.use('/api/v1/audit-logs', require('./routes/auditRoutes'));
 
 // Initialize Event Subscriber for Loyalty Purchase Events
 (() => {
