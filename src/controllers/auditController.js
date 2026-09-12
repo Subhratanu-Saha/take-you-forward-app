@@ -130,6 +130,10 @@ const exportAuditLogs = async (req, res) => {
     res.status(200).send(csv);
   } catch (error) {
     sendError(res, error);
+  }
+};
+
+{
 const prisma = require('../db/prisma');
 const {
   getAuditLogs,
@@ -270,9 +274,12 @@ module.exports = {
   exportAuditLogs,
   parseFilters,
 };
+module.exports = {
+  ...module.exports,
   listAuditLogs,
   auditStats,
   exportAuditLogs,
   getAuditLogById,
   getAuditLogsByRequestId
 };
+}
