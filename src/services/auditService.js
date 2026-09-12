@@ -417,6 +417,10 @@ const getAuditStats = async (prismaClient, filters = {}) => {
       entityname: entityGroups[0].entityname,
       totalRecords: entityGroups[0]._count._all,
     } : null,
+  };
+};
+
+{
 const getAuditLogs = async (prismaClient, page = 1, pageSize = 10, filters = {}) => {
   const safePage = Math.max(Number(page) || 1, 1);
   const safePageSize = Math.min(Math.max(Number(pageSize) || 10, 1), 10000);
@@ -546,3 +550,4 @@ module.exports = {
   DEFAULT_IGNORED_FIELDS,
   areValuesEqual,
 };
+}
