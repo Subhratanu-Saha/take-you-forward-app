@@ -14,7 +14,7 @@ const controller = require('../controllers/auditController');
 
 const router = express.Router();
 
-router.get('/stats', controller.auditStats);
+router.get('/stats', controller.getAuditStats);
 router.get('/request/:requestId', controller.getAuditLogsByRequestId);
 router.get('/:id', controller.getAuditLogById);
 router.get('/', controller.listAuditLogs);

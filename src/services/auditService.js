@@ -507,26 +507,44 @@ const getAuditLogById = async (prismaClient, auditId) => {
 };
 
 const getAuditStats = async (prismaClient) => {
+  const client = prismaClient?.auditlog
+    ? prismaClient
+    : require('../utils/db');
+
+  const where = {};
   const startOfToday = new Date();
   startOfToday.setUTCHours(0, 0, 0, 0);
+  const todayWhere = { ...where, createdat: { gte: startOfToday } };
 
-  const [totalEvents, updatesToday, deletions] = await Promise.all([
-    prismaClient.auditlog.count(),
-    prismaClient.auditlog.count({
-      where: {
-        action: 'UPDATE',
-        createdat: { gte: startOfToday },
-      },
+  const [totalRecords, recordsToday, actionGroups, entityGroups] = await Promise.all([
+    client.auditlog.count({ where }),
+    client.auditlog.count({ where: todayWhere }),
+    client.auditlog.groupBy({
+      by: ['action'],
+      where,
+      _count: { _all: true },
     }),
-    prismaClient.auditlog.count({
-      where: { action: 'DELETE' },
+    client.auditlog.groupBy({
+      by: ['entityname'],
+      where,
+      _count: { _all: true },
+      orderBy: { _count: { entityname: 'desc' } },
+      take: 1,
     }),
   ]);
 
   return {
-    totalEvents,
-    updatesToday,
-    deletions,
+    totalRecords,
+    recordsToday,
+    byAction: Object.fromEntries(
+      actionGroups.map((group) => [group.action, group._count._all])
+    ),
+    mostActiveEntity: entityGroups[0]
+      ? {
+          entityname: entityGroups[0].entityname,
+          totalRecords: entityGroups[0]._count._all,
+        }
+      : null,
   };
 };
 
