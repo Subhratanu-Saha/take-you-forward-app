@@ -1,6 +1,33 @@
 const prisma = require('../src/utils/db');
 const { recordAuditLog } = require('../src/services/auditService');
 
+async function recordDemoAuditLog(auditData) {
+  const existingLogs = await prisma.auditlog.findMany({
+    where: {
+      requestid: auditData.requestId,
+      entityname: auditData.entityType,
+      entityid: auditData.entityId,
+      action: auditData.action,
+    },
+    orderBy: { createdat: 'asc' },
+    select: { auditid: true },
+  });
+
+  if (existingLogs.length > 1) {
+    await prisma.auditlog.deleteMany({
+      where: {
+        auditid: { in: existingLogs.slice(1).map((log) => log.auditid) },
+      },
+    });
+  }
+
+  if (existingLogs.length > 0) {
+    return existingLogs[0];
+  }
+
+  return recordAuditLog(prisma, auditData);
+}
+
 async function seedAuditDemoLogs() {
   await prisma.$connect();
   console.log('Seeding demo audit logs for TUF-170 visual diff & request correlation...');
@@ -10,7 +37,7 @@ async function seedAuditDemoLogs() {
   const purgeReqId = 'req_account_purge_9941';
 
   // 1. Transaction Flow (3 correlated events in single API request)
-  await recordAuditLog(prisma, {
+  await recordDemoAuditLog({
     entityType: 'ORDERHEADER',
     entityId: 'ORD-2026-9001',
     action: 'CREATE',
@@ -28,7 +55,7 @@ async function seedAuditDemoLogs() {
     actor: 'cust_aarav@example.com',
   });
 
-  await recordAuditLog(prisma, {
+  await recordDemoAuditLog({
     entityType: 'LOYALTY',
     entityId: 'LOY-5501',
     action: 'UPDATE',
@@ -52,7 +79,7 @@ async function seedAuditDemoLogs() {
     actor: 'cust_aarav@example.com',
   });
 
-  await recordAuditLog(prisma, {
+  await recordDemoAuditLog({
     entityType: 'LOYALTYLEDGER',
     entityId: 'LED-8802',
     action: 'CREATE',
@@ -70,7 +97,7 @@ async function seedAuditDemoLogs() {
   });
 
   // 2. Profile Update (UPDATE with changed fields)
-  await recordAuditLog(prisma, {
+  await recordDemoAuditLog({
     entityType: 'CUSTOMER',
     entityId: 'CUST-DEMO-002',
     action: 'UPDATE',
@@ -103,7 +130,7 @@ async function seedAuditDemoLogs() {
   });
 
   // 3. Purge Record (DELETE)
-  await recordAuditLog(prisma, {
+  await recordDemoAuditLog({
     entityType: 'CUSTOMER',
     entityId: 'CUST-DEMO-999',
     action: 'DELETE',
