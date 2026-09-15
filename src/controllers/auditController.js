@@ -83,7 +83,8 @@ const getAuditLogs = async (req, res) => {
 
 const getAuditLog = async (req, res) => {
   try {
-    const auditLog = await auditService.getAuditLogById(prisma, req.params.auditId);
+    const auditId = req.params.auditId || req.params.id;
+    const auditLog = await auditService.getAuditLogById(prisma, auditId);
     if (!auditLog) return res.status(404).json({ success: false, message: 'Audit log not found' });
     return res.status(200).json({ success: true, data: auditLog });
   } catch (error) {
@@ -133,18 +134,16 @@ const exportAuditLogs = async (req, res) => {
   }
 };
 
-{
-const prisma = require('../db/prisma');
 const {
-  getAuditLogs,
-  getAuditStats,
+  getAuditLogs: fetchAuditLogsService,
+  getAuditStats: fetchAuditStatsService,
   getAuditLogById: findAuditLogById,
   getAuditLogsByRequestId: findAuditLogsByRequestId,
 } = require('../services/auditService');
 
 const listAuditLogs = async (req, res, next) => {
   try {
-    const result = await getAuditLogs(
+    const result = await fetchAuditLogsService(
       prisma,
       req.query.page,
       req.query.pageSize,
@@ -168,7 +167,7 @@ const listAuditLogs = async (req, res, next) => {
 
 const auditStats = async (req, res, next) => {
   try {
-    const stats = await getAuditStats(prisma);
+    const stats = await fetchAuditStatsService(prisma);
 
     res.json({
       success: true,
@@ -181,7 +180,8 @@ const auditStats = async (req, res, next) => {
 
 const getAuditLogById = async (req, res, next) => {
   try {
-    const log = await findAuditLogById(prisma, req.params.id);
+    const id = req.params.id || req.params.auditId;
+    const log = await findAuditLogById(prisma, id);
 
     if (!log) {
       return res.status(404).json({
@@ -208,6 +208,7 @@ const getAuditLogsByRequestId = async (req, res, next) => {
 
     return res.json({
       success: true,
+      count: logs.length,
       data: logs,
     });
   } catch (error) {
@@ -215,9 +216,9 @@ const getAuditLogsByRequestId = async (req, res, next) => {
   }
 };
 
-const exportAuditLogs = async (req, res, next) => {
+const exportAuditLogsCsv = async (req, res, next) => {
   try {
-    const result = await getAuditLogs(
+    const result = await fetchAuditLogsService(
       prisma,
       1,
       100000,
@@ -273,13 +274,9 @@ module.exports = {
   getAuditStats,
   exportAuditLogs,
   parseFilters,
-};
-module.exports = {
-  ...module.exports,
   listAuditLogs,
   auditStats,
-  exportAuditLogs,
   getAuditLogById,
-  getAuditLogsByRequestId
+  getAuditLogsByRequestId,
+  exportAuditLogsCsv,
 };
-}
