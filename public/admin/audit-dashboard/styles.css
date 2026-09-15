@@ -27,7 +27,8 @@ body {
     var(--background);
 }
 
-button {
+button,
+.export-btn {
   border: 0;
   border-radius: 5px;
   background: var(--ink);
@@ -36,10 +37,17 @@ button {
   font: inherit;
   font-weight: 700;
   padding: 10px 15px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
-button:hover:not(:disabled) {
+button:hover:not(:disabled),
+.export-btn:hover {
   background: var(--green);
+  color: #fff;
 }
 
 button:disabled {

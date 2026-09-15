@@ -361,12 +361,17 @@ const toAuditLogResponse = (auditLog) => ({
   performedby: auditLog.actor || auditLog.createdby,
 });
 
+const resolveAuditClient = (prismaClient) => (
+  prismaClient?.auditlog ? prismaClient : require('../db/prisma')
+);
+
 const findAuditLogs = async (prismaClient, filters = {}) => {
+  const client = resolveAuditClient(prismaClient);
   const { page = 1, limit = 10 } = filters;
   const where = buildAuditLogWhere(filters);
   const [totalRecords, auditLogs] = await Promise.all([
-    prismaClient.auditlog.count({ where }),
-    prismaClient.auditlog.findMany({
+    client.auditlog.count({ where }),
+    client.auditlog.findMany({
       where,
       orderBy: { createdat: 'desc' },
       skip: (page - 1) * limit,
@@ -397,22 +402,28 @@ const getAuditTimeline = async (prismaClient, entityname, entityid) => {
 };
 
 const getAuditStats = async (prismaClient, filters = {}) => {
+  const client = resolveAuditClient(prismaClient);
   const where = buildAuditLogWhere(filters);
   const startOfToday = new Date();
   startOfToday.setUTCHours(0, 0, 0, 0);
   const todayWhere = { ...where, createdat: { gte: startOfToday } };
 
   const [totalRecords, recordsToday, actionGroups, entityGroups] = await Promise.all([
-    prismaClient.auditlog.count({ where }),
-    prismaClient.auditlog.count({ where: todayWhere }),
-    prismaClient.auditlog.groupBy({ by: ['action'], where, _count: { _all: true } }),
-    prismaClient.auditlog.groupBy({ by: ['entityname'], where, _count: { _all: true }, orderBy: { _count: { entityname: 'desc' } }, take: 1 }),
+    client.auditlog.count({ where }),
+    client.auditlog.count({ where: todayWhere }),
+    client.auditlog.groupBy({ by: ['action'], where, _count: { _all: true } }),
+    client.auditlog.groupBy({ by: ['entityname'], where, _count: { _all: true }, orderBy: { _count: { entityname: 'desc' } }, take: 1 }),
   ]);
+
+  const byAction = Object.fromEntries(actionGroups.map((group) => [group.action, group._count._all]));
 
   return {
     totalRecords,
     recordsToday,
-    byAction: Object.fromEntries(actionGroups.map((group) => [group.action, group._count._all])),
+    totalEvents: totalRecords,
+    updatesToday: recordsToday,
+    deletions: byAction['DELETE'] || 0,
+    byAction,
     mostActiveEntity: entityGroups[0] ? {
       entityname: entityGroups[0].entityname,
       totalRecords: entityGroups[0]._count._all,
@@ -420,113 +431,22 @@ const getAuditStats = async (prismaClient, filters = {}) => {
   };
 };
 
-{
+// Backward-compatible list shape used by the dashboard and export controller.
 const getAuditLogs = async (prismaClient, page = 1, pageSize = 10, filters = {}) => {
-  const safePage = Math.max(Number(page) || 1, 1);
-  const safePageSize = Math.min(Math.max(Number(pageSize) || 10, 1), 10000);
-  const where = {};
-  const { entityname, action, search, startDate, endDate } = filters;
-
-  if (entityname) {
-    const normalizedEntity = entityname === 'PROMOTIONAL_DLQ'
-      ? 'DLQ'
-      : entityname.toUpperCase();
-
-    where.OR = [
-      { entityname: normalizedEntity },
-      { entitytype: normalizedEntity },
-    ];
-  }
-
-  if (action) {
-    where.action = action.toUpperCase();
-  }
-
-   if (search) {
-    where.AND = [{ OR: [
-      { entityid: { contains: search, mode: 'insensitive' } },
-      { customerid: { contains: search, mode: 'insensitive' } }
-    ] }];
-  }
-
-  if (startDate || endDate) {
-    where.createdat = {};
-
-    if (startDate) {
-      where.createdat.gte = new Date(`${startDate}T00:00:00.000Z`);
-    }
-
-    if (endDate) {
-      where.createdat.lt = new Date(`${endDate}T00:00:00.000Z`);
-      where.createdat.lt.setUTCDate(where.createdat.lt.getUTCDate() + 1);
-    }
-  }
-
-  const skip = (safePage - 1) * safePageSize;
-
-  const [data, total] = await Promise.all([
-    prismaClient.auditlog.findMany({
-      where,
-      orderBy: { createdat: 'desc' },
-      skip,
-      take: safePageSize,
-      select: {
-        auditid: true,
-        createdat: true,
-        entityname: true,
-        entitytype: true,
-        entityid: true,
-        action: true,
-        actor: true,
-        createdby: true,
-        customerid: true,
-      },
-    }),
-    prismaClient.auditlog.count({where}),
-  ]);
-
-  return {
-    data,
-    pagination: {
-      page: safePage,
-      pageSize: safePageSize,
-      total,
-      totalPages: Math.ceil(total / safePageSize),
-    },
-  };
-};
-
-const getAuditLogById = async (prismaClient, auditId) => {
-  const client = prismaClient?.auditlog
-    ? prismaClient
-    : require('../utils/db');
-
-  return client.auditlog.findUnique({
-    where: { auditid: String(auditId) },
+  const result = await findAuditLogs(prismaClient, {
+    ...filters,
+    page: Math.max(Number(page) || 1, 1),
+    limit: Math.min(Math.max(Number(pageSize) || 10, 1), 10000),
   });
-};
-
-const getAuditStats = async (prismaClient) => {
-  const startOfToday = new Date();
-  startOfToday.setUTCHours(0, 0, 0, 0);
-
-  const [totalEvents, updatesToday, deletions] = await Promise.all([
-    prismaClient.auditlog.count(),
-    prismaClient.auditlog.count({
-      where: {
-        action: 'UPDATE',
-        createdat: { gte: startOfToday },
-      },
-    }),
-    prismaClient.auditlog.count({
-      where: { action: 'DELETE' },
-    }),
-  ]);
 
   return {
-    totalEvents,
-    updatesToday,
-    deletions,
+    data: result.logs,
+    pagination: {
+      page,
+      pageSize,
+      total: result.totalRecords,
+      totalPages: Math.ceil(result.totalRecords / pageSize),
+    },
   };
 };
 
@@ -543,11 +463,8 @@ module.exports = {
   getAuditLogsByRequestId,
   buildAuditLogWhere,
   findAuditLogs,
-  getAuditLogById,
   getAuditTimeline,
-  getAuditStats,
   toAuditLogResponse,
   DEFAULT_IGNORED_FIELDS,
   areValuesEqual,
 };
-}

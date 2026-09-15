@@ -16,6 +16,9 @@ const refreshButton = document.querySelector('#refreshButton');
 const filterForm = document.querySelector('#filterForm');
 const resetButton = document.querySelector('#resetButton');
 const exportButton = document.querySelector('#exportButton');
+const previousButton = document.querySelector('#previousButton');
+const nextButton = document.querySelector('#nextButton');
+const pageLabel = document.querySelector('#pageLabel');
 
 const getFilters = () => {
   const params = new URLSearchParams(new FormData(filterForm));
@@ -640,26 +643,39 @@ filterForm.addEventListener('input', (event) => {
   searchTimer = setTimeout(() => {
     currentPage = 1;
     loadLogs();
+    updateExportUrl();
   }, 250);
 });
+
+const updateExportUrl = () => {
+  const exportBtn = document.querySelector('#exportButton');
+  if (!exportBtn) return;
+  const params = getFilters();
+  const qs = params.toString();
+  exportBtn.href = `/api/v1/audit-logs/export${qs ? '?' + qs : ''}`;
+};
 
 filterForm.addEventListener('change', () => {
   currentPage = 1;
   loadLogs();
+  updateExportUrl();
 });
 
 resetButton.addEventListener('click', () => {
   setTimeout(() => {
     currentPage = 1;
     loadLogs();
+    updateExportUrl();
   });
 });
 
-exportButton.addEventListener('click', () => {
-  const params = getFilters();
+const exportBtn = document.querySelector('#exportButton');
+if (exportBtn) {
+  exportBtn.addEventListener('click', () => {
+    updateExportUrl();
+    statusElement.textContent = 'audit-logs.csv downloaded! (Check your browser Downloads folder)';
+  });
+}
 
-  window.location.href =
-    `/api/v1/audit-logs/export?${params.toString()}`;
-});
-
+updateExportUrl();
 loadDashboard();

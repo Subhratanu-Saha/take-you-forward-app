@@ -105,7 +105,7 @@
 </label>
 
   <button id="resetButton" type="reset">Reset Filters</button>
-  <button id="exportButton" type="button">Export CSV</button>
+  <a id="exportButton" class="export-btn" href="/api/v1/audit-logs/export" download="audit-logs.csv">Export CSV</a>
 </form>
 
       <div class="table-wrapper">
@@ -233,6 +233,6 @@
     </div>
   </div>
 
-  <script src="/admin/audit-dashboard/dashboard.js"></script>
+  <script src="/admin/audit-dashboard/dashboard.js?v=4"></script>
 </body>
 </html>

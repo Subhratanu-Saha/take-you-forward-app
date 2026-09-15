@@ -1,23 +1,15 @@
 const express = require('express');
-const auditController = require('../controllers/auditController');
-
-{
-const router = express.Router();
-
-router.get('/', auditController.getAuditLogs);
-router.get('/timeline/:entityName/:entityId', auditController.getAuditTimeline);
-router.get('/stats', auditController.getAuditStats);
-router.get('/export', auditController.exportAuditLogs);
-router.get('/:auditId', auditController.getAuditLog);
-}
 const controller = require('../controllers/auditController');
 
 const router = express.Router();
 
-router.get('/stats', controller.auditStats);
+// 1. Root collection route
+router.get('/', controller.getAuditLogs);
+
+router.get('/stats', controller.getAuditStats);
+router.get('/timeline/:entityName/:entityId', controller.getAuditTimeline);
 router.get('/request/:requestId', controller.getAuditLogsByRequestId);
-router.get('/:id', controller.getAuditLogById);
-router.get('/', controller.listAuditLogs);
-router.get('/export', controller.exportAuditLogs);
+router.get('/export', controller.exportAuditLogs); 
+router.get('/:auditId', controller.getAuditLog);
 
 module.exports = router;
