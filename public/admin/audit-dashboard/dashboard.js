@@ -68,6 +68,19 @@ const formatTimestamp = (value) => {
   }).format(new Date(value));
 };
 
+const extractRequestId = (log, fallbackId = null) => {
+  if (!log && !fallbackId) return null;
+  const id =
+    log?.requestid ||
+    log?.requestId ||
+    log?.request_id ||
+    log?.metadata?.requestid ||
+    log?.metadata?.requestId ||
+    log?.metadata?.request_id ||
+    fallbackId;
+  return id ? String(id).trim() : null;
+};
+
 const createCell = (value, className = '') => {
   const cell = document.createElement('td');
   cell.textContent = value;
@@ -263,29 +276,30 @@ const renderDiffView = () => {
   }
 };
 
-const openDiffModal = (log) => {
+const openDiffModal = (log, contextualRequestId = null) => {
   currentModalLog = log;
-  const action = String(log.action || 'UPDATE').toUpperCase();
+  const action = String(log?.action || 'UPDATE').toUpperCase();
 
   // Header & Badges
-  diffEntityBadge.textContent = log.entityname || log.entitytype || 'UNKNOWN';
+  diffEntityBadge.textContent = log?.entityname || log?.entitytype || 'UNKNOWN';
   diffActionBadge.className = `action action-${action.toLowerCase()}`;
   diffActionBadge.textContent = action;
 
-  diffModalTitle.textContent = `${log.entityname || log.entitytype || 'Entity'} Diff`;
-  diffModalSubtitle.textContent = `ID: ${log.entityid || 'N/A'} • Audit Log: ${log.auditid || 'N/A'}`;
+  diffModalTitle.textContent = `${log?.entityname || log?.entitytype || 'Entity'} Diff`;
+  diffModalSubtitle.textContent = `ID: ${log?.entityid || 'N/A'} • Audit Log: ${log?.auditid || 'N/A'}`;
 
-  // Metadata Bar
-  diffRequestId.textContent = log.requestid || 'None';
-  diffActor.textContent = log.actor || log.createdby || 'SYSTEM';
-  diffTimestamp.textContent = formatTimestamp(log.createdat);
+  // Metadata Bar - resolve Request ID consistently across casing and context
+  const resolvedRequestId = extractRequestId(log, contextualRequestId);
+  diffRequestId.textContent = resolvedRequestId || 'None';
+  diffActor.textContent = log?.actor || log?.createdby || 'SYSTEM';
+  diffTimestamp.textContent = formatTimestamp(log?.createdat);
 
   // Trace Request button
-  if (log.requestid) {
+  if (resolvedRequestId) {
     diffModalTraceBtn.style.display = 'inline-block';
     diffModalTraceBtn.onclick = () => {
       closeDiffModal();
-      openRequestTracer(log.requestid);
+      openRequestTracer(resolvedRequestId);
     };
   } else {
     diffModalTraceBtn.style.display = 'none';
@@ -400,7 +414,7 @@ const openRequestTracer = async (requestId) => {
       inspectBtn.type = 'button';
       inspectBtn.textContent = 'View Diff';
       inspectBtn.onclick = () => {
-        openDiffModal(evt);
+        openDiffModal(evt, requestId);
       };
 
       item.appendChild(details);
@@ -513,14 +527,15 @@ const loadLogs = async () => {
       row.appendChild(createCell(log.actor || log.createdby || 'SYSTEM'));
 
       // 6. Request ID (Interactive badge for single-request correlation)
+      const reqId = extractRequestId(log);
       const reqCell = document.createElement('td');
-      if (log.requestid) {
+      if (reqId) {
         const reqBtn = document.createElement('button');
         reqBtn.className = 'request-id-badge';
         reqBtn.type = 'button';
-        reqBtn.title = `Trace all changes for Request ID ${log.requestid}`;
-        reqBtn.textContent = log.requestid;
-        reqBtn.onclick = () => openRequestTracer(log.requestid);
+        reqBtn.title = `Trace all changes for Request ID ${reqId}`;
+        reqBtn.textContent = reqId;
+        reqBtn.onclick = () => openRequestTracer(reqId);
         reqCell.appendChild(reqBtn);
       } else {
         const emptySpan = document.createElement('span');
@@ -536,7 +551,7 @@ const loadLogs = async () => {
       diffBtn.className = 'view-diff-btn';
       diffBtn.type = 'button';
       diffBtn.textContent = 'View Diff';
-      diffBtn.onclick = () => openDiffModal(log);
+      diffBtn.onclick = () => openDiffModal(log, reqId);
       actionsCell.appendChild(diffBtn);
       row.appendChild(actionsCell);
 

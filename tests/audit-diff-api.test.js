@@ -149,4 +149,56 @@ describe('Audit Diff & Single Request Correlation API', () => {
       await new Promise((resolve) => server.close(resolve));
     }
   });
+
+  test('getAuditLogsByRequestId matches records with camelCase metadata.requestId', async () => {
+    const camelReqId = 'CAMEL-CASE-REQ-123';
+    const record = await prisma.auditlog.create({
+      data: {
+        entitytype: 'CUSTOMER',
+        entityname: 'CUSTOMER',
+        entityid: 'TEST-CAMEL-001',
+        action: 'UPDATE',
+        customerid: 'TEST-CUST-DIFF',
+        createdby: 'SYSTEM',
+        metadata: {
+          requestId: camelReqId,
+        },
+      },
+    });
+
+    try {
+      const correlated = await getAuditLogsByRequestId(prisma, camelReqId);
+      assert.strictEqual(correlated.length, 1);
+      assert.strictEqual(correlated[0].entityid, 'TEST-CAMEL-001');
+
+      const paged = await getAuditLogs(prisma, 1, 10, { requestId: camelReqId });
+      assert.strictEqual(paged.data.length, 1);
+      assert.strictEqual(paged.data[0].entityid, 'TEST-CAMEL-001');
+    } finally {
+      await prisma.auditlog.delete({ where: { auditid: record.auditid } });
+    }
+  });
+
+  test('records without Request ID genuinely have null and handle gracefully', async () => {
+    const noReqRecord = await prisma.auditlog.create({
+      data: {
+        entitytype: 'ORDERHEADER',
+        entityname: 'ORDERHEADER',
+        entityid: 'TEST-NOREQ-001',
+        action: 'CREATE',
+        customerid: 'TEST-CUST-DIFF',
+        createdby: 'SYSTEM',
+        requestid: null,
+        metadata: null,
+      },
+    });
+
+    try {
+      const log = await getAuditLogById(prisma, noReqRecord.auditid);
+      assert.strictEqual(log.requestid, null);
+      assert.strictEqual(log.metadata, null);
+    } finally {
+      await prisma.auditlog.delete({ where: { auditid: noReqRecord.auditid } });
+    }
+  });
 });

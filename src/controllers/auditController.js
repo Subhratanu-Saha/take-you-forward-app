@@ -208,6 +208,7 @@ const getAuditLogsByRequestId = async (req, res, next) => {
 
     return res.json({
       success: true,
+      count: logs.length,
       data: logs,
     });
   } catch (error) {
