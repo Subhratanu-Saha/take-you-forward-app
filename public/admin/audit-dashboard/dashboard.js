@@ -16,6 +16,9 @@ const refreshButton = document.querySelector('#refreshButton');
 const filterForm = document.querySelector('#filterForm');
 const resetButton = document.querySelector('#resetButton');
 const exportButton = document.querySelector('#exportButton');
+const previousButton = document.querySelector('#previousButton');
+const nextButton = document.querySelector('#nextButton');
+const pageLabel = document.querySelector('#pageLabel');
 
 const getFilters = () => {
   const params = new URLSearchParams(new FormData(filterForm));
@@ -182,11 +185,11 @@ const renderDiffView = () => {
   diffOldFields.replaceChildren();
   diffNewFields.replaceChildren();
 
-  const oldValues = parseJsonSafe(log.oldvalues) || {};
-  const newValues = parseJsonSafe(log.newvalues) || {};
+  const oldValues = parseJsonSafe(log.oldvalues ?? log.oldervalue ?? log.oldValue) || {};
+  const newValues = parseJsonSafe(log.newvalues ?? log.newvalue ?? log.newValue) || {};
   const changedFieldsList = Array.isArray(log.changedfields)
     ? log.changedfields
-    : Object.keys(newValues);
+    : (Array.isArray(log.metadata?.changedfields) ? log.metadata.changedfields : Object.keys(newValues));
 
   const changedFieldsSet = new Set(
     changedFieldsList.map((f) => String(f).toLowerCase())
@@ -276,8 +279,8 @@ const renderDiffView = () => {
   }
 };
 
-const openDiffModal = (log, contextualRequestId = null) => {
-  currentModalLog = log;
+const openDiffModal = async (log, contextualRequestId = null) => {
+  let fullLog = log;
   const action = String(log?.action || 'UPDATE').toUpperCase();
 
   // Header & Badges
@@ -288,11 +291,36 @@ const openDiffModal = (log, contextualRequestId = null) => {
   diffModalTitle.textContent = `${log?.entityname || log?.entitytype || 'Entity'} Diff`;
   diffModalSubtitle.textContent = `ID: ${log?.entityid || 'N/A'} • Audit Log: ${log?.auditid || 'N/A'}`;
 
-  // Metadata Bar - resolve Request ID consistently across casing and context
-  const resolvedRequestId = extractRequestId(log, contextualRequestId);
+  // If old/new values are missing from list payload, fetch full record
+  if (
+    log?.auditid &&
+    log.oldvalues === undefined &&
+    log.newvalues === undefined &&
+    log.oldervalue === undefined &&
+    log.newvalue === undefined
+  ) {
+    try {
+      const response = await fetch(
+        `/api/v1/audit-logs/${encodeURIComponent(log.auditid)}`
+      );
+      if (response.ok) {
+        const result = await response.json();
+        if (result?.data) {
+          fullLog = { ...log, ...result.data };
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch full audit log details:', err.message);
+    }
+  }
+
+  currentModalLog = fullLog;
+
+  // Metadata Bar
+  const resolvedRequestId = extractRequestId(fullLog, contextualRequestId);
   diffRequestId.textContent = resolvedRequestId || 'None';
-  diffActor.textContent = log?.actor || log?.createdby || 'SYSTEM';
-  diffTimestamp.textContent = formatTimestamp(log?.createdat);
+  diffActor.textContent = fullLog?.actor || fullLog?.createdby || 'SYSTEM';
+  diffTimestamp.textContent = formatTimestamp(fullLog?.createdat);
 
   // Trace Request button
   if (resolvedRequestId) {
@@ -445,15 +473,15 @@ const closeAllModals = () => {
 const applyRequestIdFilter = (reqId) => {
   activeRequestIdFilter = reqId;
   currentPage = 1;
-  filterRequestId.textContent = reqId;
-  filterBanner.classList.remove('hidden');
+  if (filterRequestId) filterRequestId.textContent = reqId;
+  if (filterBanner) filterBanner.classList.remove('hidden');
   loadLogs();
 };
 
 const clearRequestIdFilter = () => {
   activeRequestIdFilter = null;
   currentPage = 1;
-  filterBanner.classList.add('hidden');
+  if (filterBanner) filterBanner.classList.add('hidden');
   loadLogs();
 };
 
@@ -477,8 +505,11 @@ const loadStats = async () => {
 };
 
 const loadLogs = async () => {
+  const params = getFilters();
 
-   const params = getFilters();
+  if (activeRequestIdFilter) {
+    params.set('requestId', activeRequestIdFilter);
+  }
 
   params.set('page', currentPage);
   params.set('pageSize', pageSize);
@@ -600,43 +631,66 @@ const loadDashboard = async () => {
 // ==========================================================================
 
 // Pagination
-previousButton.addEventListener('click', () => {
-  if (currentPage > 1) {
-    currentPage -= 1;
-    loadLogs();
-  }
-});
+if (previousButton) {
+  previousButton.addEventListener('click', () => {
+    if (currentPage > 1) {
+      currentPage -= 1;
+      loadLogs();
+    }
+  });
+}
 
-nextButton.addEventListener('click', () => {
-  if (currentPage < totalPages) {
-    currentPage += 1;
-    loadLogs();
-  }
-});
+if (nextButton) {
+  nextButton.addEventListener('click', () => {
+    if (currentPage < totalPages) {
+      currentPage += 1;
+      loadLogs();
+    }
+  });
+}
 
-refreshButton.addEventListener('click', loadDashboard);
-clearFilterBtn.addEventListener('click', clearRequestIdFilter);
+if (refreshButton) {
+  refreshButton.addEventListener('click', loadDashboard);
+}
+
+if (clearFilterBtn) {
+  clearFilterBtn.addEventListener('click', clearRequestIdFilter);
+}
 
 // Diff Modal Controls
-closeDiffModalBtn.addEventListener('click', closeDiffModal);
-closeDiffModalBottomBtn.addEventListener('click', closeDiffModal);
-diffModalBackdrop.addEventListener('click', (e) => {
-  if (e.target === diffModalBackdrop) {
-    closeDiffModal();
-  }
-});
+if (closeDiffModalBtn) {
+  closeDiffModalBtn.addEventListener('click', closeDiffModal);
+}
+if (closeDiffModalBottomBtn) {
+  closeDiffModalBottomBtn.addEventListener('click', closeDiffModal);
+}
+if (diffModalBackdrop) {
+  diffModalBackdrop.addEventListener('click', (e) => {
+    if (e.target === diffModalBackdrop) {
+      closeDiffModal();
+    }
+  });
+}
 
 // Tracer Modal Controls
-closeTracerModalBtn.addEventListener('click', closeTracerModal);
-closeTracerModalBottomBtn.addEventListener('click', closeTracerModal);
-tracerModalBackdrop.addEventListener('click', (e) => {
-  if (e.target === tracerModalBackdrop) {
-    closeTracerModal();
-  }
-});
+if (closeTracerModalBtn) {
+  closeTracerModalBtn.addEventListener('click', closeTracerModal);
+}
+if (closeTracerModalBottomBtn) {
+  closeTracerModalBottomBtn.addEventListener('click', closeTracerModal);
+}
+if (tracerModalBackdrop) {
+  tracerModalBackdrop.addEventListener('click', (e) => {
+    if (e.target === tracerModalBackdrop) {
+      closeTracerModal();
+    }
+  });
+}
 
 // Toggle only changed fields in Diff Modal
-toggleOnlyChanged.addEventListener('change', renderDiffView);
+if (toggleOnlyChanged) {
+  toggleOnlyChanged.addEventListener('change', renderDiffView);
+}
 
 // Keyboard Esc handler to close modals smoothly
 document.addEventListener('keydown', (e) => {
@@ -647,34 +701,43 @@ document.addEventListener('keydown', (e) => {
 
 let searchTimer;
 
-filterForm.addEventListener('input', (event) => {
-  if (event.target.id !== 'searchInput') return;
+if (filterForm) {
+  filterForm.addEventListener('input', (event) => {
+    if (event.target.id !== 'searchInput') return;
 
-  clearTimeout(searchTimer);
+    clearTimeout(searchTimer);
 
-  searchTimer = setTimeout(() => {
-    currentPage = 1;
-    loadLogs();
-  }, 250);
-});
+    searchTimer = setTimeout(() => {
+      currentPage = 1;
+      loadLogs();
+    }, 250);
+  });
 
-filterForm.addEventListener('change', () => {
-  currentPage = 1;
-  loadLogs();
-});
-
-resetButton.addEventListener('click', () => {
-  setTimeout(() => {
+  filterForm.addEventListener('change', () => {
     currentPage = 1;
     loadLogs();
   });
-});
+}
 
-exportButton.addEventListener('click', () => {
-  const params = getFilters();
+if (resetButton) {
+  resetButton.addEventListener('click', () => {
+    if (activeRequestIdFilter) {
+      clearRequestIdFilter();
+    }
+    setTimeout(() => {
+      currentPage = 1;
+      loadLogs();
+    });
+  });
+}
 
-  window.location.href =
-    `/api/v1/audit-logs/export?${params.toString()}`;
-});
+if (exportButton) {
+  exportButton.addEventListener('click', () => {
+    const params = getFilters();
+
+    window.location.href =
+      `/api/v1/audit-logs/export?${params.toString()}`;
+  });
+}
 
 loadDashboard();
