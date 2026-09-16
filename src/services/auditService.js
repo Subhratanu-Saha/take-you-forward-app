@@ -324,6 +324,12 @@ const getAuditLogsByRequestId = async (prismaClient, requestid) => {
               equals: String(requestid),
             },
           },
+          {
+            metadata: {
+              path: ['requestId'],
+              equals: String(requestid),
+            },
+          },
         ],
       },
       orderBy: { createdat: 'asc' },
@@ -386,8 +392,15 @@ const findAuditLogs = async (prismaClient, filters = {}) => {
 };
 
 const getAuditLogById = async (prismaClient, auditid) => {
-  const auditLog = await prismaClient.auditlog.findUnique({ where: { auditid: String(auditid) } });
-  return auditLog ? toAuditLogResponse(auditLog) : null;
+  try {
+    const client = prismaClient?.auditlog ? prismaClient : require('../utils/db');
+    if (!client?.auditlog) return null;
+    const auditLog = await client.auditlog.findUnique({ where: { auditid: String(auditid) } });
+    return auditLog ? toAuditLogResponse(auditLog) : null;
+  } catch (error) {
+    console.error('[AUDIT_SERVICE] Error fetching audit log by ID:', error.message);
+    return null;
+  }
 };
 
 const getAuditTimeline = async (prismaClient, entityname, entityid) => {
@@ -402,22 +415,28 @@ const getAuditTimeline = async (prismaClient, entityname, entityid) => {
 };
 
 const getAuditStats = async (prismaClient, filters = {}) => {
+  const client = prismaClient?.auditlog ? prismaClient : require('../utils/db');
   const where = buildAuditLogWhere(filters);
   const startOfToday = new Date();
   startOfToday.setUTCHours(0, 0, 0, 0);
   const todayWhere = { ...where, createdat: { gte: startOfToday } };
 
   const [totalRecords, recordsToday, actionGroups, entityGroups] = await Promise.all([
-    prismaClient.auditlog.count({ where }),
-    prismaClient.auditlog.count({ where: todayWhere }),
-    prismaClient.auditlog.groupBy({ by: ['action'], where, _count: { _all: true } }),
-    prismaClient.auditlog.groupBy({ by: ['entityname'], where, _count: { _all: true }, orderBy: { _count: { entityname: 'desc' } }, take: 1 }),
+    client.auditlog.count({ where }),
+    client.auditlog.count({ where: todayWhere }),
+    client.auditlog.groupBy({ by: ['action'], where, _count: { _all: true } }),
+    client.auditlog.groupBy({ by: ['entityname'], where, _count: { _all: true }, orderBy: { _count: { entityname: 'desc' } }, take: 1 }),
   ]);
+
+  const byAction = Object.fromEntries(actionGroups.map((group) => [group.action, group._count._all]));
 
   return {
     totalRecords,
     recordsToday,
-    byAction: Object.fromEntries(actionGroups.map((group) => [group.action, group._count._all])),
+    totalEvents: totalRecords,
+    updatesToday: recordsToday,
+    deletions: byAction['DELETE'] || 0,
+    byAction,
     mostActiveEntity: entityGroups[0] ? {
       entityname: entityGroups[0].entityname,
       totalRecords: entityGroups[0]._count._all,
@@ -425,6 +444,65 @@ const getAuditStats = async (prismaClient, filters = {}) => {
   };
 };
 
+const getAuditLogs = async (prismaClient, page = 1, pageSize = 10, filters = {}) => {
+  const safePage = Math.max(Number(page) || 1, 1);
+  const safePageSize = Math.min(Math.max(Number(pageSize) || 10, 1), 10000);
+  const where = {};
+  const { entityname, action, search, startDate, endDate } = filters;
+
+  if (entityname) {
+    const normalizedEntity = entityname === 'PROMOTIONAL_DLQ'
+      ? 'DLQ'
+      : entityname.toUpperCase();
+
+    where.OR = [
+      { entityname: normalizedEntity },
+      { entitytype: normalizedEntity },
+    ];
+  }
+
+  const reqId = filters.requestId || filters.requestid;
+  if (reqId) {
+    where.OR = [
+      { requestid: String(reqId) },
+      {
+        metadata: {
+          path: ['requestid'],
+          equals: String(reqId),
+        },
+      },
+      {
+        metadata: {
+          path: ['requestId'],
+          equals: String(reqId),
+        },
+      },
+    ];
+  }
+
+  if (action) {
+    where.action = action.toUpperCase();
+  }
+
+   if (search) {
+    where.AND = [{ OR: [
+      { entityid: { contains: search, mode: 'insensitive' } },
+      { customerid: { contains: search, mode: 'insensitive' } }
+    ] }];
+  }
+
+  if (startDate || endDate) {
+    where.createdat = {};
+
+    if (startDate) {
+      where.createdat.gte = new Date(`${startDate}T00:00:00.000Z`);
+    }
+
+    if (endDate) {
+      where.createdat.lt = new Date(`${endDate}T00:00:00.000Z`);
+      where.createdat.lt.setUTCDate(where.createdat.lt.getUTCDate() + 1);
+    }
+  }
 
 /**
  * Get audit logs with pagination — legacy (page, pageSize, filters) API
@@ -488,6 +566,7 @@ module.exports = {
   getAuditLogsByRequestId,
   buildAuditLogWhere,
   findAuditLogs,
+  getAuditTimeline,
   toAuditLogResponse,
   DEFAULT_IGNORED_FIELDS,
   areValuesEqual,

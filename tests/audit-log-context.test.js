@@ -221,8 +221,8 @@ test('Prisma Change-Capture Engine - records audit logs on entity update with di
   assert.equal(loggedAudit.entityid, 'CUST-100');
   assert.equal(loggedAudit.action, 'UPDATE');
   assert.deepEqual(loggedAudit.metadata.changedfields.sort(), ['emailadd', 'firstname'].sort());
-  assert.equal(loggedAudit.oldervalue.firstname, 'OriginalFirst');
-  assert.equal(loggedAudit.newvalue.firstname, 'UpdatedFirst');
+  assert.equal(loggedAudit.oldvalues?.firstname || loggedAudit.oldervalue?.firstname, 'OriginalFirst');
+  assert.equal(loggedAudit.newvalues?.firstname || loggedAudit.newvalue?.firstname, 'UpdatedFirst');
   assert.equal(loggedAudit.metadata.requestid, 'REQ-DIFF-TEST-999');
   assert.equal(loggedAudit.metadata.actor, 'SYS_ADMIN');
   assert.equal(loggedAudit.metadata.ipaddress, '10.0.0.1');

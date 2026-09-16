@@ -442,7 +442,7 @@ const openRequestTracer = async (requestId) => {
       inspectBtn.type = 'button';
       inspectBtn.textContent = 'View Diff';
       inspectBtn.onclick = () => {
-        openDiffModal(evt);
+        openDiffModal(evt, requestId);
       };
 
       item.appendChild(details);

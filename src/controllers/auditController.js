@@ -135,6 +135,16 @@ const exportAuditLogs = async (req, res) => {
 
 const getAuditLogsByRequestId = async (req, res) => {
   try {
+    const logs = await findAuditLogsByRequestId(
+      prisma,
+      req.params.requestId
+    );
+
+    return res.json({
+      success: true,
+      count: logs.length,
+      data: logs,
+    });
     const logs = await auditService.getAuditLogsByRequestId(prisma, req.params.requestId);
     res.status(200).json({ success: true, count: logs.length, data: logs });
   } catch (error) {
