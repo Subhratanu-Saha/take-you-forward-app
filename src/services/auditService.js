@@ -507,6 +507,5 @@ module.exports = {
   findAuditLogs,
   toAuditLogResponse,
   DEFAULT_IGNORED_FIELDS,
-  areValuesEqual,
 };
 

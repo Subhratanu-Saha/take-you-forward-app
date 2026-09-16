@@ -61,7 +61,8 @@ const sendError = (res, error) => res.status(error.statusCode || 500).json({
   success: false,
   message: error.message || 'Internal server error',
 });
-const getAuditLogs = async (req, res) => {
+
+const getAuditLogs = async (req, res) => {
   try {
     const filters = parseFilters(req.query);
     const { logs, totalRecords } = await auditService.findAuditLogs(prisma, filters);
