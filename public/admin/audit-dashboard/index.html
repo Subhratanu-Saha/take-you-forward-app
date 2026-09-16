@@ -108,6 +108,14 @@
   <a id="exportButton" class="export-btn" href="/api/v1/audit-logs/export" download="audit-logs.csv">Export CSV</a>
 </form>
 
+      <div id="filterBanner" class="filter-banner hidden" aria-live="polite">
+        <div class="filter-info">
+          <span>Active filter:</span>
+          <span>Request ID: <strong id="filterRequestId" class="mono-badge"></strong></span>
+        </div>
+        <button id="clearFilterBtn" class="clear-filter-btn" type="button">Show all activity</button>
+      </div>
+
       <div class="table-wrapper">
         <table>
           <caption class="sr-only">Recent system audit events</caption>

@@ -154,20 +154,20 @@ const exportAuditLogs = async (req, res) => {
     res.setHeader('Content-Disposition', 'attachment; filename="audit-logs.csv"');
     return res.status(200).send(csv);
   } catch (error) {
-    sendError(res, error);
+    return sendError(res, error);
   }
 };
 
-
-const getAuditLogsByRequestId = async (req, res, next) => {
+const getAuditLogsByRequestId = async (req, res) => {
   try {
     const logs = await auditService.getAuditLogsByRequestId(
       prisma,
       req.params.requestId
     );
 
-    return res.json({
+    return res.status(200).json({
       success: true,
+      count: logs.length,
       data: logs,
     });
   } catch (error) {

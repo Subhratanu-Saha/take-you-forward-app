@@ -174,13 +174,16 @@ const recordAuditLog = async (prismaClient, auditData = {}) => {
     }
 
     const normalizedEntityType = String(entitytype).toUpperCase();
+    const serializedOldValues = oldervalue !== null && oldervalue !== undefined ? oldervalue : null;
+    const serializedNewValues = newvalue !== null && newvalue !== undefined ? newvalue : null;
     const logData = {
+      entitytype: normalizedEntityType,
       entityname: normalizedEntityType,
       entityid: String(entityid),
       action: String(action).toUpperCase(),
       customerid: customerid ? String(customerid) : null,
-      oldvalues: oldervalue !== null && oldervalue !== undefined ? oldervalue : null,
-      newvalues: newvalue !== null && newvalue !== undefined ? newvalue : null,
+      oldvalues: serializedOldValues,
+      newvalues: serializedNewValues,
       changedfields: changedfields && Array.isArray(changedfields) ? changedfields : null,
       metadata: metadata && Object.keys(metadata).length > 0 ? metadata : null,
       requestid: requestid ? String(requestid) : null,
@@ -190,6 +193,7 @@ const recordAuditLog = async (prismaClient, auditData = {}) => {
       createdby_type: String(createdby_type).toUpperCase(),
       createdat: new Date(),
     };
+
 
     if (!prismaClient.auditlog?.create) {
       throw new Error('AuditLog Prisma model is not available');
@@ -320,6 +324,12 @@ const getAuditLogsByRequestId = async (prismaClient, requestid) => {
               equals: String(requestid),
             },
           },
+          {
+            metadata: {
+              path: ['requestId'],
+              equals: String(requestid),
+            },
+          },
         ],
       },
       orderBy: { createdat: 'asc' },
@@ -330,13 +340,37 @@ const getAuditLogsByRequestId = async (prismaClient, requestid) => {
   }
 };
 
-const buildAuditLogWhere = ({ entityname, entityid, action, actor, search, startDate, endDate } = {}) => {
+const buildAuditLogWhere = ({ entityname, entityid, action, actor, search, startDate, endDate, requestId } = {}) => {
   const where = {};
 
   if (entityname) where.entityname = String(entityname).toUpperCase();
   if (entityid) where.entityid = String(entityid);
   if (action) where.action = String(action).toUpperCase();
-  if (actor) where.actor = { contains: String(actor), mode: 'insensitive' };
+  const reqId = requestId;
+  if (reqId) {
+    const reqConditions = [
+      { requestid: String(reqId) },
+      {
+        metadata: {
+          path: ['requestid'],
+          equals: String(reqId),
+        },
+      },
+      {
+        metadata: {
+          path: ['requestId'],
+          equals: String(reqId),
+        },
+      },
+    ];
+
+    if (where.OR) {
+      where.AND = [{ OR: reqConditions }, { OR: where.OR }];
+      delete where.OR;
+    } else {
+      where.OR = reqConditions;
+    }
+  }
 
   if (startDate || endDate) {
     where.createdat = {};
@@ -386,8 +420,15 @@ const findAuditLogs = async (prismaClient, filters = {}) => {
 };
 
 const getAuditLogById = async (prismaClient, auditid) => {
-  const auditLog = await prismaClient.auditlog.findUnique({ where: { auditid: String(auditid) } });
-  return auditLog ? toAuditLogResponse(auditLog) : null;
+  try {
+    const client = prismaClient?.auditlog ? prismaClient : require('../utils/db');
+    if (!client?.auditlog) return null;
+    const auditLog = await client.auditlog.findUnique({ where: { auditid: String(auditid) } });
+    return auditLog ? toAuditLogResponse(auditLog) : null;
+  } catch (error) {
+    console.error('[AUDIT_SERVICE] Error fetching audit log by ID:', error.message);
+    return null;
+  }
 };
 
 const getAuditTimeline = async (prismaClient, entityname, entityid) => {
@@ -402,7 +443,7 @@ const getAuditTimeline = async (prismaClient, entityname, entityid) => {
 };
 
 const getAuditStats = async (prismaClient, filters = {}) => {
-  const client = resolveAuditClient(prismaClient);
+  const client = prismaClient?.auditlog ? prismaClient : require('../utils/db');
   const where = buildAuditLogWhere(filters);
   const startOfToday = new Date();
   startOfToday.setUTCHours(0, 0, 0, 0);
@@ -459,12 +500,13 @@ module.exports = {
   getAuditLogsByEntity,
   getAuditLogs,
   getAuditLogById,
+  getAuditTimeline,
   getAuditStats,
   getAuditLogsByRequestId,
   buildAuditLogWhere,
   findAuditLogs,
-  getAuditTimeline,
   toAuditLogResponse,
   DEFAULT_IGNORED_FIELDS,
   areValuesEqual,
 };
+
