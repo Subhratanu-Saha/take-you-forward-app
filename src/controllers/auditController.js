@@ -201,69 +201,12 @@ const getAuditLogById = async (req, res, next) => {
 };
 
 const getAuditLogsByRequestId = async (req, res, next) => {
+const getAuditLogsByRequestId = async (req, res) => {
   try {
-    const logs = await findAuditLogsByRequestId(
-      prisma,
-      req.params.requestId
-    );
-
-    return res.json({
-      success: true,
-      data: logs,
-    });
+    const logs = await auditService.getAuditLogsByRequestId(prisma, req.params.requestId);
+    res.status(200).json({ success: true, count: logs.length, data: logs });
   } catch (error) {
-    return next(error);
-  }
-};
-
-const exportAuditLogs = async (req, res, next) => {
-  try {
-    const result = await getAuditLogs(
-      prisma,
-      1,
-      100000,
-      {
-        entityname: req.query.entityname,
-        action: req.query.action,
-        search: req.query.search,
-        startDate: req.query.startDate,
-        endDate: req.query.endDate,
-      }
-    );
-
-    const escapeCsv = (value) =>
-      `"${String(value ?? '').replaceAll('"', '""')}"`;
-
-    const headers = [
-      'Timestamp',
-      'Entity',
-      'Entity ID',
-      'Action',
-      'Actor',
-      'Customer ID',
-    ];
-
-    const rows = result.data.map((log) => [
-      log.createdat?.toISOString(),
-      log.entityname,
-      log.entityid,
-      log.action,
-      log.actor || log.createdby,
-      log.customerid,
-    ]);
-
-    const csv = [headers, ...rows]
-      .map((row) => row.map(escapeCsv).join(','))
-      .join('\r\n');
-
-    res
-      .type('text/csv')
-      .attachment(
-        `audit-logs-export-${new Date().toISOString().slice(0, 10)}.csv`
-      )
-      .send(csv);
-  } catch (error) {
-    next(error);
+    sendError(res, error);
   }
 };
 
@@ -273,14 +216,6 @@ module.exports = {
   getAuditTimeline,
   getAuditStats,
   exportAuditLogs,
+  getAuditLogsByRequestId,
   parseFilters,
 };
-module.exports = {
-  ...module.exports,
-  listAuditLogs,
-  auditStats,
-  exportAuditLogs,
-  getAuditLogById,
-  getAuditLogsByRequestId
-};
-}
