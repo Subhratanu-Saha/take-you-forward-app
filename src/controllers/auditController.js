@@ -144,16 +144,17 @@ const {
 
 const listAuditLogs = async (req, res, next) => {
   try {
+    const filters = parseFilters(req.query);
     const result = await getAuditLogs(
       prisma,
-      req.query.page,
-      req.query.pageSize,
+      filters.page,
+      filters.limit,
       {
-         entityname: req.query.entityname,
-         action: req.query.action,
-         search: req.query.search,
-         startDate: req.query.startDate,
-         endDate: req.query.endDate,
+        entityname: filters.entityname,
+        action: filters.action,
+        search: filters.search,
+        startDate: filters.startDate,
+        endDate: filters.endDate,
       }
     );
 
