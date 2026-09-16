@@ -710,23 +710,34 @@ if (filterForm) {
     searchTimer = setTimeout(() => {
       currentPage = 1;
       loadLogs();
+      updateExportUrl();
     }, 250);
   });
 
   filterForm.addEventListener('change', () => {
     currentPage = 1;
     loadLogs();
+    updateExportUrl();
   });
 }
 
+const updateExportUrl = () => {
+  const exportBtn = document.querySelector('#exportButton');
+  if (!exportBtn) return;
+  const params = getFilters();
+  const qs = params.toString();
+  exportBtn.href = `/api/v1/audit-logs/export${qs ? '?' + qs : ''}`;
+};
+
 if (resetButton) {
   resetButton.addEventListener('click', () => {
-    if (activeRequestIdFilter) {
+    if (typeof activeRequestIdFilter !== 'undefined' && activeRequestIdFilter) {
       clearRequestIdFilter();
     }
     setTimeout(() => {
       currentPage = 1;
       loadLogs();
+      updateExportUrl();
     });
   });
 }
@@ -734,10 +745,10 @@ if (resetButton) {
 if (exportButton) {
   exportButton.addEventListener('click', () => {
     const params = getFilters();
-
-    window.location.href =
-      `/api/v1/audit-logs/export?${params.toString()}`;
+    const qs = params.toString();
+    window.location.href = `/api/v1/audit-logs/export${qs ? '?' + qs : ''}`;
   });
 }
 
-loadDashboard();
+updateExportUrl();
+loadDashboard();
