@@ -83,7 +83,8 @@ const getAuditLogs = async (req, res) => {
 
 const getAuditLog = async (req, res) => {
   try {
-    const auditLog = await auditService.getAuditLogById(prisma, req.params.auditId);
+    const auditId = req.params.auditId || req.params.id;
+    const auditLog = await auditService.getAuditLogById(prisma, auditId);
     if (!auditLog) return res.status(404).json({ success: false, message: 'Audit log not found' });
     return res.status(200).json({ success: true, data: auditLog });
   } catch (error) {
@@ -229,3 +230,4 @@ module.exports = {
   getAuditLogsByRequestId,
   parseFilters,
 };
+

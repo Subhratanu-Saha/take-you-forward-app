@@ -552,6 +552,7 @@ const getAuditLogs = async (prismaClient, page = 1, pageSize = 10, filters = {})
   };
 };
 
+
 module.exports = {
   calculateDiff,
   recordAuditLog,
