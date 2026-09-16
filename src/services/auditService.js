@@ -174,13 +174,16 @@ const recordAuditLog = async (prismaClient, auditData = {}) => {
     }
 
     const normalizedEntityType = String(entitytype).toUpperCase();
+    const serializedOldValues = oldervalue !== null && oldervalue !== undefined ? oldervalue : null;
+    const serializedNewValues = newvalue !== null && newvalue !== undefined ? newvalue : null;
     const logData = {
+      entitytype: normalizedEntityType,
       entityname: normalizedEntityType,
       entityid: String(entityid),
       action: String(action).toUpperCase(),
       customerid: customerid ? String(customerid) : null,
-      oldvalues: oldervalue !== null && oldervalue !== undefined ? oldervalue : null,
-      newvalues: newvalue !== null && newvalue !== undefined ? newvalue : null,
+      oldvalues: serializedOldValues,
+      newvalues: serializedNewValues,
       changedfields: changedfields && Array.isArray(changedfields) ? changedfields : null,
       metadata: metadata && Object.keys(metadata).length > 0 ? metadata : null,
       requestid: requestid ? String(requestid) : null,
@@ -190,6 +193,7 @@ const recordAuditLog = async (prismaClient, auditData = {}) => {
       createdby_type: String(createdby_type).toUpperCase(),
       createdat: new Date(),
     };
+
 
     if (!prismaClient.auditlog?.create) {
       throw new Error('AuditLog Prisma model is not available');
@@ -320,6 +324,12 @@ const getAuditLogsByRequestId = async (prismaClient, requestid) => {
               equals: String(requestid),
             },
           },
+          {
+            metadata: {
+              path: ['requestId'],
+              equals: String(requestid),
+            },
+          },
         ],
       },
       orderBy: { createdat: 'asc' },
@@ -330,13 +340,14 @@ const getAuditLogsByRequestId = async (prismaClient, requestid) => {
   }
 };
 
-const buildAuditLogWhere = ({ entityname, entityid, action, actor, search, startDate, endDate } = {}) => {
+const buildAuditLogWhere = ({ entityname, entityid, action, actor, search, startDate, endDate, requestId } = {}) => {
   const where = {};
 
   if (entityname) where.entityname = String(entityname).toUpperCase();
   if (entityid) where.entityid = String(entityid);
   if (action) where.action = String(action).toUpperCase();
   if (actor) where.actor = { contains: String(actor), mode: 'insensitive' };
+  if (requestId) where.requestid = String(requestId);
 
   if (startDate || endDate) {
     where.createdat = {};
@@ -381,8 +392,15 @@ const findAuditLogs = async (prismaClient, filters = {}) => {
 };
 
 const getAuditLogById = async (prismaClient, auditid) => {
-  const auditLog = await prismaClient.auditlog.findUnique({ where: { auditid: String(auditid) } });
-  return auditLog ? toAuditLogResponse(auditLog) : null;
+  try {
+    const client = prismaClient?.auditlog ? prismaClient : require('../utils/db');
+    if (!client?.auditlog) return null;
+    const auditLog = await client.auditlog.findUnique({ where: { auditid: String(auditid) } });
+    return auditLog ? toAuditLogResponse(auditLog) : null;
+  } catch (error) {
+    console.error('[AUDIT_SERVICE] Error fetching audit log by ID:', error.message);
+    return null;
+  }
 };
 
 const getAuditTimeline = async (prismaClient, entityname, entityid) => {
@@ -397,22 +415,28 @@ const getAuditTimeline = async (prismaClient, entityname, entityid) => {
 };
 
 const getAuditStats = async (prismaClient, filters = {}) => {
+  const client = prismaClient?.auditlog ? prismaClient : require('../utils/db');
   const where = buildAuditLogWhere(filters);
   const startOfToday = new Date();
   startOfToday.setUTCHours(0, 0, 0, 0);
   const todayWhere = { ...where, createdat: { gte: startOfToday } };
 
   const [totalRecords, recordsToday, actionGroups, entityGroups] = await Promise.all([
-    prismaClient.auditlog.count({ where }),
-    prismaClient.auditlog.count({ where: todayWhere }),
-    prismaClient.auditlog.groupBy({ by: ['action'], where, _count: { _all: true } }),
-    prismaClient.auditlog.groupBy({ by: ['entityname'], where, _count: { _all: true }, orderBy: { _count: { entityname: 'desc' } }, take: 1 }),
+    client.auditlog.count({ where }),
+    client.auditlog.count({ where: todayWhere }),
+    client.auditlog.groupBy({ by: ['action'], where, _count: { _all: true } }),
+    client.auditlog.groupBy({ by: ['entityname'], where, _count: { _all: true }, orderBy: { _count: { entityname: 'desc' } }, take: 1 }),
   ]);
+
+  const byAction = Object.fromEntries(actionGroups.map((group) => [group.action, group._count._all]));
 
   return {
     totalRecords,
     recordsToday,
-    byAction: Object.fromEntries(actionGroups.map((group) => [group.action, group._count._all])),
+    totalEvents: totalRecords,
+    updatesToday: recordsToday,
+    deletions: byAction['DELETE'] || 0,
+    byAction,
     mostActiveEntity: entityGroups[0] ? {
       entityname: entityGroups[0].entityname,
       totalRecords: entityGroups[0]._count._all,
@@ -420,7 +444,6 @@ const getAuditStats = async (prismaClient, filters = {}) => {
   };
 };
 
-{
 const getAuditLogs = async (prismaClient, page = 1, pageSize = 10, filters = {}) => {
   const safePage = Math.max(Number(page) || 1, 1);
   const safePageSize = Math.min(Math.max(Number(pageSize) || 10, 1), 10000);
@@ -435,6 +458,25 @@ const getAuditLogs = async (prismaClient, page = 1, pageSize = 10, filters = {})
     where.OR = [
       { entityname: normalizedEntity },
       { entitytype: normalizedEntity },
+    ];
+  }
+
+  const reqId = filters.requestId || filters.requestid;
+  if (reqId) {
+    where.OR = [
+      { requestid: String(reqId) },
+      {
+        metadata: {
+          path: ['requestid'],
+          equals: String(reqId),
+        },
+      },
+      {
+        metadata: {
+          path: ['requestId'],
+          equals: String(reqId),
+        },
+      },
     ];
   }
 
@@ -462,12 +504,21 @@ const getAuditLogs = async (prismaClient, page = 1, pageSize = 10, filters = {})
     }
   }
 
+/**
+ * Get audit logs with pagination — legacy (page, pageSize, filters) API
+ * Returns { data, pagination } compatible with existing tests and service consumers.
+ */
+const getAuditLogs = async (prismaClient, page = 1, pageSize = 10, filters = {}) => {
+  const safePage = Math.max(Number(page) || 1, 1);
+  const safePageSize = Math.min(Math.max(Number(pageSize) || 10, 1), 10000);
+  const where = buildAuditLogWhere(filters);
+
   const skip = (safePage - 1) * safePageSize;
 
   const [data, total] = await Promise.all([
     prismaClient.auditlog.findMany({
       where,
-      orderBy: { createdat: 'desc' },
+      orderBy: { createdat: 'asc' },
       skip,
       take: safePageSize,
       select: {
@@ -480,9 +531,14 @@ const getAuditLogs = async (prismaClient, page = 1, pageSize = 10, filters = {})
         actor: true,
         createdby: true,
         customerid: true,
+        requestid: true,
+        oldvalues: true,
+        newvalues: true,
+        changedfields: true,
+        metadata: true,
       },
     }),
-    prismaClient.auditlog.count({where}),
+    prismaClient.auditlog.count({ where }),
   ]);
 
   return {
@@ -496,40 +552,6 @@ const getAuditLogs = async (prismaClient, page = 1, pageSize = 10, filters = {})
   };
 };
 
-const getAuditLogById = async (prismaClient, auditId) => {
-  const client = prismaClient?.auditlog
-    ? prismaClient
-    : require('../utils/db');
-
-  return client.auditlog.findUnique({
-    where: { auditid: String(auditId) },
-  });
-};
-
-const getAuditStats = async (prismaClient) => {
-  const startOfToday = new Date();
-  startOfToday.setUTCHours(0, 0, 0, 0);
-
-  const [totalEvents, updatesToday, deletions] = await Promise.all([
-    prismaClient.auditlog.count(),
-    prismaClient.auditlog.count({
-      where: {
-        action: 'UPDATE',
-        createdat: { gte: startOfToday },
-      },
-    }),
-    prismaClient.auditlog.count({
-      where: { action: 'DELETE' },
-    }),
-  ]);
-
-  return {
-    totalEvents,
-    updatesToday,
-    deletions,
-  };
-};
-
 module.exports = {
   calculateDiff,
   recordAuditLog,
@@ -539,15 +561,14 @@ module.exports = {
   getAuditLogsByEntity,
   getAuditLogs,
   getAuditLogById,
+  getAuditTimeline,
   getAuditStats,
   getAuditLogsByRequestId,
   buildAuditLogWhere,
   findAuditLogs,
-  getAuditLogById,
   getAuditTimeline,
-  getAuditStats,
   toAuditLogResponse,
   DEFAULT_IGNORED_FIELDS,
   areValuesEqual,
 };
-}
+
