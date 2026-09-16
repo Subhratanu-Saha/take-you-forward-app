@@ -174,13 +174,16 @@ const recordAuditLog = async (prismaClient, auditData = {}) => {
     }
 
     const normalizedEntityType = String(entitytype).toUpperCase();
+    const serializedOldValues = oldervalue !== null && oldervalue !== undefined ? oldervalue : null;
+    const serializedNewValues = newvalue !== null && newvalue !== undefined ? newvalue : null;
     const logData = {
+      entitytype: normalizedEntityType,
       entityname: normalizedEntityType,
       entityid: String(entityid),
       action: String(action).toUpperCase(),
       customerid: customerid ? String(customerid) : null,
-      oldvalues: oldervalue !== null && oldervalue !== undefined ? oldervalue : null,
-      newvalues: newvalue !== null && newvalue !== undefined ? newvalue : null,
+      oldvalues: serializedOldValues,
+      newvalues: serializedNewValues,
       changedfields: changedfields && Array.isArray(changedfields) ? changedfields : null,
       metadata: metadata && Object.keys(metadata).length > 0 ? metadata : null,
       requestid: requestid ? String(requestid) : null,
@@ -190,6 +193,7 @@ const recordAuditLog = async (prismaClient, auditData = {}) => {
       createdby_type: String(createdby_type).toUpperCase(),
       createdat: new Date(),
     };
+
 
     if (!prismaClient.auditlog?.create) {
       throw new Error('AuditLog Prisma model is not available');
@@ -330,13 +334,14 @@ const getAuditLogsByRequestId = async (prismaClient, requestid) => {
   }
 };
 
-const buildAuditLogWhere = ({ entityname, entityid, action, actor, search, startDate, endDate } = {}) => {
+const buildAuditLogWhere = ({ entityname, entityid, action, actor, search, startDate, endDate, requestId } = {}) => {
   const where = {};
 
   if (entityname) where.entityname = String(entityname).toUpperCase();
   if (entityid) where.entityid = String(entityid);
   if (action) where.action = String(action).toUpperCase();
   if (actor) where.actor = { contains: String(actor), mode: 'insensitive' };
+  if (requestId) where.requestid = String(requestId);
 
   if (startDate || endDate) {
     where.createdat = {};
@@ -459,11 +464,11 @@ module.exports = {
   getAuditLogsByEntity,
   getAuditLogs,
   getAuditLogById,
+  getAuditTimeline,
   getAuditStats,
   getAuditLogsByRequestId,
   buildAuditLogWhere,
   findAuditLogs,
-  getAuditTimeline,
   toAuditLogResponse,
   DEFAULT_IGNORED_FIELDS,
   areValuesEqual,

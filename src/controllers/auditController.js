@@ -61,7 +61,8 @@ const sendError = (res, error) => res.status(error.statusCode || 500).json({
   success: false,
   message: error.message || 'Internal server error',
 });
-const getAuditLogs = async (req, res) => {
+
+const getAuditLogs = async (req, res) => {
   try {
     const filters = parseFilters(req.query);
     const { logs, totalRecords } = await auditService.findAuditLogs(prisma, filters);
@@ -185,5 +186,76 @@ module.exports = {
   auditStats: getAuditStats,
   getAuditLogsByRequestId,
   exportAuditLogs,
+  parseFilters,
+};
+
+const getAuditLog = async (req, res) => {
+  try {
+    const auditLog = await auditService.getAuditLogById(prisma, req.params.auditId);
+    if (!auditLog) return res.status(404).json({ success: false, message: 'Audit log not found' });
+    return res.status(200).json({ success: true, data: auditLog });
+  } catch (error) {
+    return sendError(res, error);
+  }
+};
+
+const getAuditTimeline = async (req, res) => {
+  try {
+    const { entityName, entityId } = req.params;
+    const logs = await auditService.getAuditTimeline(prisma, entityName, entityId);
+    res.status(200).json({ success: true, data: logs });
+  } catch (error) {
+    sendError(res, error);
+  }
+};
+
+const getAuditStats = async (req, res) => {
+  try {
+    const filters = parseFilters({ ...req.query, page: 1, limit: 1 });
+    const stats = await auditService.getAuditStats(prisma, filters);
+    res.status(200).json({ success: true, data: stats });
+  } catch (error) {
+    sendError(res, error);
+  }
+};
+
+const csvValue = (value) => {
+  if (value === null || value === undefined) return '';
+  const text = typeof value === 'object' ? JSON.stringify(value) : String(value);
+  return `"${text.replace(/"/g, '""')}"`;
+};
+
+const exportAuditLogs = async (req, res) => {
+  try {
+    const filters = parseFilters({ ...req.query, page: 1, limit: 100 });
+    const exportFilters = { ...filters, page: 1, limit: 1000000 };
+    const { logs } = await auditService.findAuditLogs(prisma, exportFilters);
+    const headers = ['auditid', 'entityname', 'entityid', 'action', 'performedby', 'changedfields', 'createdat'];
+    const rows = logs.map((log) => headers.map((header) => csvValue(log[header])).join(','));
+    const csv = [headers.join(','), ...rows].join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="audit-logs.csv"');
+    res.status(200).send(csv);
+  } catch (error) {
+    sendError(res, error);
+  }
+};
+
+const getAuditLogsByRequestId = async (req, res) => {
+  try {
+    const logs = await auditService.getAuditLogsByRequestId(prisma, req.params.requestId);
+    res.status(200).json({ success: true, count: logs.length, data: logs });
+  } catch (error) {
+    sendError(res, error);
+  }
+};
+
+module.exports = {
+  getAuditLogs,
+  getAuditLog,
+  getAuditTimeline,
+  getAuditStats,
+  exportAuditLogs,
+  getAuditLogsByRequestId,
   parseFilters,
 };
