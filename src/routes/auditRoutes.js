@@ -9,9 +9,6 @@ router.get('/export', auditController.exportAuditLogs);
 router.get('/timeline/:entityName/:entityId', auditController.getAuditTimeline);
 router.get('/request/:requestId', auditController.getAuditLogsByRequestId);
 router.get('/', auditController.getAuditLogs);
-router.get('/timeline/:entityName/:entityId', auditController.getAuditTimeline);
-router.get('/request/:requestId', auditController.getAuditLogsByRequestId);
-router.get('/', auditController.getAuditLogs);
 router.get('/:auditId', auditController.getAuditLog);
 
 module.exports = router;
