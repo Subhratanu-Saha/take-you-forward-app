@@ -1,4 +1,6 @@
 const CUSTOMER_ID_REGEX = /^CUST-\d+-[A-Z0-9]{10}$/;
+const MAX_EXPIRATION_DAYS = 7;
+const MAX_EXPIRATION_MS = MAX_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
 
 const isPlainObject = (value) =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -138,18 +140,25 @@ const validateCreatePromotionalMessage = (req, res, next) => {
   // -----------------------------
 
   if (expirationDate !== undefined) {
-  if (typeof expirationDate !== 'string') {
-    errors.push('Expiration date must be a valid date');
-  } else {
-    const parsedDate = new Date(expirationDate);
-
-    if (Number.isNaN(parsedDate.getTime())) {
+    if (typeof expirationDate !== 'string') {
       errors.push('Expiration date must be a valid date');
-    } else if (parsedDate <= new Date()) {
-      errors.push('Expiration date must be in the future');
+    } else {
+      const parsedDate = new Date(expirationDate);
+
+      if (Number.isNaN(parsedDate.getTime())) {
+        errors.push('Expiration date must be a valid date');
+      } else {
+        const now = new Date();
+        const maxExpirationDate = new Date(now.getTime() + MAX_EXPIRATION_MS);
+
+        if (parsedDate <= now) {
+          errors.push('Expiration date must be in the future');
+        } else if (parsedDate > maxExpirationDate) {
+          errors.push('Expiration date cannot be more than 7 days in the future');
+        }
+      }
     }
   }
-}
 
   // -----------------------------
   // Return validation errors

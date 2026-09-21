@@ -547,7 +547,7 @@ The **Promotional Messages API** manages promotional message creation, campaign 
 - ***title*** — Required; message title, maximum 120 characters
 - ***message*** — Required; message content, maximum 5000 characters
 - ***customerid*** — Required; must match `CUST-{timestamp}-{10 alphanumeric characters}`
-- ***campaignHeadline***, ***promoCode***, ***discountPercentage***, ***storeUrl***, and ***expirationDate*** — Optional
+- ***campaignHeadline***, ***promoCode***, ***discountPercentage***, ***storeUrl***, and ***expirationDate*** — Optional (expirationDate must be a future date and cannot be more than 7 days in the future)
 
 **Response Payload (201 Created):**
 ```json
