@@ -8,8 +8,11 @@ const {
   validateCustomerId,
   validateGetAllCustomers,
 } = require('../middleware/customerValidator');
+const { authenticate, authorizeRoles, ROLES } = require('../middleware/authMiddleware');
 
-
+// Domain Security Guards: Customer routes require SUPER_ADMIN, STORE_MANAGER, or SUPPORT_AGENT
+router.use(authenticate);
+router.use(authorizeRoles(ROLES.SUPER_ADMIN, ROLES.STORE_MANAGER, ROLES.SUPPORT_AGENT));
 /**
  * @swagger
  * /api/v1/customers:

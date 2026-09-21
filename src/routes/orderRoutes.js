@@ -9,6 +9,10 @@ const {
   validateOrderId,
   validateGetAllOrders,
 } = require('../middleware/orderValidator');
+const { authenticate, authorizeRoles, ROLES } = require('../middleware/authMiddleware');
+
+// Domain Security Guards: All order endpoints require authentication
+router.use(authenticate);
 
 /**
  * @swagger
@@ -22,10 +26,10 @@ const {
  *         description: Orders retrieved successfully
  */
 // GET all orders [/api/v1/orders]
-router.get('/', validateGetAllOrders, orderController.getAllOrders);
+router.get('/', authorizeRoles(ROLES.SUPER_ADMIN, ROLES.STORE_MANAGER, ROLES.SUPPORT_AGENT), validateGetAllOrders, orderController.getAllOrders);
 
 // GET order by ID [/api/v1/orders/:orderId]
-router.get('/:orderId', validateOrderId, orderController.getOrderById);
+router.get('/:orderId', authorizeRoles(ROLES.SUPER_ADMIN, ROLES.STORE_MANAGER, ROLES.SUPPORT_AGENT), validateOrderId, orderController.getOrderById);
 
 /**
  * @swagger
@@ -49,12 +53,12 @@ router.get('/:orderId', validateOrderId, orderController.getOrderById);
  *         description: Internal server error
  */
 // CREATE new order [/api/v1/orders]
-router.post('/', validateCreateOrder, orderController.createOrder);
+router.post('/', authorizeRoles(ROLES.SUPER_ADMIN, ROLES.STORE_MANAGER), validateCreateOrder, orderController.createOrder);
 
 // UPDATE order [/api/v1/orders/:orderId]
-router.put('/:orderId', validateUpdateOrder, orderController.updateOrder);
+router.put('/:orderId', authorizeRoles(ROLES.SUPER_ADMIN, ROLES.STORE_MANAGER), validateUpdateOrder, orderController.updateOrder);
 
 // DELETE order [/api/v1/orders/:orderId]
-router.delete('/:orderId', validateDeleteOrder, orderController.deleteOrder);
+router.delete('/:orderId', authorizeRoles(ROLES.SUPER_ADMIN, ROLES.STORE_MANAGER), validateDeleteOrder, orderController.deleteOrder);
 
 module.exports = router;
