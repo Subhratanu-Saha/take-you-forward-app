@@ -103,23 +103,70 @@ const options = {
                 // =========================
                 Order: {
                     type: 'object',
+                    example: {
+                        customerid: 'CUST-1788272521652-BCHD07GGMV',
+                        channel: 'WEB',
+                        payment: 'CARD',
+                        taxamount: 10,
+                        discount: 5,
+                        isloyalty: true,
+                        orderlineitems: [
+                            {
+                                skuid: 'SKU-1004',
+                                skuitem: 'Test Product',
+                                skuquantity: 2,
+                                skuprice: 50,
+                            },
+                        ],
+                    },
                     properties: {
-                        orderid: {
-                            type: 'string',
-                            example: 'ORD-1750000000000-XYZ123',
-                        },
                         customerid: {
                             type: 'string',
-                            example: 'CUST-1750000000000-ABC123',
+                            example: 'CUST-1788272521652-BCHD07GGMV',
                         },
-                        totalamount: {
-                            type: 'number',
-                            format: 'double',
-                            example: 5000,
-                        },
-                        status: {
+                        channel: {
                             type: 'string',
-                            example: 'PLACED',
+                            example: 'WEB',
+                        },
+                        payment: {
+                            type: 'string',
+                            example: 'CARD',
+                        },
+                        taxamount: {
+                            type: 'number',
+                            example: 10,
+                        },
+                        discount: {
+                            type: 'number',
+                            example: 5,
+                        },
+                        isloyalty: {
+                            type: 'boolean',
+                            example: true,
+                        },
+                        orderlineitems: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    skuid: {
+                                        type: 'string',
+                                        example: 'SKU-1004',
+                                    },
+                                    skuitem: {
+                                        type: 'string',
+                                        example: 'Test Product',
+                                    },
+                                    skuquantity: {
+                                        type: 'integer',
+                                        example: 2,
+                                    },
+                                    skuprice: {
+                                        type: 'number',
+                                        example: 50,
+                                    },
+                                },
+                            },
                         },
                     },
                 },
