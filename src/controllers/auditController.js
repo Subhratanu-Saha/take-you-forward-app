@@ -50,6 +50,7 @@ const parseFilters = (query = {}) => {
     action,
     actor: query.performedby || query.actor,
     search: query.search || query.q,
+    requestId: query.requestId || query.requestid,
     startDate: parseDate(query.startDate || query.startdate || query.dateFrom || query.fromDate || query.from, 'startDate'),
     endDate: parseDate(query.endDate || query.enddate || query.dateTo || query.toDate || query.to, 'endDate', true),
     page,
