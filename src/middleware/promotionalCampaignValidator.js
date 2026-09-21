@@ -25,6 +25,13 @@ const validatePromotionalCampaign = (req, res, next) => {
     }
   }
 
+  if (endDate !== undefined && typeof endDate === 'string') {
+    const parsedEndDate = new Date(endDate);
+    if (!Number.isNaN(parsedEndDate.getTime()) && parsedEndDate <= new Date()) {
+      errors.push('endDate must be in the future');
+    }
+  }
+
   if (subject !== undefined && (typeof subject !== 'string' || !subject.trim() || subject.trim().length > 200)) {
     errors.push('Subject must be a non-empty string of no more than 200 characters');
   }
