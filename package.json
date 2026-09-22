@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "build": "node scripts/build-check.js",
     "seed": "node scripts/seed-mock-data.js",
+    "seed:rbac": "node scripts/seed-rbac.js",
     "ingest": "node scripts/interactive-ingest.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -20,6 +21,7 @@
   "license": "ISC",
   "dependencies": {
     "@prisma/client": "^5.19.0",
+    "bcryptjs": "^3.0.3",
     "cors": "2.8.5",
     "dotenv": "16.3.1",
     "express": "5.2.1",
