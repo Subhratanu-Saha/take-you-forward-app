@@ -5,8 +5,8 @@ const config = {
     nodeEnv: 'development',
     dbUrl: process.env.DB_URL || 'mongodb://localhost:27017/take-you-forward',
     apiBaseUrl: 'http://localhost:5000',
-    jwtSecret: process.env.JWT_SECRET || 'development-jwt-secret',
-    jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1h',
+    jwtSecret: process.env.JWT_SECRET,
+    jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
   production: {
     port: process.env.PORT || 8000,
@@ -14,15 +14,15 @@ const config = {
     dbUrl: process.env.DB_URL,
     apiBaseUrl: 'https://take-you-forward-app.onrender.com',
     jwtSecret: process.env.JWT_SECRET,
-    jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1h',
+    jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
   testing: {
     port: 5001,
     nodeEnv: 'testing',
     dbUrl: 'mongodb://localhost:27017/take-you-forward-test',
     apiBaseUrl: 'http://localhost:5001',
-    jwtSecret: process.env.JWT_SECRET || 'test-jwt-secret',
-    jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1h',
+    jwtSecret: process.env.JWT_SECRET,
+    jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   }
 };
 
@@ -33,6 +33,9 @@ const validateConfig = () => {
   const missing = [];
   if (!process.env.DATABASE_URL && !process.env.DB_URL && environment === 'production') {
     missing.push('DATABASE_URL');
+  }
+  if (!activeConfig.jwtSecret && environment === 'production') {
+    missing.push('JWT_SECRET');
   }
 
   if (missing.length > 0) {

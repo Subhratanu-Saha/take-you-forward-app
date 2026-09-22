@@ -14,16 +14,14 @@ const sanitizeStaffUser = (user) => {
   return safeUser;
 };
 
-const getJwtSecret = () => config.jwtSecret || process.env.JWT_SECRET || 'development-jwt-secret';
-
 const generateToken = (user) => jwt.sign(
   {
     userId: user.staffid || user.userId || user.id,
     email: user.email,
     role: user.role,
   },
-  getJwtSecret(),
-  { expiresIn: config.jwtExpiresIn || process.env.JWT_EXPIRES_IN || '1h' }
+  config.jwtSecret,
+  { expiresIn: config.jwtExpiresIn }
 );
 
 const login = async ({ email, password }, requestId = null) => {
@@ -148,7 +146,7 @@ const getAuthenticatedUser = async (userId, requestId = null) => {
 
 const verifyToken = (token) => {
   try {
-    return jwt.verify(token, getJwtSecret());
+    return jwt.verify(token, config.jwtSecret);
   } catch (error) {
     const wrappedError = new Error('Invalid or expired token');
     wrappedError.statusCode = 401;

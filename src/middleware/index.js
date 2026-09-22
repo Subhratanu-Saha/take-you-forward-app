@@ -29,7 +29,7 @@ const requireAuth = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, config.jwtSecret || process.env.JWT_SECRET || 'development-jwt-secret');
+    const decoded = jwt.verify(token, config.jwtSecret);
     req.user = {
       userId: decoded.userId,
       email: decoded.email,

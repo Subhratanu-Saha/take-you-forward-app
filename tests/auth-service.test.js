@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const app = require('../src/app');
+const config = require('../src/config');
 const prisma = require('../src/utils/db');
 
 const originalStaffUser = {
@@ -106,7 +107,7 @@ test('Invalid credentials return 401 AUTH_INVALID_CREDENTIALS', async () => {
 
 test('Successful SUPER_ADMIN registration creates staff user without password exposure', async () => {
   const server = await createAuthServer();
-  const adminToken = jwt.sign({ userId: 'STF-999', email: 'super@tayf.test', role: 'SUPER_ADMIN' }, process.env.JWT_SECRET, { expiresIn: '1h' });
+  const adminToken = jwt.sign({ userId: 'STF-999', email: 'super@tayf.test', role: 'SUPER_ADMIN' }, process.env.JWT_SECRET, { expiresIn: config.jwtExpiresIn });
 
   const registered = {
     staffid: 'STF-2001',
@@ -161,7 +162,7 @@ test('Successful SUPER_ADMIN registration creates staff user without password ex
 
 test('Non-SUPER_ADMIN cannot register staff users', async () => {
   const server = await createAuthServer();
-  const staffToken = jwt.sign({ userId: 'STF-777', email: 'basic@tayf.test', role: 'ADMIN' }, process.env.JWT_SECRET, { expiresIn: '1h' });
+  const staffToken = jwt.sign({ userId: 'STF-777', email: 'basic@tayf.test', role: 'ADMIN' }, process.env.JWT_SECRET, { expiresIn: config.jwtExpiresIn });
 
   await withStubbedStaffUsers({
     'basic@tayf.test': {
@@ -198,7 +199,7 @@ test('Non-SUPER_ADMIN cannot register staff users', async () => {
 
 test('GET /me returns authenticated profile and active role', async () => {
   const server = await createAuthServer();
-  const token = jwt.sign({ userId: 'STF-303', email: 'me@tayf.test', role: 'SUPER_ADMIN' }, process.env.JWT_SECRET, { expiresIn: '1h' });
+  const token = jwt.sign({ userId: 'STF-303', email: 'me@tayf.test', role: 'SUPER_ADMIN' }, process.env.JWT_SECRET, { expiresIn: config.jwtExpiresIn });
 
   await withStubbedStaffUsers({
     'me@tayf.test': {
