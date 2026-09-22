@@ -271,7 +271,10 @@ test('Order API POST /api/v1/orders integration dispatches email', async (t) => 
 
     const response = await fetch(`http://localhost:${port}/api/v1/orders`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer STORE_MANAGER',
+      },
       body: JSON.stringify(payload),
     });
 

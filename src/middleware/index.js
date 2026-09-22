@@ -137,6 +137,12 @@ const validateJsonContentType = (req) => {
   return null;
 };
 
+const {
+  authenticate,
+  authorizeRoles,
+  ROLES,
+} = require('./authMiddleware');
+
 module.exports = {
   authMiddleware: requireAuth,
   requireAuth,
