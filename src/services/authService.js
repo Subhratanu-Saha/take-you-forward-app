@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const prisma = require('../utils/db');
-const { logger, ValidationError, ConflictError, NotFoundError } = require('../utils/db');
+const { logger, ValidationError, ConflictError } = require('../utils/db');
 const config = require('../config');
 
 const AUTH_ERROR_CODE = 'AUTH_INVALID_CREDENTIALS';
