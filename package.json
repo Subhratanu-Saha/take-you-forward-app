@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "build": "node scripts/build-check.js",
     "seed": "node scripts/seed-mock-data.js",
+    "seed:rbac": "node scripts/seed-rbac.js",
     "ingest": "node scripts/interactive-ingest.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

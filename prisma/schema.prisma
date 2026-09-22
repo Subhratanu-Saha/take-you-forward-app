@@ -128,7 +128,7 @@ model staffuser {
 
 model auditlog {
  auditid        String    @id @default(uuid()) @db.VarChar(40)
-  entityname     String?   @db.VarChar(50)
+  entityname     String    @db.VarChar(50)
   entitytype     String?   @db.VarChar(50)
   entityid       String    @db.VarChar(100)
   action         String    @db.VarChar(50)
@@ -147,4 +147,36 @@ model auditlog {
 
   @@index([entityname, entityid])
   @@index([requestid])
+}
+
+enum RoleType {
+  SUPER_ADMIN
+  STORE_MANAGER
+  SUPPORT_AGENT
+  AUDITOR
+  MARKETING_USER
+}
+
+model role {
+  roleid      String    @id @default(uuid()) @db.VarChar(40)
+  name        RoleType  @unique
+  description String?   @db.VarChar(255)
+  createdat   DateTime  @default(now()) @db.Timestamp(6)
+  updatedat   DateTime? @updatedAt @db.Timestamp(6)
+  users       user[]
+}
+
+model user {
+  userid      String    @id @default(uuid()) @db.VarChar(40)
+  username    String    @unique @db.VarChar(50)
+  email       String    @unique @db.VarChar(100)
+  password    String    @db.VarChar(255)
+  roleid      String    @db.VarChar(40)
+  role        role      @relation(fields: [roleid], references: [roleid], onDelete: Restrict, onUpdate: Cascade)
+  isactive    Boolean   @default(true)
+  createdat   DateTime  @default(now()) @db.Timestamp(6)
+  updatedat   DateTime? @updatedAt @db.Timestamp(6)
+
+  @@index([roleid])
+  @@index([email])
 }

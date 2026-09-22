@@ -10,3 +10,7 @@ prisma/migrations/*
 !prisma/migrations/20260904120000_widen_loyalty_totalpoints/migration.sql
 !prisma/migrations/20260904210000_widen_interaction_interactionvalue/
 !prisma/migrations/20260904210000_widen_interaction_interactionvalue/migration.sql
+!prisma/migrations/20260913090000_align_database_with_prisma_schema/
+!prisma/migrations/20260913090000_align_database_with_prisma_schema/migration.sql
+!prisma/migrations/20260921172100_init_rbac/
+!prisma/migrations/20260921172100_init_rbac/migration.sql
