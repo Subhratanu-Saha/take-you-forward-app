@@ -114,18 +114,6 @@ model promotionaldlq {
   nextretryat   DateTime? @db.Timestamp(6)
 }
 
-model staffuser {
-  staffid     String    @id @db.VarChar(40)
-  firstname   String    @db.VarChar(50)
-  lastname    String?   @db.VarChar(50)
-  email       String    @unique @db.VarChar(100)
-  passwordhash String   @db.VarChar(255)
-  role        String    @default("ADMIN") @db.VarChar(30)
-  isactive    Boolean   @default(true)
-  createdat   DateTime  @default(now()) @db.Timestamp(6)
-  updatedat   DateTime? @db.Timestamp(6)
-}
-
 model auditlog {
  auditid        String    @id @default(uuid()) @db.VarChar(40)
   entityname     String    @db.VarChar(50)

@@ -9,9 +9,9 @@ const app = require('../src/app');
 const config = require('../src/config');
 const prisma = require('../src/utils/db');
 
-const originalStaffUser = {
-  findUnique: prisma.staffuser?.findUnique,
-  create: prisma.staffuser?.create,
+const originalUser = {
+  findUnique: prisma.user?.findUnique,
+  create: prisma.user?.create,
 };
 
 const createAuthServer = () => new Promise((resolve) => {
@@ -23,19 +23,19 @@ const withStubbedStaffUsers = async (userMap, createHandler) => {
     if (where?.email) {
       return userMap[where.email] || null;
     }
-    if (where?.staffid) {
-      return Object.values(userMap).find((user) => user.staffid === where.staffid) || null;
+    if (where?.userid) {
+      return Object.values(userMap).find((user) => user.userid === where.userid) || null;
     }
     return null;
   };
 
-  prisma.staffuser = {
-    ...prisma.staffuser,
+  prisma.user = {
+    ...prisma.user,
     findUnique,
     create: createHandler || (async ({ data }) => ({
-      staffid: data.staffid,
+      userid: data.userid,
       email: data.email,
-      passwordhash: data.passwordhash,
+      password: data.password,
       role: data.role,
       isactive: data.isactive,
       firstname: data.firstname,
@@ -49,10 +49,10 @@ test('Successful login returns JWT with userId email role', async () => {
   const server = await createAuthServer();
   const userPassword = 'Password123!';
   const staffUser = {
-    staffid: 'STF-1001',
+    userid: 'USER-1001',
     email: 'admin@tayf.test',
-    passwordhash: bcrypt.hashSync(userPassword, 10),
-    role: 'SUPER_ADMIN',
+    password: bcrypt.hashSync(userPassword, 10),
+    role: { name: 'SUPER_ADMIN' },
     isactive: true,
     firstname: 'System',
     lastname: 'Admin',
@@ -71,9 +71,9 @@ test('Successful login returns JWT with userId email role', async () => {
   assert.equal(response.status, 200, 'login should succeed');
   assert.ok(payload.data && payload.data.token, 'login should return a JWT token');
   const decoded = jwt.verify(payload.data.token, process.env.JWT_SECRET);
-  assert.equal(decoded.userId, staffUser.staffid);
+  assert.equal(decoded.userId, staffUser.userid);
   assert.equal(decoded.email, staffUser.email);
-  assert.equal(decoded.role, staffUser.role);
+  assert.equal(decoded.role, staffUser.role.name);
 
   server.close();
 });
@@ -82,10 +82,10 @@ test('Invalid credentials return 401 AUTH_INVALID_CREDENTIALS', async () => {
   const server = await createAuthServer();
   const userPassword = 'Password123!';
   const staffUser = {
-    staffid: 'STF-1002',
+    userid: 'USER-1002',
     email: 'staff@tayf.test',
-    passwordhash: bcrypt.hashSync(userPassword, 10),
-    role: 'ADMIN',
+    password: bcrypt.hashSync(userPassword, 10),
+    role: { name: 'STORE_MANAGER' },
     isactive: true,
   };
 
@@ -107,31 +107,31 @@ test('Invalid credentials return 401 AUTH_INVALID_CREDENTIALS', async () => {
 
 test('Successful SUPER_ADMIN registration creates staff user without password exposure', async () => {
   const server = await createAuthServer();
-  const adminToken = jwt.sign({ userId: 'STF-999', email: 'super@tayf.test', role: 'SUPER_ADMIN' }, process.env.JWT_SECRET, { expiresIn: config.jwtExpiresIn });
+  const adminToken = jwt.sign({ userId: 'USER-999', email: 'super@tayf.test', role: 'SUPER_ADMIN' }, process.env.JWT_SECRET, { expiresIn: config.jwtExpiresIn });
 
   const registered = {
-    staffid: 'STF-2001',
+    userid: 'USER-2001',
     firstname: 'New',
     lastname: 'Admin',
     email: 'newadmin@tayf.test',
-    role: 'ADMIN',
+    role: { name: 'STORE_MANAGER' },
     isactive: true,
-    passwordhash: bcrypt.hashSync('StrongPass123!', 10),
+    password: bcrypt.hashSync('StrongPass123!', 10),
   };
 
   await withStubbedStaffUsers({
     'super@tayf.test': {
-      staffid: 'STF-999',
+      userid: 'USER-999',
       email: 'super@tayf.test',
-      passwordhash: bcrypt.hashSync('RootPass123!', 10),
-      role: 'SUPER_ADMIN',
+      password: bcrypt.hashSync('RootPass123!', 10),
+      role: { name: 'SUPER_ADMIN' },
       isactive: true,
     },
   }, async ({ data }) => {
     if (data.email === registered.email) {
-      return { ...registered, passwordhash: data.passwordhash };
+      return { ...registered, password: data.password };
     }
-    return { ...data, staffid: 'STF-999' };
+    return { ...data, userid: 'USER-999', role: { name: 'SUPER_ADMIN' } };
   });
 
   const port = server.address().port;
@@ -146,14 +146,14 @@ test('Successful SUPER_ADMIN registration creates staff user without password ex
       lastname: 'Admin',
       email: 'newadmin@tayf.test',
       password: 'StrongPass123!',
-      role: 'ADMIN',
+      role: 'STORE_MANAGER',
     }),
   });
 
   const payload = await response.json();
   assert.equal(response.status, 201, 'super admin registration should succeed');
   assert.equal(payload.data.email, 'newadmin@tayf.test');
-  assert.equal(payload.data.role, 'ADMIN');
+  assert.equal(payload.data.role, 'STORE_MANAGER');
   assert.ok(!payload.data.password, 'password must not be returned');
   assert.ok(!payload.data.passwordhash, 'password hash must not be returned');
 
@@ -162,14 +162,14 @@ test('Successful SUPER_ADMIN registration creates staff user without password ex
 
 test('Non-SUPER_ADMIN cannot register staff users', async () => {
   const server = await createAuthServer();
-  const staffToken = jwt.sign({ userId: 'STF-777', email: 'basic@tayf.test', role: 'ADMIN' }, process.env.JWT_SECRET, { expiresIn: config.jwtExpiresIn });
+  const staffToken = jwt.sign({ userId: 'USER-777', email: 'basic@tayf.test', role: 'STORE_MANAGER' }, process.env.JWT_SECRET, { expiresIn: config.jwtExpiresIn });
 
   await withStubbedStaffUsers({
     'basic@tayf.test': {
-      staffid: 'STF-777',
+      userid: 'USER-777',
       email: 'basic@tayf.test',
-      passwordhash: bcrypt.hashSync('UserPass123!', 10),
-      role: 'ADMIN',
+      password: bcrypt.hashSync('UserPass123!', 10),
+      role: { name: 'STORE_MANAGER' },
       isactive: true,
     },
   });
@@ -186,7 +186,7 @@ test('Non-SUPER_ADMIN cannot register staff users', async () => {
       lastname: 'User',
       email: 'another@tayf.test',
       password: 'StrongPass123!',
-      role: 'ADMIN',
+      role: 'STORE_MANAGER',
     }),
   });
 
@@ -199,14 +199,14 @@ test('Non-SUPER_ADMIN cannot register staff users', async () => {
 
 test('GET /me returns authenticated profile and active role', async () => {
   const server = await createAuthServer();
-  const token = jwt.sign({ userId: 'STF-303', email: 'me@tayf.test', role: 'SUPER_ADMIN' }, process.env.JWT_SECRET, { expiresIn: config.jwtExpiresIn });
+  const token = jwt.sign({ userId: 'USER-303', email: 'me@tayf.test', role: 'SUPER_ADMIN' }, process.env.JWT_SECRET, { expiresIn: config.jwtExpiresIn });
 
   await withStubbedStaffUsers({
     'me@tayf.test': {
-      staffid: 'STF-303',
+      userid: 'USER-303',
       email: 'me@tayf.test',
-      passwordhash: bcrypt.hashSync('Pass123!', 10),
-      role: 'SUPER_ADMIN',
+      password: bcrypt.hashSync('Pass123!', 10),
+      role: { name: 'SUPER_ADMIN' },
       isactive: true,
       firstname: 'Profile',
       lastname: 'User',
@@ -263,5 +263,5 @@ test('GET /me with invalid or expired token is rejected', async () => {
 });
 
 test.after(() => {
-  prisma.staffuser = originalStaffUser;
+  prisma.user = originalUser;
 });

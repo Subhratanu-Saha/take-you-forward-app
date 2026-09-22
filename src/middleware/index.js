@@ -96,7 +96,7 @@ const validateLoginInput = (req, res, next) => {
 };
 
 const validateRegisterInput = (req, res, next) => {
-  const { firstname, lastname, email, password, role } = req.body || {};
+  const { firstname, lastname, username, email, password, role } = req.body || {};
   const errors = [];
 
   if (!firstname || !String(firstname).trim()) errors.push('First name is required');
@@ -107,9 +107,11 @@ const validateRegisterInput = (req, res, next) => {
     errors.push('Password must be at least 8 characters long');
   }
 
-  if (role && !['SUPER_ADMIN', 'ADMIN'].includes(role)) {
-    errors.push('Role must be SUPER_ADMIN or ADMIN');
+  if (role && !['SUPER_ADMIN', 'STORE_MANAGER', 'SUPPORT_AGENT', 'AUDITOR', 'MARKETING_USER'].includes(role)) {
+    errors.push('Role must be SUPER_ADMIN, STORE_MANAGER, SUPPORT_AGENT, AUDITOR, or MARKETING_USER');
   }
+
+  if (username !== undefined && !String(username).trim()) errors.push('Username cannot be empty');
 
   if (lastname !== undefined && lastname !== null && !String(lastname).trim()) {
     errors.push('Last name cannot be empty');
