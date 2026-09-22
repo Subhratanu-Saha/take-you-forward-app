@@ -137,6 +137,9 @@ app.get('/api-docs.json', (req, res) => {
   res.status(200).json(swaggerSpec);
 });
 
+// Authentication API Routes
+app.use('/api/v1/auth', require('./routes/authRoutes'));
+
 // Customer API Routes
 app.use('/api/v1/customers', require('./routes/customerRoutes'));
 

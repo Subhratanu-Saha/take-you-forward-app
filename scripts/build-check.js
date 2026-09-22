@@ -30,10 +30,34 @@ const printSuccess = (message) => {
 // ==================== MODULAR VERIFICATION STEPS ====================
 
 /**
+ * Remove stale Prisma temp files left behind by interrupted Windows generates.
+ * These leftover *.tmp files can hold the engine lock open and cause EPERM during rename.
+ */
+const cleanupStalePrismaArtifacts = () => {
+  const prismaClientDir = path.join(__dirname, '..', 'node_modules', '.prisma', 'client');
+
+  if (!fs.existsSync(prismaClientDir)) {
+    return;
+  }
+
+  const staleFiles = fs.readdirSync(prismaClientDir).filter((name) => /\.tmp\d*$|\.tmp\./i.test(name));
+
+  for (const fileName of staleFiles) {
+    try {
+      fs.rmSync(path.join(prismaClientDir, fileName), { force: true, recursive: false });
+      console.log(`  Removed stale Prisma temp artifact: ${fileName}`);
+    } catch (error) {
+      console.warn(`  Unable to remove stale Prisma temp artifact: ${fileName} (${error.message})`);
+    }
+  }
+};
+
+/**
  * Step 1: Generate Prisma ORM Client
  */
 const generatePrismaClient = () => {
   printStep(1, 3, '⚙️  Generating Prisma Client...');
+  cleanupStalePrismaArtifacts();
   execSync('npx prisma generate', { stdio: 'inherit' });
   printSuccess('Prisma Client generation complete.');
 };
