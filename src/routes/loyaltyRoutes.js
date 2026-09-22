@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const loyaltyController = require('../controllers/loyaltyController');
 const { validateCustomerId } = require('../middleware/customerValidator');
+const { authenticate, authorizeRoles, ROLES } = require('../middleware/authMiddleware');
+
+// Domain Security Guards: All loyalty endpoints require authentication
+router.use(authenticate);
 
 /**
  * @swagger
@@ -28,10 +32,10 @@ const { validateCustomerId } = require('../middleware/customerValidator');
  */
 
 // GET /api/v1/loyalty/:customerId
-router.get('/:customerId', validateCustomerId, loyaltyController.getLoyaltySummary);
+router.get('/:customerId', authorizeRoles(ROLES.SUPER_ADMIN, ROLES.STORE_MANAGER, ROLES.SUPPORT_AGENT), validateCustomerId, loyaltyController.getLoyaltySummary);
 
 // CREATE initial loyalty record or ensure loyalty exists [/api/v1/loyalty/:customerId]
-router.post('/:customerId', validateCustomerId, loyaltyController.createLoyaltyRecord);
+router.post('/:customerId', authorizeRoles(ROLES.SUPER_ADMIN, ROLES.STORE_MANAGER), validateCustomerId, loyaltyController.createLoyaltyRecord);
 
 /**
  * @swagger
@@ -69,6 +73,6 @@ router.post('/:customerId', validateCustomerId, loyaltyController.createLoyaltyR
  *         description: Internal server error
  */
 // UPDATE loyalty tier [/api/v1/loyalty/:customerId]
-router.put('/:customerId', validateCustomerId, loyaltyController.updateLoyaltyTier);
+router.put('/:customerId', authorizeRoles(ROLES.SUPER_ADMIN, ROLES.STORE_MANAGER), validateCustomerId, loyaltyController.updateLoyaltyTier);
 
 module.exports = router;

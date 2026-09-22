@@ -359,7 +359,10 @@ test('Order API PUT /api/v1/orders/:orderId recalculates totalamount and support
     // 1. PUT without totalamount
     const resWithoutTotal = await fetch(`http://localhost:${port}/api/v1/orders/ORD-1788590000000-ABCDEF`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer STORE_MANAGER',
+      },
       body: JSON.stringify({ taxamount: 20, discount: 10 }),
     });
     const bodyWithoutTotal = await resWithoutTotal.json();
@@ -370,7 +373,10 @@ test('Order API PUT /api/v1/orders/:orderId recalculates totalamount and support
     // 2. PUT with mismatching totalamount
     const resMismatch = await fetch(`http://localhost:${port}/api/v1/orders/ORD-1788590000000-ABCDEF`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer STORE_MANAGER',
+      },
       body: JSON.stringify({ taxamount: 20, discount: 10, totalamount: 500 }),
     });
     const bodyMismatch = await resMismatch.json();
