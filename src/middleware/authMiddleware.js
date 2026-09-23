@@ -58,12 +58,18 @@ const resolveUserFromToken = (token, headers = {}) => {
 
     if (cleanToken === ROLES.SUPER_ADMIN || cleanToken.includes('SUPER_ADMIN')) {
       role = ROLES.SUPER_ADMIN;
+    } else if (cleanToken === ROLES.AUDITOR || cleanToken.includes('AUDITOR')) {
+      role = ROLES.AUDITOR;
     } else if (cleanToken === ROLES.STORE_MANAGER || cleanToken.includes('STORE_MANAGER')) {
       role = ROLES.STORE_MANAGER;
     } else if (cleanToken === ROLES.SUPPORT_AGENT || cleanToken.includes('SUPPORT_AGENT')) {
       role = ROLES.SUPPORT_AGENT;
+    } else if (cleanToken === ROLES.MARKETING_USER || cleanToken.includes('MARKETING_USER') || cleanToken.includes('MARKETING')) {
+      role = ROLES.MARKETING_USER;
     } else if (cleanToken.includes('ADMIN')) {
       role = ROLES.SUPER_ADMIN;
+    } else if (cleanToken.includes('AUDIT')) {
+      role = ROLES.AUDITOR;
     } else if (cleanToken.includes('MANAGER')) {
       role = ROLES.STORE_MANAGER;
     } else if (cleanToken.includes('SUPPORT') || cleanToken.includes('AGENT')) {
@@ -94,7 +100,7 @@ const isLegacyTestToken = (token, headers = {}) => {
     return false;
   }
   const upper = token.trim().toUpperCase();
-  if (['SUPER_ADMIN', 'STORE_MANAGER', 'SUPPORT_AGENT', 'CUSTOMER'].includes(upper)) {
+  if (['SUPER_ADMIN', 'STORE_MANAGER', 'SUPPORT_AGENT', 'AUDITOR', 'MARKETING_USER', 'CUSTOMER'].includes(upper)) {
     return true;
   }
   if (upper.startsWith('MOCK-TOKEN-') || upper.startsWith('MOCK_TOKEN_')) {

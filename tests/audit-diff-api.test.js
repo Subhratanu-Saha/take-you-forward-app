@@ -1,5 +1,8 @@
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+
+process.env.NODE_ENV = 'test';
+
 const prisma = require('../src/utils/db');
 const {
   recordAuditLog,
@@ -118,7 +121,9 @@ describe('Audit Diff & Single Request Correlation API', () => {
     const port = server.address().port;
 
     try {
-      const resp = await fetch(`http://localhost:${port}/api/v1/audit-logs/request/${testRequestId}`);
+      const resp = await fetch(`http://localhost:${port}/api/v1/audit-logs/request/${testRequestId}`, {
+        headers: { Authorization: 'Bearer SUPER_ADMIN' },
+      });
       assert.strictEqual(resp.status, 200);
       const body = await resp.json();
       assert.strictEqual(body.success, true);
@@ -137,7 +142,9 @@ describe('Audit Diff & Single Request Correlation API', () => {
     const port = server.address().port;
 
     try {
-      const resp = await fetch(`http://localhost:${port}/api/v1/audit-logs/${updateLogId}`);
+      const resp = await fetch(`http://localhost:${port}/api/v1/audit-logs/${updateLogId}`, {
+        headers: { Authorization: 'Bearer SUPER_ADMIN' },
+      });
       assert.strictEqual(resp.status, 200);
       const body = await resp.json();
       assert.strictEqual(body.success, true);

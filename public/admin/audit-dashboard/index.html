@@ -16,12 +16,20 @@
         <p class="subtitle">Monitor recent customer, order, and loyalty changes.</p>
       </div>
 
-      <div class="live-status" id="liveStatusBadge" aria-live="polite">
-        <span class="live-dot" id="liveDot"></span>
-        <svg class="refresh-spinner-icon hidden" id="refreshSpinnerIcon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-        </svg>
-        <span id="liveStatus">Live feed</span>
+      <div class="header-right">
+        <div class="user-session hidden" id="userSession">
+          <span class="user-role-badge" id="userRoleBadge">AUDITOR</span>
+          <span class="user-email-label" id="userEmailLabel"></span>
+          <button type="button" id="signOutBtn" class="sign-out-btn">Sign Out</button>
+        </div>
+
+        <div class="live-status" id="liveStatusBadge" aria-live="polite">
+          <span class="live-dot" id="liveDot"></span>
+          <svg class="refresh-spinner-icon hidden" id="refreshSpinnerIcon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+          </svg>
+          <span id="liveStatus">Live feed</span>
+        </div>
       </div>
     </header>
 
@@ -241,6 +249,55 @@
     </div>
   </div>
 
-  <script src="/admin/audit-dashboard/dashboard.js?v=4"></script>
+  <!-- Auth Barrier / Login Modal -->
+  <div id="authModalBackdrop" class="modal-backdrop hidden" aria-hidden="true">
+    <div class="modal-dialog auth-modal" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+      <header class="modal-header">
+        <div>
+          <p class="section-kicker">Security Barrier</p>
+          <h3 id="authModalTitle">Auditor Authentication Required</h3>
+          <p class="modal-subtitle">Sign in with a <strong>SUPER_ADMIN</strong> or <strong>AUDITOR</strong> role account.</p>
+        </div>
+      </header>
+
+      <form id="authLoginForm" class="modal-body auth-form">
+        <div id="authErrorMessage" class="auth-error-banner hidden" role="alert"></div>
+
+        <div class="form-group">
+          <label for="authEmail">Email Address</label>
+          <input type="email" id="authEmail" name="email" placeholder="admin@example.com" required autocomplete="username">
+        </div>
+
+        <div class="form-group">
+          <label for="authPassword">Password</label>
+          <input type="password" id="authPassword" name="password" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" id="authLoginBtn" class="auth-submit-btn">Sign In to Dashboard</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Access Denied Modal (For Non-Auditor Roles) -->
+  <div id="accessDeniedBackdrop" class="modal-backdrop hidden" aria-hidden="true">
+    <div class="modal-dialog auth-modal access-denied-modal" role="dialog" aria-modal="true" aria-labelledby="accessDeniedTitle">
+      <header class="modal-header">
+        <div>
+          <p class="section-kicker" style="color: var(--red);">Access Restricted</p>
+          <h3 id="accessDeniedTitle">Access Denied</h3>
+        </div>
+      </header>
+      <div class="modal-body">
+        <p id="accessDeniedMessage" class="access-denied-text">
+          Your account role is not authorized to view internal audit diffs or security logs. This dashboard is strictly restricted to <strong>SUPER_ADMIN</strong> and <strong>AUDITOR</strong> roles.
+        </p>
+      </div>
+      <footer class="modal-footer" style="justify-content: flex-end;">
+        <button type="button" id="accessDeniedSwitchBtn" class="auth-submit-btn">Switch Account / Sign In</button>
+      </footer>
+    </div>
+  </div>
+
+  <script src="/admin/audit-dashboard/dashboard.js?v=5"></script>
 </body>
 </html>
