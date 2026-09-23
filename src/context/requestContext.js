@@ -5,7 +5,7 @@ const asyncLocalStorage = new AsyncLocalStorage();
 
 /**
  * Returns the current request context or a safe default object
- * @returns {Object} { requestId, actor, ipAddress, method, path, startTime }
+ * @returns {Object} { requestId, actor, userRole, ipAddress, method, path, startTime }
  */
 const getRequestContext = () => {
   const store = asyncLocalStorage.getStore();
@@ -16,6 +16,7 @@ const getRequestContext = () => {
   return {
     requestId: null,
     actor: 'ANONYMOUS',
+    userRole: null,
     ipAddress: null,
     method: null,
     path: null,
@@ -38,6 +39,7 @@ const runWithContext = (context, callback) => {
  */
 const getRequestId = () => getRequestContext().requestId;
 const getActor = () => getRequestContext().actor;
+const getUserRole = () => getRequestContext().userRole;
 const getIpAddress = () => getRequestContext().ipAddress;
 
 module.exports = {
@@ -46,5 +48,6 @@ module.exports = {
   runWithContext,
   getRequestId,
   getActor,
+  getUserRole,
   getIpAddress,
 };

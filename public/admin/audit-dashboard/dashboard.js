@@ -84,6 +84,31 @@ const extractRequestId = (log, fallbackId = null) => {
   return id ? String(id).trim() : null;
 };
 
+// Safe JSON parser helper
+const parseJsonSafe = (data) => {
+  if (!data) return null;
+  if (typeof data === 'object') return data;
+  try {
+    return JSON.parse(data);
+  } catch {
+    return data;
+  }
+};
+
+const formatActor = (log) => {
+  const meta = parseJsonSafe(log?.metadata);
+  const role = meta?.userRole || log?.userRole || log?.role;
+  if (role) {
+    return String(role).replace(/_/g, ' ').toUpperCase();
+  }
+  const raw = String(log?.performedby || log?.actor || log?.createdby || 'SYSTEM');
+  const match = raw.match(/\(([A-Z_]+)\)/i);
+  if (match && match[1]) {
+    return match[1].replace(/_/g, ' ').toUpperCase();
+  }
+  return raw;
+};
+
 const createCell = (value, className = '') => {
   const cell = document.createElement('td');
   cell.textContent = value;
@@ -103,17 +128,6 @@ const createActionCell = (action) => {
   const cell = document.createElement('td');
   cell.appendChild(createActionBadge(action));
   return cell;
-};
-
-// Safe JSON parser helper
-const parseJsonSafe = (data) => {
-  if (!data) return null;
-  if (typeof data === 'object') return data;
-  try {
-    return JSON.parse(data);
-  } catch {
-    return data;
-  }
 };
 
 // Formats primitive/complex diff value for display
@@ -319,7 +333,11 @@ const openDiffModal = async (log, contextualRequestId = null) => {
   // Metadata Bar
   const resolvedRequestId = extractRequestId(fullLog, contextualRequestId);
   diffRequestId.textContent = resolvedRequestId || 'None';
-  diffActor.textContent = fullLog?.actor || fullLog?.createdby || 'SYSTEM';
+  const modalActor = formatActor(fullLog);
+  diffActor.textContent = modalActor;
+  if (fullLog?.actor && fullLog.actor !== modalActor) {
+    diffActor.title = `User ID: ${fullLog.actor}`;
+  }
   diffTimestamp.textContent = formatTimestamp(fullLog?.createdat);
 
   // Trace Request button
@@ -432,7 +450,7 @@ const openRequestTracer = async (requestId) => {
           : 'Record updated';
       }
 
-      metaRow.textContent = `${formatTimestamp(evt.createdat)} • By ${evt.actor || evt.createdby || 'SYSTEM'} • ${changeSummary}`;
+      metaRow.textContent = `${formatTimestamp(evt.createdat)} • By ${formatActor(evt)} • ${changeSummary}`;
 
       details.appendChild(topRow);
       details.appendChild(metaRow);
@@ -555,7 +573,13 @@ const loadLogs = async () => {
       row.appendChild(createActionCell(log.action || 'UNKNOWN'));
 
       // 5. Performed By
-      row.appendChild(createCell(log.actor || log.createdby || 'SYSTEM'));
+      const actorCell = document.createElement('td');
+      const actorDisplay = formatActor(log);
+      actorCell.textContent = actorDisplay;
+      if (log.actor && log.actor !== actorDisplay) {
+        actorCell.title = `User ID: ${log.actor}`;
+      }
+      row.appendChild(actorCell);
 
       // 6. Request ID (Interactive badge for single-request correlation)
       const reqId = extractRequestId(log);

@@ -141,13 +141,22 @@ const recordAuditLog = async (prismaClient, auditData = {}) => {
     const customerid = auditData.customerid || auditData.customerId || null;
     const oldervalue = auditData.oldervalue ?? auditData.oldValue ?? auditData.oldvalues ?? null;
     const newvalue = auditData.newvalue ?? auditData.newValue ?? auditData.newvalues ?? null;
-    const createdby = auditData.createdby || auditData.createdBy || 'SYSTEM';
-    const createdby_type = auditData.createdby_type || auditData.createdByType || 'AUTOMATED';
+
+    // Extract actor, createdby, and userRole automatically from RequestContext
+    const actor = auditData.actor || ctx.actor || 'ANONYMOUS';
+    const createdby =
+      auditData.createdby ||
+      auditData.createdBy ||
+      (ctx.actor && ctx.actor !== 'ANONYMOUS' ? ctx.actor : 'SYSTEM');
+    const createdby_type =
+      auditData.createdby_type ||
+      auditData.createdByType ||
+      (actor && actor !== 'ANONYMOUS' ? 'USER' : 'AUTOMATED');
 
     const changedfields = auditData.changedfields || auditData.changedFields;
     const requestid = auditData.requestid || auditData.requestId || ctx.requestId || null;
-    const actor = auditData.actor || ctx.actor || 'ANONYMOUS';
     const ipaddress = auditData.ipaddress || auditData.ipAddress || ctx.ipAddress || null;
+    const userRole = auditData.userRole || auditData.role || ctx.userRole || null;
 
     if (!entitytype || !entityid) {
       throw new Error('Both entitytype and entityid are required to record audit logging');
@@ -167,6 +176,10 @@ const recordAuditLog = async (prismaClient, auditData = {}) => {
     if (actor && actor !== 'ANONYMOUS') {
       metadata = metadata || {};
       if (!metadata.actor) metadata.actor = String(actor);
+    }
+    if (userRole) {
+      metadata = metadata || {};
+      if (!metadata.userRole) metadata.userRole = String(userRole);
     }
     if (ipaddress) {
       metadata = metadata || {};
@@ -390,10 +403,25 @@ const buildAuditLogWhere = ({ entityname, entityid, action, actor, search, start
   return where;
 };
 
-const toAuditLogResponse = (auditLog) => ({
-  ...auditLog,
-  performedby: auditLog.actor || auditLog.createdby,
-});
+const toAuditLogResponse = (auditLog) => {
+  let userRole = null;
+  if (auditLog?.metadata) {
+    if (typeof auditLog.metadata === 'object' && auditLog.metadata.userRole) {
+      userRole = auditLog.metadata.userRole;
+    } else if (typeof auditLog.metadata === 'string') {
+      try {
+        const parsed = JSON.parse(auditLog.metadata);
+        if (parsed?.userRole) userRole = parsed.userRole;
+      } catch (_) {}
+    }
+  }
+  const cleanRole = userRole ? String(userRole).replace(/_/g, ' ').toUpperCase() : null;
+
+  return {
+    ...auditLog,
+    performedby: cleanRole || auditLog.actor || auditLog.createdby,
+  };
+};
 
 const resolveAuditClient = (prismaClient) => (
   prismaClient?.auditlog ? prismaClient : require('../db/prisma')
