@@ -18,12 +18,18 @@ router.use(authorizeRoles(ROLES.SUPER_ADMIN, ROLES.STORE_MANAGER, ROLES.SUPPORT_
  * /api/v1/customers:
  *   get:
  *     summary: Get all customers
- *     description: Retrieve a list of all customers.
+ *     description: "Retrieve a list of all customers. Required roles: SUPER_ADMIN, STORE_MANAGER, SUPPORT_AGENT."
+ *     security:
+ *       - bearerAuth: []
  *     tags:
  *       - Customers
  *     responses:
  *       200:
  *         description: Customers retrieved successfully
+ *       401:
+ *         description: Unauthorized - Missing or invalid JWT token
+ *       403:
+ *         description: Forbidden - Insufficient permissions for user role
  *       500:
  *         description: Internal server error
  */
@@ -35,7 +41,9 @@ router.get('/', validateGetAllCustomers, customerController.getAllCustomers);
  * /api/v1/customers/search/{term}:
  *   get:
  *     summary: Search customers
- *     description: Search for customers using a search term.
+ *     description: "Search for customers using a search term. Required roles: SUPER_ADMIN, STORE_MANAGER, SUPPORT_AGENT."
+ *     security:
+ *       - bearerAuth: []
  *     tags:
  *       - Customers
  *     parameters:
@@ -49,6 +57,10 @@ router.get('/', validateGetAllCustomers, customerController.getAllCustomers);
  *     responses:
  *       200:
  *         description: Customers matching the search term retrieved successfully
+ *       401:
+ *         description: Unauthorized - Missing or invalid JWT token
+ *       403:
+ *         description: Forbidden - Insufficient permissions for user role
  *       404:
  *         description: No customers found
  *       500:
@@ -62,7 +74,9 @@ router.get('/search/:term', customerController.searchCustomers);
  * /api/v1/customers/{customerId}:
  *   get:
  *     summary: Get customer by ID
- *     description: Retrieve a customer using their customer ID.
+ *     description: "Retrieve a customer using their customer ID. Required roles: SUPER_ADMIN, STORE_MANAGER, SUPPORT_AGENT."
+ *     security:
+ *       - bearerAuth: []
  *     tags:
  *       - Customers
  *     parameters:
@@ -78,6 +92,10 @@ router.get('/search/:term', customerController.searchCustomers);
  *         description: Customer retrieved successfully
  *       400:
  *         description: Invalid customer ID
+ *       401:
+ *         description: Unauthorized - Missing or invalid JWT token
+ *       403:
+ *         description: Forbidden - Insufficient permissions for user role
  *       404:
  *         description: Customer not found
  *       500:
@@ -91,7 +109,9 @@ router.get('/:customerId', validateCustomerId, customerController.getCustomerByI
  * /api/v1/customers:
  *   post:
  *     summary: Create a new customer
- *     description: Create a new customer account.
+ *     description: "Create a new customer account. Required roles: SUPER_ADMIN, STORE_MANAGER, SUPPORT_AGENT."
+ *     security:
+ *       - bearerAuth: []
  *     tags:
  *       - Customers
  *     requestBody:
@@ -105,6 +125,10 @@ router.get('/:customerId', validateCustomerId, customerController.getCustomerByI
  *         description: Customer created successfully
  *       400:
  *         description: Validation error
+ *       401:
+ *         description: Unauthorized - Missing or invalid JWT token
+ *       403:
+ *         description: Forbidden - Insufficient permissions for user role
  *       500:
  *         description: Internal server error
  */
@@ -117,7 +141,9 @@ router.post('/', validateCreateCustomer, customerController.createCustomer);
  * /api/v1/customers/{customerId}:
  *   put:
  *     summary: Update customer
- *     description: Update an existing customer's information.
+ *     description: "Update an existing customer's information. Required roles: SUPER_ADMIN, STORE_MANAGER, SUPPORT_AGENT."
+ *     security:
+ *       - bearerAuth: []
  *     tags:
  *       - Customers
  *     parameters:
@@ -139,6 +165,10 @@ router.post('/', validateCreateCustomer, customerController.createCustomer);
  *         description: Customer updated successfully
  *       400:
  *         description: Validation error
+ *       401:
+ *         description: Unauthorized - Missing or invalid JWT token
+ *       403:
+ *         description: Forbidden - Insufficient permissions for user role
  *       404:
  *         description: Customer not found
  *       500:
@@ -152,7 +182,9 @@ router.put('/:customerId', validateUpdateCustomer, customerController.updateCust
  * /api/v1/customers/{customerId}:
  *   delete:
  *     summary: Delete customer
- *     description: Delete an existing customer using their customer ID.
+ *     description: "Delete an existing customer using their customer ID. Required roles: SUPER_ADMIN, STORE_MANAGER, SUPPORT_AGENT."
+ *     security:
+ *       - bearerAuth: []
  *     tags:
  *       - Customers
  *     parameters:
@@ -168,6 +200,10 @@ router.put('/:customerId', validateUpdateCustomer, customerController.updateCust
  *         description: Customer deleted successfully
  *       400:
  *         description: Invalid customer ID
+ *       401:
+ *         description: Unauthorized - Missing or invalid JWT token
+ *       403:
+ *         description: Forbidden - Insufficient permissions for user role
  *       404:
  *         description: Customer not found
  *       500:
