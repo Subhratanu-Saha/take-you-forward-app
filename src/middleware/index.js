@@ -139,14 +139,21 @@ const validateJsonContentType = (req) => {
 
 const {
   authenticate,
+  resolveUserFromToken,
+} = require('./authMiddleware');
+const {
   authorizeRoles,
   ROLES,
-} = require('./authMiddleware');
+} = require('./rbacMiddleware');
 
 module.exports = {
   authMiddleware: requireAuth,
   requireAuth,
   requireRole,
+  authenticate,
+  authorizeRoles,
+  ROLES,
+  resolveUserFromToken,
   validateInput: (schema) => (req, res, next) => next(),
   validateLoginInput,
   validateRegisterInput,
