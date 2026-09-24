@@ -11,6 +11,43 @@ const contextMiddleware = require('./middleware/contextMiddleware');
 
 const app = express();
 const path = require('path');
+
+// ---------------------------------------------------------------------------
+// Authentication & Request Context Middleware Pipeline
+// NOTE: Token authentication runs before contextMiddleware so that req.user ({ userId, role })
+// is populated prior to context binding.
+// ---------------------------------------------------------------------------
+app.use((req, res, next) => {
+  const authHeader = req.headers?.authorization || req.headers?.Authorization;
+  if (authHeader && typeof authHeader === 'string' && authHeader.trim().toLowerCase().startsWith('bearer ')) {
+    const token = authHeader.trim().slice(7).trim();
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const config = require('./config');
+        const secret = config.jwtSecret || process.env.JWT_SECRET || 'take-you-forward-secret-key';
+        const decoded = jwt.verify(token, secret);
+        req.user = {
+          ...decoded,
+          id: decoded.userId || decoded.id || decoded.sub,
+          userId: decoded.userId || decoded.id || decoded.sub,
+          role: decoded.role || (Array.isArray(decoded.roles) ? decoded.roles[0] : 'AUTHENTICATED_USER'),
+        };
+      } catch (_) {
+        // Fallback for test/mock tokens
+        try {
+          const { resolveUserFromToken } = require('./middleware/authMiddleware');
+          if (typeof resolveUserFromToken === 'function') {
+            const fallbackUser = resolveUserFromToken(token, req.headers);
+            if (fallbackUser) req.user = fallbackUser;
+          }
+        } catch (__) {}
+      }
+    }
+  }
+  next();
+});
+
 // Request Context & Correlation ID Propagation Middleware
 app.use(contextMiddleware);
 
@@ -110,6 +147,8 @@ app.get('/api/health', (req, res) => {
     message: API_SUCCESSFUL_HEALTH_MESSAGE,
     timestamp: new Date().toISOString(),
     requestId: req.requestId,
+    actor: req.actor,
+    userRole: req.userRole,
   });
 });
 
@@ -175,10 +214,21 @@ const dashboardDirectory = path.join(
 
 app.use(
   '/admin/audit-dashboard',
+  (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
+    next();
+  },
   express.static(dashboardDirectory, { index: false })
 );
 
 app.get('/admin/audit-dashboard', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
   res.sendFile(path.join(dashboardDirectory, 'index.html'));
 });
 
