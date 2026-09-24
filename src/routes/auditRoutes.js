@@ -1,7 +1,12 @@
 const express = require('express');
 const auditController = require('../controllers/auditController');
+const { authenticate, authorizeRoles, ROLES } = require('../middleware/authMiddleware');
 
 const router = express.Router();
+
+// Domain Security Guards: Audit routes require SUPER_ADMIN or AUDITOR
+router.use(authenticate);
+router.use(authorizeRoles(ROLES.SUPER_ADMIN, ROLES.AUDITOR));
 
 // Static routes must come before dynamic /:id routes to avoid route precedence collision
 router.get('/stats', auditController.getAuditStats);

@@ -983,3 +983,130 @@ td:nth-child(3) {
     max-height: 95vh;
   }
 }
+
+/* ==========================================================================
+   Auth Barrier, Session & Access Denied Styles
+   ========================================================================== */
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.user-session {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.user-role-badge {
+  background: var(--green-soft);
+  color: var(--green);
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.user-email-label {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.sign-out-btn {
+  background: transparent;
+  color: var(--red);
+  border: 1px solid var(--red-soft);
+  padding: 4px 10px;
+  font-size: 0.74rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.15s;
+}
+
+.sign-out-btn:hover {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+}
+
+.auth-modal {
+  max-width: 440px;
+  width: 90%;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 24px;
+}
+
+.auth-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auth-form .form-group label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.auth-form .form-group input {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.auth-form .form-group input:focus {
+  border-color: var(--green);
+}
+
+.auth-submit-btn {
+  background: var(--green);
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.auth-submit-btn:hover {
+  background: #1e4a33;
+}
+
+.auth-error-banner {
+  background: var(--red-soft);
+  color: var(--red);
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid rgba(163, 59, 49, 0.2);
+}
+
+.access-denied-text {
+  font-size: 0.92rem;
+  color: var(--ink);
+  line-height: 1.5;
+  margin: 16px 0;
+}
+

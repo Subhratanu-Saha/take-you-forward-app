@@ -4,6 +4,142 @@ let totalPages = 1;
 let activeRequestIdFilter = null;
 let currentModalLog = null;
 
+// ==========================================================================
+// Authentication & RBAC Session State
+// ==========================================================================
+const getAuthToken = () => {
+  const urlParam = new URLSearchParams(window.location.search).get('token');
+  if (urlParam) {
+    localStorage.setItem('token', urlParam);
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+    return urlParam;
+  }
+  return (
+    localStorage.getItem('token') ||
+    localStorage.getItem('authToken') ||
+    sessionStorage.getItem('token') ||
+    null
+  );
+};
+
+const setAuthToken = (token) => {
+  localStorage.setItem('token', token);
+};
+
+const clearAuthToken = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('authToken');
+  sessionStorage.removeItem('token');
+};
+
+const parseJwtPayload = (token) => {
+  try {
+    if (!token || typeof token !== 'string') return null;
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    const payloadStr = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(payloadStr);
+  } catch {
+    return null;
+  }
+};
+
+const showAuthBarrierModal = (errorMsg = '') => {
+  const modal = document.querySelector('#authModalBackdrop');
+  const errorElem = document.querySelector('#authErrorMessage');
+  if (errorElem) {
+    if (errorMsg) {
+      errorElem.textContent = errorMsg;
+      errorElem.classList.remove('hidden');
+    } else {
+      errorElem.classList.add('hidden');
+    }
+  }
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+};
+
+const hideAuthBarrierModal = () => {
+  const modal = document.querySelector('#authModalBackdrop');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+};
+
+const showAccessDeniedModal = (message) => {
+  const modal = document.querySelector('#accessDeniedBackdrop');
+  const msgElem = document.querySelector('#accessDeniedMessage');
+  if (msgElem && message) msgElem.textContent = message;
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+};
+
+const hideAccessDeniedModal = () => {
+  const modal = document.querySelector('#accessDeniedBackdrop');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+};
+
+const updateSessionUI = () => {
+  const token = getAuthToken();
+  const sessionBox = document.querySelector('#userSession');
+  const roleBadge = document.querySelector('#userRoleBadge');
+  const emailLabel = document.querySelector('#userEmailLabel');
+
+  if (!token) {
+    if (sessionBox) sessionBox.classList.add('hidden');
+    return;
+  }
+
+  const payload = parseJwtPayload(token);
+  if (payload) {
+    if (roleBadge) roleBadge.textContent = payload.role || 'USER';
+    if (emailLabel) emailLabel.textContent = payload.email || payload.userId || '';
+    if (sessionBox) sessionBox.classList.remove('hidden');
+  }
+};
+
+// Authenticated fetch wrapper: injects Authorization Bearer header & handles 401 / 403
+const authFetch = async (url, options = {}) => {
+  const token = getAuthToken();
+
+  if (!token) {
+    showAuthBarrierModal('Authentication required. Please sign in to access audit records.');
+    throw new Error('Authentication required');
+  }
+
+  const headers = new Headers(options.headers || {});
+  headers.set('Authorization', `Bearer ${token}`);
+
+  const response = await fetch(url, { ...options, headers });
+
+  if (response.status === 401) {
+    clearAuthToken();
+    updateSessionUI();
+    showAuthBarrierModal('Session expired or invalid. Please sign in again.');
+    throw new Error('Unauthorized');
+  }
+
+  if (response.status === 403) {
+    const errorData = await response.json().catch(() => ({}));
+    const msg =
+      errorData.message ||
+      'Access Denied: Your account role does not have permission to view audit diffs or security logs. SUPER_ADMIN or AUDITOR role required.';
+    showAccessDeniedModal(msg);
+    throw new Error('Forbidden: Insufficient permissions');
+  }
+
+  return response;
+};
+
 // DOM Elements
 const activityBody = document.querySelector('#activityBody');
 const statusElement = document.querySelector('#status');
@@ -314,7 +450,7 @@ const openDiffModal = async (log, contextualRequestId = null) => {
     log.newvalue === undefined
   ) {
     try {
-      const response = await fetch(
+      const response = await authFetch(
         `/api/v1/audit-logs/${encodeURIComponent(log.auditid)}`
       );
       if (response.ok) {
@@ -387,7 +523,7 @@ const openRequestTracer = async (requestId) => {
   };
 
   try {
-    const response = await fetch(
+    const response = await authFetch(
       `/api/v1/audit-logs/request/${encodeURIComponent(requestId)}`
     );
 
@@ -504,7 +640,7 @@ const clearRequestIdFilter = () => {
 };
 
 const loadStats = async () => {
-  const response = await fetch('/api/v1/audit-logs/stats');
+  const response = await authFetch('/api/v1/audit-logs/stats');
 
   if (!response.ok) {
     throw new Error('Unable to load audit statistics.');
@@ -532,7 +668,7 @@ const loadLogs = async () => {
   params.set('page', currentPage);
   params.set('pageSize', pageSize);
 
-  const response = await fetch(
+  const response = await authFetch(
     `/api/v1/audit-logs?${params.toString()}`);
 
   if (!response.ok) {
@@ -626,6 +762,13 @@ const loadLogs = async () => {
 };
 
 const loadDashboard = async () => {
+  updateSessionUI();
+  const token = getAuthToken();
+  if (!token) {
+    showAuthBarrierModal('Authentication required. Please sign in to access audit records.');
+    return;
+  }
+
   refreshButton.disabled = true;
   if (liveStatusBadge) liveStatusBadge.classList.add('is-refreshing');
   if (liveDot) liveDot.classList.add('hidden');
@@ -767,10 +910,96 @@ if (resetButton) {
 }
 
 if (exportButton) {
-  exportButton.addEventListener('click', () => {
-    const params = getFilters();
-    const qs = params.toString();
-    window.location.href = `/api/v1/audit-logs/export${qs ? '?' + qs : ''}`;
+  exportButton.addEventListener('click', async (e) => {
+    e.preventDefault();
+    try {
+      const params = getFilters();
+      const qs = params.toString();
+      const response = await authFetch(`/api/v1/audit-logs/export${qs ? '?' + qs : ''}`);
+      if (!response.ok) {
+        throw new Error(`Export failed (HTTP ${response.status})`);
+      }
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error('CSV Export Error:', err.message);
+    }
+  });
+}
+
+// Auth Barrier & Session Event Listeners
+const authLoginForm = document.querySelector('#authLoginForm');
+const signOutBtn = document.querySelector('#signOutBtn');
+const accessDeniedSwitchBtn = document.querySelector('#accessDeniedSwitchBtn');
+
+if (authLoginForm) {
+  authLoginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const emailInput = document.querySelector('#authEmail');
+    const passwordInput = document.querySelector('#authPassword');
+    const submitBtn = document.querySelector('#authLoginBtn');
+    const email = emailInput?.value?.trim();
+    const password = passwordInput?.value;
+
+    if (!email || !password) return;
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Signing in...';
+    }
+
+    try {
+      const res = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+      const token = data.data?.token || data.token;
+
+      if (!res.ok || !token) {
+        showAuthBarrierModal(data.message || 'Invalid email or password.');
+        return;
+      }
+
+      setAuthToken(token);
+      hideAuthBarrierModal();
+      hideAccessDeniedModal();
+      updateSessionUI();
+      loadDashboard();
+    } catch (err) {
+      showAuthBarrierModal(err.message || 'Failed to authenticate.');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign In to Dashboard';
+      }
+    }
+  });
+}
+
+if (signOutBtn) {
+  signOutBtn.addEventListener('click', () => {
+    clearAuthToken();
+    updateSessionUI();
+    showAuthBarrierModal('Signed out successfully.');
+  });
+}
+
+if (accessDeniedSwitchBtn) {
+  accessDeniedSwitchBtn.addEventListener('click', () => {
+    clearAuthToken();
+    hideAccessDeniedModal();
+    updateSessionUI();
+    showAuthBarrierModal('Please sign in with an authorized AUDITOR or SUPER_ADMIN account.');
   });
 }
 
