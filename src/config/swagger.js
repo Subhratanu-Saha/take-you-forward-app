@@ -29,6 +29,14 @@ const options = {
         ],
 
         components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT',
+                    description: 'JWT Authorization header using the Bearer scheme. Enter JWT token to authorize.',
+                },
+            },
             parameters: {
                 RequestId: {
                     name: 'X-Request-Id',
@@ -443,6 +451,7 @@ const options = {
 
     apis: [
         path.join(__dirname, '../app.js'),
+        path.join(__dirname, '../routes/authRoutes.js'),
         path.join(__dirname, '../routes/customerRoutes.js'),
         path.join(__dirname, '../routes/loyaltyRoutes.js'),
         path.join(__dirname, '../routes/orderRoutes.js'),
