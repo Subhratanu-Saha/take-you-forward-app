@@ -232,6 +232,57 @@ app.get('/admin/audit-dashboard', (req, res) => {
   res.sendFile(path.join(dashboardDirectory, 'index.html'));
 });
 
+// Test & Verification Endpoints (Non-production environments only)
+if (process.env.NODE_ENV !== 'production') {
+  app.post('/api/test/trigger-unhandled-rejection', async (req, res) => {
+    const { type = 'background', message } = req.body || {};
+
+    if (type === 'background') {
+      const err = new Error(message || 'Intentional background unhandled promise rejection');
+      err.isBackground = true;
+
+      try {
+        const { handleUnhandledRejection } = require('../server');
+        if (typeof handleUnhandledRejection === 'function') {
+          await handleUnhandledRejection(err);
+        }
+      } catch (_) {}
+
+      return res.status(200).json({
+        success: true,
+        message: 'Intentional background unhandled rejection processed',
+        type: 'background',
+      });
+    }
+
+    const err = new Error(message || 'Intentional core lifecycle unhandled rejection');
+    err.isBackground = false;
+    err.isFatal = true;
+
+    try {
+      const { handleUnhandledRejection } = require('../server');
+      if (typeof handleUnhandledRejection === 'function') {
+        await handleUnhandledRejection(err);
+      }
+    } catch (_) {}
+
+    return res.status(200).json({
+      success: true,
+      message: 'Intentional core unhandled rejection processed',
+      type: 'core',
+    });
+  });
+
+  app.get('/api/test/monitoring/alerts', (req, res) => {
+    const monitoringService = require('./services/monitoringService');
+    res.status(200).json({
+      success: true,
+      count: monitoringService.getDispatchedAlerts().length,
+      alerts: monitoringService.getDispatchedAlerts(),
+    });
+  });
+}
+
 // Catch-all 404 Route Not Found handler
 app.use((req, res) => {
   const requestId = req.requestId || 'UNKNOWN';
