@@ -36,8 +36,8 @@ describe('Issue #221: Real Node Child Process Lifecycle & Background Rejections'
         }
       });
 
-      serverProcess.stderr.on('data', (chunk) => {
-        // Output might include error/fatal logs which we can monitor
+      serverProcess.stderr.on('data', () => {
+        // Output might include error/fatal logs
       });
 
       serverProcess.on('error', (err) => {

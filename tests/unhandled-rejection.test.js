@@ -13,7 +13,7 @@ const { transporter } = require('../src/config/email');
 transporter.verify = async () => true;
 
 // Load server.js to attach the global unhandledRejection listener
-const serverModule = require('../server');
+require('../server');
 const app = require('../src/app');
 const monitoringService = require('../src/services/monitoringService');
 const {
@@ -111,6 +111,23 @@ describe('Issue #221: Unhandled Rejection Handling & Graceful Process Lifecycle'
       assert.strictEqual(result.category, 'core');
       assert.strictEqual(result.detectionReason, 'explicit_fatal_flag');
     });
+
+    test('isBackgroundRejection convenience helper returns boolean classification', () => {
+      assert.strictEqual(isBackgroundRejection(new Error('background analytics failure')), true);
+    });
+
+    test('runBackgroundTask helper executes and tracks task', async () => {
+      let executed = false;
+      await runBackgroundTask(async () => {
+        executed = true;
+      });
+      assert.strictEqual(executed, true);
+    });
+
+    test('BACKGROUND_KEYWORDS array contains expected auxiliary task indicators', () => {
+      assert.ok(BACKGROUND_KEYWORDS.includes('analytics'));
+      assert.ok(BACKGROUND_KEYWORDS.includes('webhook'));
+    });
   });
 
   describe('2. Sentry & Monitoring Emergency Alert Dispatching', () => {
@@ -183,12 +200,10 @@ describe('Issue #221: Unhandled Rejection Handling & Graceful Process Lifecycle'
     let testServer;
     let baseUrl;
     let activeSockets = new Set();
-    let inFlightRequests = 0;
 
     before(async () => {
       await new Promise((resolve) => {
         testServer = http.createServer((req, res) => {
-          inFlightRequests++;
           if (req.url === '/test-slow') {
             setTimeout(() => {
               res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -197,9 +212,6 @@ describe('Issue #221: Unhandled Rejection Handling & Graceful Process Lifecycle'
           } else {
             app(req, res);
           }
-          res.on('finish', () => {
-            inFlightRequests = Math.max(0, inFlightRequests - 1);
-          });
         });
 
         testServer.on('connection', (sock) => {
