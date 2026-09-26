@@ -262,7 +262,10 @@ describe('Slack Render Log System Tests', () => {
     });
 
     test('responds with immediate acknowledgment when response_url is provided', async () => {
+      const originalFetch = global.fetch;
+      const originalFetchLogs = RenderLogsService.fetchLogs;
       let ackData = null;
+      const dispatched = [];
       const req = {
         body: {
           command: '/render-logs',
@@ -284,16 +287,38 @@ describe('Slack Render Log System Tests', () => {
         },
       };
 
-      await SlackController.handleRenderLogs(req, res);
-      assert.strictEqual(ackData.response_type, 'ephemeral');
-      assert.match(ackData.text, /Fetching the latest 20 log lines/);
+      try {
+        RenderLogsService.fetchLogs = async () => ({
+          success: true,
+          serviceId: 'srv-testservice',
+          logs: [{ timestamp: '2026-09-26T10:00:00.000Z', message: 'background log line' }],
+        });
+        global.fetch = async (url, options) => {
+          dispatched.push({ url, options });
+          return { ok: true, status: 200 };
+        };
+
+        await SlackController.handleRenderLogs(req, res);
+        await new Promise((resolve) => setImmediate(resolve));
+
+        assert.strictEqual(ackData.response_type, 'ephemeral');
+        assert.match(ackData.text, /Fetching the latest 20 log lines/);
+        assert.strictEqual(dispatched.length, 1);
+        assert.strictEqual(dispatched[0].url, req.body.response_url);
+      } finally {
+        RenderLogsService.fetchLogs = originalFetchLogs;
+        global.fetch = originalFetch;
+      }
     });
 
     test('permits execution from any team and user when allowedTeamId and allowedUserIds are omitted', async () => {
+      const originalFetch = global.fetch;
+      const originalFetchLogs = RenderLogsService.fetchLogs;
       config.slack.allowedTeamId = null;
       config.slack.allowedUserIds = null;
 
       let ackData = null;
+      const dispatched = [];
       const req = {
         body: {
           command: '/render-logs',
@@ -314,9 +339,28 @@ describe('Slack Render Log System Tests', () => {
         },
       };
 
-      await SlackController.handleRenderLogs(req, res);
-      assert.strictEqual(ackData.response_type, 'ephemeral');
-      assert.match(ackData.text, /Fetching the latest 30 log lines/);
+      try {
+        RenderLogsService.fetchLogs = async () => ({
+          success: true,
+          serviceId: 'srv-testservice',
+          logs: [{ timestamp: '2026-09-26T10:00:00.000Z', message: 'background log line' }],
+        });
+        global.fetch = async (url, options) => {
+          dispatched.push({ url, options });
+          return { ok: true, status: 200 };
+        };
+
+        await SlackController.handleRenderLogs(req, res);
+        await new Promise((resolve) => setImmediate(resolve));
+
+        assert.strictEqual(ackData.response_type, 'ephemeral');
+        assert.match(ackData.text, /Fetching the latest 30 log lines/);
+        assert.strictEqual(dispatched.length, 1);
+        assert.strictEqual(dispatched[0].url, req.body.response_url);
+      } finally {
+        RenderLogsService.fetchLogs = originalFetchLogs;
+        global.fetch = originalFetch;
+      }
     });
 
     test('blocks unauthorized user when allowedUserIds is explicitly configured', async () => {
