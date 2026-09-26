@@ -137,7 +137,6 @@ class SlackController {
           if (!dispatchResponse.ok) {
             throw new Error(`Slack response_url returned HTTP ${dispatchResponse.status}`);
           }
-          });
 
           logger.info('SLACK_CONTROLLER', 'Render logs successfully dispatched to response_url', {
             requestId,
