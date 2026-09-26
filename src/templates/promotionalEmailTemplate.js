@@ -1,3 +1,11 @@
+// Module-level cached DateTimeFormat instance to prevent repeated allocation overhead
+const utcDateFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -60,13 +68,7 @@ const generatePromotionalEmailHTML = (data = {}) => {
     ? suppliedExpiry
     : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-  const formattedExpirationDate =
-    expiry.toLocaleDateString("en-US", {
-      timeZone: "UTC",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+  const formattedExpirationDate = utcDateFormatter.format(expiry);
 
   return `
 <!DOCTYPE html>
@@ -559,4 +561,5 @@ to promotional communications.
 
 module.exports = {
   generatePromotionalEmailHTML,
+  utcDateFormatter,
 };
