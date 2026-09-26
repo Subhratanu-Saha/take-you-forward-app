@@ -81,8 +81,17 @@ app.use((req, res, next) => {
 
 // Basic Middleware
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  },
+}));
+app.use(express.urlencoded({
+  extended: true,
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  },
+}));
 if (swaggerUi && swaggerSpec) {
   app.use(
     '/api-docs',
@@ -189,6 +198,9 @@ app.use('/api/v1/promotionalmessage', require('./routes/promotionalMessageRoutes
 app.use('/api/v1/loyalty', require('./routes/loyaltyRoutes'));
 app.use('/api/v1/orders', require('./routes/orderRoutes'));
 app.use('/api/v1/audit-logs', require('./routes/auditRoutes'));
+
+// Slack Integration Routes
+app.use('/integrations/slack', require('./routes/slackRoutes'));
 
 // Initialize Event Subscriber for Loyalty Purchase Events
 (() => {
