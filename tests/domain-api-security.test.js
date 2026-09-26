@@ -177,6 +177,68 @@ describe('Domain API Security Guards (#190)', () => {
       assert.equal(body.success, false);
       assert.ok(['FORBIDDEN_INSUFFICIENT_PERMISSIONS', 'FORBIDDEN'].includes(body.errorCode));
     });
+
+    test('POST /api/v1/promotionalmessage/dlq/retry returns 403 for MARKETING_USER role', async () => {
+      const res = await fetch(`${baseUrl}/api/v1/promotionalmessage/dlq/retry`, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer MARKETING_USER' },
+      });
+      const body = await res.json();
+
+      assert.equal(res.status, 403);
+      assert.equal(body.success, false);
+      assert.equal(body.errorCode, 'FORBIDDEN_INSUFFICIENT_PERMISSIONS');
+    });
+
+    test('POST /api/v1/promotionalmessage/campaign returns 403 for SUPPORT_AGENT role', async () => {
+      const res = await fetch(`${baseUrl}/api/v1/promotionalmessage/campaign`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer SUPPORT_AGENT',
+        },
+        body: JSON.stringify({}),
+      });
+      const body = await res.json();
+
+      assert.equal(res.status, 403);
+      assert.equal(body.success, false);
+      assert.equal(body.errorCode, 'FORBIDDEN_INSUFFICIENT_PERMISSIONS');
+    });
+
+    test('GET /api/v1/subscriber returns 403 for STORE_MANAGER role', async () => {
+      const res = await fetch(`${baseUrl}/api/v1/subscriber?customerid=CUST-123`, {
+        headers: { Authorization: 'Bearer STORE_MANAGER' },
+      });
+      const body = await res.json();
+
+      assert.equal(res.status, 403);
+      assert.equal(body.success, false);
+      assert.equal(body.errorCode, 'FORBIDDEN_INSUFFICIENT_PERMISSIONS');
+    });
+  });
+
+  describe('Marketing and Subscriber Role Access', () => {
+    test('MARKETING_USER passes the campaign guard and reaches validation', async () => {
+      const res = await fetch(`${baseUrl}/api/v1/promotionalmessage/campaign`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer MARKETING_USER',
+        },
+        body: JSON.stringify({}),
+      });
+
+      assert.equal(res.status, 400);
+    });
+
+    test('SUPPORT_AGENT passes subscriber guards and reaches validation', async () => {
+      const res = await fetch(`${baseUrl}/api/v1/subscriber?customerid=INVALID`, {
+        headers: { Authorization: 'Bearer SUPPORT_AGENT' },
+      });
+
+      assert.equal(res.status, 400);
+    });
   });
 
   describe('Authorized Roles Access', () => {
