@@ -19,6 +19,10 @@ const transporter = nodemailer.createTransport({
   socketTimeout: 10000,
 });
 
+// Track email transporter readiness status
+let isEmailReady = false;
+
+
 const verifyEmailConfig = async () => {
   const isDev = process.env.NODE_ENV === 'development';
 
@@ -35,8 +39,10 @@ const verifyEmailConfig = async () => {
   try {
     await transporter.verify();
     console.log('✅ Email transporter is ready to send messages');
+    isEmailReady = true;
     return true;
   } catch (error) {
+    isEmailReady = false;
     if (isDev) {
       console.warn(`⚠️ WARNING: Email transporter verification failed: ${error.message}`);
       return false;
@@ -50,6 +56,7 @@ const verifyEmailConfig = async () => {
 module.exports = {
   transporter,
   verifyEmailConfig,
+  getEmailReady: () => isEmailReady,
   EMAIL_USER_ID,
   EMAIL_USER_PASSCODE,
 };

@@ -118,3 +118,14 @@ test("uses a fallback date when the expiration date is invalid", () => {
   assert.match(html, /Offer expires on/);
   assert.doesNotMatch(html, /Invalid Date/);
 });
+
+test("exports cached utcDateFormatter instance configured for UTC date formatting", () => {
+  const { utcDateFormatter } = require("../src/templates/promotionalEmailTemplate");
+  assert.ok(utcDateFormatter, "utcDateFormatter should be exported");
+  assert.ok(utcDateFormatter instanceof Intl.DateTimeFormat, "utcDateFormatter should be an instance of Intl.DateTimeFormat");
+  const resolved = utcDateFormatter.resolvedOptions();
+  assert.strictEqual(resolved.timeZone, "UTC");
+  assert.strictEqual(resolved.year, "numeric");
+  assert.strictEqual(resolved.month, "long");
+  assert.strictEqual(resolved.day, "numeric");
+});

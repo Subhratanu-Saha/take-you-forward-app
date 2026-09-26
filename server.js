@@ -27,7 +27,7 @@ let isShuttingDown = false;
 let server = null;
 
 if (process.env.NO_AUTO_SERVER_START !== 'true') {
-  server = app.listen(PORT, async () => {
+  server = app.listen(PORT, () => {
     console.log(`
   ╔══════════════════════════════════════╗
   ║  Backend Server Started Successfully ║
@@ -36,17 +36,22 @@ if (process.env.NO_AUTO_SERVER_START !== 'true') {
   ╚══════════════════════════════════════╝
   `);
 
-    try {
-      await verifyEmailConfig();
-    } catch (error) {
-      console.error('Email transporter verification failed, shutting down server:', error.message);
-      server.close(() => {
-        process.exit(1);
+    logger.info('SERVER', `Server started successfully on port ${PORT} [${NODE_ENV}]`);
+
+    // Non-blocking asynchronous SMTP verification
+    verifyEmailConfig()
+      .then((isReady) => {
+        if (isReady) {
+          logger.info('EMAIL', 'SMTP Transporter verified successfully.');
+        } else {
+          logger.warn('EMAIL', 'SMTP Transporter operating in degraded mode.');
+        }
+      })
+      .catch((err) => {
+        logger.error('EMAIL', `SMTP verification failed in background: ${err.message}`, { error: err });
       });
-    }
   });
 }
-
 // Process Crash Handler: Handle unhandled promise rejections
 const handleUnhandledRejection = async (err, promise) => {
   const classification = classifyRejection(err, promise);

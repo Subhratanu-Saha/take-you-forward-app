@@ -8,6 +8,8 @@ const { swaggerSpec, swaggerUi } = require('./config/swagger');
 const { subscribeLoyaltyPurchaseEvents } = require('./events/loyaltyEventConsumer');
 const { getEventEmitter } = require('./events/eventEmitter');
 const contextMiddleware = require('./middleware/contextMiddleware');
+const { getEmailReady } = require('./config/email');
+
 
 const app = express();
 const path = require('path');
@@ -141,7 +143,7 @@ app.use((err, req, res, next) => {
  *                   example: 550e8400-e29b-41d4-a716-446655440000
  */
 // Health check route
-app.get('/api/health', (req, res) => {
+const healthCheckHandler = (req, res) => {
   res.status(200).json({
     success: true,
     message: API_SUCCESSFUL_HEALTH_MESSAGE,
@@ -150,7 +152,20 @@ app.get('/api/health', (req, res) => {
     actor: req.actor,
     userRole: req.userRole,
   });
+};
+
+app.get('/api/health', healthCheckHandler);
+app.get('/health', healthCheckHandler);
+
+app.get('/health/email', (req, res) => {
+  const ready = getEmailReady();
+  res.status(ready ? 200 : 503).json({
+    service: 'email',
+    status: ready ? 'UP' : 'DEGRADED',
+    timestamp: new Date().toISOString(),
+  });
 });
+
 
 /**
  * @swagger
