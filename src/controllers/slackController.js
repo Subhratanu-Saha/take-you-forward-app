@@ -129,10 +129,14 @@ class SlackController {
             payload = formatErrorForSlack('Render Logs Error', result.message || 'Unable to retrieve logs.');
           }
 
-          await fetch(response_url, {
+          const dispatchResponse = await fetch(response_url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
+          });
+          if (!dispatchResponse.ok) {
+            throw new Error(`Slack response_url returned HTTP ${dispatchResponse.status}`);
+          }
           });
 
           logger.info('SLACK_CONTROLLER', 'Render logs successfully dispatched to response_url', {
