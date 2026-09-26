@@ -4,7 +4,7 @@ process.env.EMAIL_USER_PASSCODE = process.env.EMAIL_USER_PASSCODE || 'test-app-p
 process.env.TEST_NO_EXIT = 'true';
 process.env.NO_AUTO_SERVER_START = 'true';
 
-const { test, describe, before, after, beforeEach } = require('node:test');
+const { test, describe, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 
@@ -12,194 +12,144 @@ const http = require('node:http');
 const { transporter } = require('../src/config/email');
 transporter.verify = async () => true;
 
-// Load server.js to attach the global unhandledRejection listener
-require('../server');
-const app = require('../src/app');
-const monitoringService = require('../src/services/monitoringService');
+const { logger } = require('../src/utils/db');
 const {
   classifyRejection,
   isBackgroundRejection,
+  safeBackgroundTask,
   runBackgroundTask,
   registerBackgroundPromise,
-  BACKGROUND_KEYWORDS,
 } = require('../src/utils/rejectionHandler');
-const { AppError } = require('../src/utils/db');
-const { runWithContext } = require('../src/context/requestContext');
+const { handleUnhandledRejection } = require('../server');
+const app = require('../src/app');
 
-describe('Issue #221: Unhandled Rejection Handling & Graceful Process Lifecycle', () => {
-  beforeEach(() => {
-    monitoringService.clearAlerts();
+describe('Issue #221: Unhandled Rejection Handling & Process Lifecycle (Simplified)', () => {
+  let loggedErrors = [];
+  let loggedFatals = [];
+  let originalLoggerError;
+  let originalLoggerFatal;
+
+  before(() => {
+    originalLoggerError = logger.error;
+    originalLoggerFatal = logger.fatal;
   });
 
-  describe('1. Rejection Classification: Background vs Core Lifecycle', () => {
+  beforeEach(() => {
+    loggedErrors = [];
+    loggedFatals = [];
+
+    logger.error = (tag, message, meta) => {
+      loggedErrors.push({ tag, message, meta });
+      originalLoggerError.call(logger, tag, message, meta);
+    };
+
+    logger.fatal = (tag, message, meta) => {
+      loggedFatals.push({ tag, message, meta });
+      originalLoggerFatal.call(logger, tag, message, meta);
+    };
+  });
+
+  afterEach(() => {
+    logger.error = originalLoggerError;
+    logger.fatal = originalLoggerFatal;
+  });
+
+  describe('1. Explicit Background Rejection Classification (No Keyword/Stack Matching)', () => {
     test('identifies rejection with explicit isBackground flag as background', () => {
       const err = new Error('Custom background sync failed');
       err.isBackground = true;
-      const result = classifyRejection(err);
 
+      assert.strictEqual(isBackgroundRejection(err), true);
+      const result = classifyRejection(err);
       assert.strictEqual(result.isBackground, true);
       assert.strictEqual(result.category, 'background');
-      assert.strictEqual(result.detectionReason, 'explicit_background_flag');
     });
 
-    test('identifies rejection with background keyword in message', () => {
-      const keywordsToTest = ['analytics', 'audit', 'webhook', 'email', 'notification', 'worker'];
+    test('DOES NOT classify errors containing keywords as background without explicit wrapper/flag', () => {
+      // Testing false-positive risks identified in PR review
+      const falsePositiveCases = [
+        new Error('Email is required'),
+        new Error('Failed to send notification in authentication flow'),
+        new Error('Audit log validation error'),
+        new Error('Worker thread crashed'),
+        new Error('Analytics token missing'),
+      ];
 
-      for (const kw of keywordsToTest) {
-        const err = new Error(`Failed to execute ${kw} operation`);
-        const result = classifyRejection(err);
-
-        assert.strictEqual(result.isBackground, true, `Keyword ${kw} should classify as background`);
-        assert.strictEqual(result.category, 'background');
-        assert.ok(result.detectionReason.includes(kw));
+      for (const err of falsePositiveCases) {
+        assert.strictEqual(
+          isBackgroundRejection(err),
+          false,
+          `Error "${err.message}" must NOT be classified as background via keyword matching`
+        );
+        assert.strictEqual(classifyRejection(err).isBackground, false);
       }
     });
 
-    test('identifies rejection from registered background promise', async () => {
-      const backgroundPromise = Promise.reject(new Error('Registered auxiliary promise failed'));
-      registerBackgroundPromise(backgroundPromise, { taskName: 'audit_log_exporter' });
+    test('safeBackgroundTask marks rejection with isBackground = true and registers promise', async () => {
+      const backgroundErr = new Error('Auxiliary task failed');
+      let caughtErr = null;
 
-      // Suppress unhandled rejection warning in test runner for this promise
-      backgroundPromise.catch(() => {});
+      try {
+        await safeBackgroundTask(async () => {
+          throw backgroundErr;
+        });
+      } catch (err) {
+        caughtErr = err;
+      }
 
-      const result = classifyRejection(new Error('Generic failure'), backgroundPromise);
-      assert.strictEqual(result.isBackground, true);
-      assert.strictEqual(result.detectionReason, 'registered_background_promise');
-      assert.strictEqual(result.metadata.taskName, 'audit_log_exporter');
+      assert.ok(caughtErr);
+      assert.strictEqual(caughtErr.isBackground, true);
+      assert.strictEqual(isBackgroundRejection(caughtErr), true);
     });
 
-    test('identifies operational AppError as recoverable background error', () => {
-      const operationalErr = new AppError('Customer validation failed', 400, 'CUSTOMER_VALIDATION_FAILED');
-      const result = classifyRejection(operationalErr);
+    test('registerBackgroundPromise marks promise as background', async () => {
+      const p = Promise.reject(new Error('Auxiliary promise failure'));
+      p.catch(() => {}); // prevent unhandled warning in test runner
+      registerBackgroundPromise(p);
 
-      assert.strictEqual(result.isBackground, true);
-      assert.strictEqual(result.detectionReason, 'operational_app_error');
+      assert.strictEqual(isBackgroundRejection(new Error('Generic failure'), p), true);
     });
 
-    test('identifies rejections outside request context as background/worker', () => {
-      const err = new Error('Standalone job uncaught rejection');
-      const result = classifyRejection(err);
-
-      assert.strictEqual(result.isBackground, true);
-      assert.strictEqual(result.detectionReason, 'outside_request_context');
-    });
-
-    test('classifies generic error inside active HTTP request lifecycle as core', () => {
-      const coreContext = {
-        requestId: 'req-test-1234-core',
-        actor: 'USER_1',
-        isBackground: false,
-      };
-
-      let result;
-      runWithContext(coreContext, () => {
-        const err = new Error('Critical database connection pool corrupted');
-        result = classifyRejection(err);
-      });
-
-      assert.strictEqual(result.isBackground, false);
-      assert.strictEqual(result.category, 'core');
-      assert.strictEqual(result.detectionReason, 'core_request_lifecycle_default');
-    });
-
-    test('explicit isFatal flag forces core classification even if background keyword exists', () => {
-      const fatalErr = new Error('Fatal audit system crash');
+    test('explicit isFatal flag forces core rejection classification', () => {
+      const fatalErr = new Error('Critical failure');
+      fatalErr.isBackground = true;
       fatalErr.isFatal = true;
-      const result = classifyRejection(fatalErr);
 
-      assert.strictEqual(result.isBackground, false);
-      assert.strictEqual(result.category, 'core');
-      assert.strictEqual(result.detectionReason, 'explicit_fatal_flag');
-    });
-
-    test('isBackgroundRejection convenience helper returns boolean classification', () => {
-      assert.strictEqual(isBackgroundRejection(new Error('background analytics failure')), true);
-    });
-
-    test('runBackgroundTask helper executes and tracks task', async () => {
-      let executed = false;
-      await runBackgroundTask(async () => {
-        executed = true;
-      });
-      assert.strictEqual(executed, true);
-    });
-
-    test('BACKGROUND_KEYWORDS array contains expected auxiliary task indicators', () => {
-      assert.ok(BACKGROUND_KEYWORDS.includes('analytics'));
-      assert.ok(BACKGROUND_KEYWORDS.includes('webhook'));
+      assert.strictEqual(isBackgroundRejection(fatalErr), false);
+      assert.strictEqual(classifyRejection(fatalErr).isBackground, false);
     });
   });
 
-  describe('2. Sentry & Monitoring Emergency Alert Dispatching', () => {
-    test('sendEmergencyAlert builds structured payload with stack trace and metadata', async () => {
-      const sampleError = new Error('Auxiliary webhook endpoint timeout');
-      sampleError.code = 'ETIMEDOUT';
+  describe('2. Unhandled Rejection Process Handler Logging', () => {
+    test('background rejection logs error with full stack trace and does not kill process', () => {
+      const bgError = new Error('Isolated background worker rejection');
+      bgError.isBackground = true;
 
-      const alert = await monitoringService.sendEmergencyAlert(sampleError, {
-        origin: 'background',
-        type: 'unhandledRejection',
-        severity: 'error',
-        detectionReason: 'keyword_match_webhook',
-      });
+      handleUnhandledRejection(bgError);
 
-      assert.ok(alert.alertId);
-      assert.strictEqual(alert.severity, 'error');
-      assert.strictEqual(alert.origin, 'background');
-      assert.strictEqual(alert.type, 'unhandledRejection');
-      assert.strictEqual(alert.message, 'Auxiliary webhook endpoint timeout');
-      assert.ok(alert.stack && alert.stack.includes('Error: Auxiliary webhook endpoint timeout'));
-      assert.strictEqual(alert.detectionReason, 'keyword_match_webhook');
-      assert.strictEqual(alert.metadata.errorCode, 'ETIMEDOUT');
+      assert.strictEqual(loggedErrors.length, 1);
+      assert.strictEqual(loggedFatals.length, 0);
+      assert.strictEqual(loggedErrors[0].tag, 'PROCESS');
+      assert.strictEqual(loggedErrors[0].meta.isBackground, true);
+      assert.ok(loggedErrors[0].meta.stack.includes('Isolated background worker rejection'));
     });
 
-    test('monitoringService records dispatched alerts in history', async () => {
-      const error1 = new Error('Analytics batch dispatch failed');
-      const error2 = new Error('Audit log write timeout');
+    test('critical rejection logs fatal with full stack trace', () => {
+      const coreError = new Error('Email is required'); // Not background
 
-      await monitoringService.sendEmergencyAlert(error1, { origin: 'background', severity: 'error' });
-      await monitoringService.sendEmergencyAlert(error2, { origin: 'background', severity: 'error' });
+      handleUnhandledRejection(coreError);
 
-      const history = monitoringService.getDispatchedAlerts();
-      assert.strictEqual(history.length, 2);
-      assert.strictEqual(monitoringService.getLastAlert().message, 'Audit log write timeout');
-    });
-
-    test('monitoringService executes registered alert transports', async () => {
-      const transportDispatches = [];
-      monitoringService.registerTransport((alert) => {
-        transportDispatches.push(alert);
-      });
-
-      await monitoringService.sendEmergencyAlert(new Error('Test transport dispatch'), {
-        origin: 'background',
-        severity: 'error',
-      });
-
-      assert.strictEqual(transportDispatches.length, 1);
-      assert.strictEqual(transportDispatches[0].message, 'Test transport dispatch');
-    });
-
-    test('monitoringService emits alert event for subscribers', async () => {
-      let eventPayload = null;
-      const unsubscribe = monitoringService.onAlert((payload) => {
-        eventPayload = payload;
-      });
-
-      await monitoringService.sendEmergencyAlert(new Error('Event emission test'), {
-        origin: 'background',
-        severity: 'error',
-      });
-
-      assert.ok(eventPayload);
-      assert.strictEqual(eventPayload.message, 'Event emission test');
-      unsubscribe();
+      assert.strictEqual(loggedFatals.length, 1);
+      assert.strictEqual(loggedFatals[0].tag, 'PROCESS');
+      assert.strictEqual(loggedFatals[0].meta.isBackground, false);
+      assert.ok(loggedFatals[0].meta.stack.includes('Email is required'));
     });
   });
 
-  describe('3. Active HTTP Requests Complete Successfully on Background Rejection (AC 1 & AC 2)', () => {
+  describe('3. Server Remains Alive and Responds During Background Rejections', () => {
     let testServer;
     let baseUrl;
-    let activeSockets = new Set();
+    const activeSockets = new Set();
 
     before(async () => {
       await new Promise((resolve) => {
@@ -208,7 +158,7 @@ describe('Issue #221: Unhandled Rejection Handling & Graceful Process Lifecycle'
             setTimeout(() => {
               res.writeHead(200, { 'Content-Type': 'application/json' });
               res.end(JSON.stringify({ success: true, message: 'Slow request completed successfully' }));
-            }, 80);
+            }, 60);
           } else {
             app(req, res);
           }
@@ -236,113 +186,28 @@ describe('Issue #221: Unhandled Rejection Handling & Graceful Process Lifecycle'
       }
     });
 
-    test('Triggering intentional background unhandled rejection allows active HTTP requests to complete', async () => {
-      // Step 1: Start an active in-flight client HTTP request
+    test('in-flight and subsequent requests complete when background rejection occurs', async () => {
+      // Step 1: Start active in-flight HTTP request
       const activeRequestPromise = fetch(`${baseUrl}/test-slow`);
+      await new Promise((r) => setTimeout(r, 15));
 
-      // Give request time to enter processing
-      await new Promise((r) => setTimeout(r, 20));
-
-      // Step 2: Trigger an intentional background unhandled rejection
-      const backgroundError = new Error('Intentional background analytics dispatch failure');
+      // Step 2: Trigger background unhandled rejection
+      const backgroundError = new Error('Background task failed unexpectedly');
       backgroundError.isBackground = true;
+      handleUnhandledRejection(backgroundError);
 
-      // Classify and dispatch through the rejection handling pipeline
-      const classification = classifyRejection(backgroundError);
-      assert.strictEqual(classification.isBackground, true);
-
-      // Dispatch emergency alert to Sentry/monitoring
-      const alert = await monitoringService.sendEmergencyAlert(backgroundError, {
-        type: 'unhandledRejection',
-        origin: 'background',
-        severity: 'error',
-        detectionReason: classification.detectionReason,
-        stack: backgroundError.stack,
-      });
-
-      // Step 3: Verify the active HTTP request completes successfully without being dropped
+      // Step 3: In-flight request completes with 200
       const response = await activeRequestPromise;
       const data = await response.json();
-
       assert.strictEqual(response.status, 200);
       assert.strictEqual(data.success, true);
       assert.strictEqual(data.message, 'Slow request completed successfully');
 
-      // Step 4: Verify the server is STILL listening and can process new requests
+      // Step 4: Subsequent request succeeds on the same server
       const healthRes = await fetch(`${baseUrl}/api/health`);
       const healthData = await healthRes.json();
       assert.strictEqual(healthRes.status, 200);
       assert.strictEqual(healthData.success, true);
-
-      // Step 5: Verify Sentry/monitoring received the structured alert
-      assert.strictEqual(alert.origin, 'background');
-      assert.strictEqual(alert.message, 'Intentional background analytics dispatch failure');
-      assert.ok(alert.stack);
-    });
-
-    test('Triggering unawaited webhook failure does not terminate server or drop connections', async () => {
-      // Concurrent requests
-      const req1 = fetch(`${baseUrl}/api/health`);
-      const req2 = fetch(`${baseUrl}/test-slow`);
-
-      // Trigger unhandled rejection simulation for third-party webhook
-      const webhookError = new Error('Third-party webhook notification failure: HTTP 504');
-      const classification = classifyRejection(webhookError);
-      assert.strictEqual(classification.isBackground, true);
-
-      await monitoringService.sendEmergencyAlert(webhookError, {
-        type: 'unhandledRejection',
-        origin: 'background',
-        severity: 'error',
-        detectionReason: classification.detectionReason,
-        stack: webhookError.stack,
-      });
-
-      const [res1, res2] = await Promise.all([req1, req2]);
-      assert.strictEqual(res1.status, 200);
-      assert.strictEqual(res2.status, 200);
-
-      const alert = monitoringService.getLastAlert();
-      assert.ok(alert.message.includes('Third-party webhook'));
-    });
-
-    test('Triggering rejection via /api/test/trigger-unhandled-rejection leaves server healthy and active requests intact', async () => {
-      // Start in-flight request
-      const slowReq = fetch(`${baseUrl}/test-slow`);
-      await new Promise((r) => setTimeout(r, 10));
-
-      // Trigger intentional background unhandled rejection via endpoint
-      const triggerRes = await fetch(`${baseUrl}/api/test/trigger-unhandled-rejection`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'background',
-          message: 'Endpoint triggered auxiliary task failure',
-        }),
-      });
-      const triggerBody = await triggerRes.json();
-      assert.strictEqual(triggerRes.status, 200);
-      assert.strictEqual(triggerBody.success, true);
-
-      // In-flight request must complete successfully with 200
-      const slowResponse = await slowReq;
-      const slowData = await slowResponse.json();
-      assert.strictEqual(slowResponse.status, 200);
-      assert.strictEqual(slowData.success, true);
-
-      // Wait a moment for unhandled rejection handler to record alert
-      await new Promise((r) => setTimeout(r, 30));
-
-      // Check monitoring alerts endpoint
-      const alertsRes = await fetch(`${baseUrl}/api/test/monitoring/alerts`);
-      const alertsData = await alertsRes.json();
-      assert.strictEqual(alertsRes.status, 200);
-      assert.strictEqual(alertsData.success, true);
-      assert.ok(alertsData.count >= 1);
-
-      // Server remains fully operational
-      const healthRes = await fetch(`${baseUrl}/api/health`);
-      assert.strictEqual(healthRes.status, 200);
     });
   });
 

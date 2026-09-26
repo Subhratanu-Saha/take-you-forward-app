@@ -3,8 +3,7 @@ const config = require('./src/config');
 const { verifyEmailConfig } = require('./src/config/email');
 const prisma = require('./src/utils/db');
 const { logger } = require('./src/utils/db');
-const monitoringService = require('./src/services/monitoringService');
-const { classifyRejection } = require('./src/utils/rejectionHandler');
+const { isBackgroundRejection } = require('./src/utils/rejectionHandler');
 
 // Validate critical configuration on startup
 try {
@@ -52,112 +51,18 @@ if (process.env.NO_AUTO_SERVER_START !== 'true') {
       });
   });
 }
-// Process Crash Handler: Handle unhandled promise rejections
-const handleUnhandledRejection = async (err, promise) => {
-  const classification = classifyRejection(err, promise);
 
-  if (classification.isBackground) {
-    // Non-critical background task unhandled rejection:
-    // Log full stack trace, dispatch emergency alert, DO NOT crash server.
-    logger.error(
-      'PROCESS',
-      `[BACKGROUND_UNHANDLED_REJECTION] Non-critical background promise rejection: ${err?.message || String(err)}`,
-      {
-        type: 'unhandledRejection',
-        origin: 'background',
-        isBackground: true,
-        detectionReason: classification.detectionReason,
-        reason: err?.message || String(err),
-        stack: err?.stack || null,
-        metadata: classification.metadata,
-        error: err instanceof Error ? err : undefined,
-      }
-    );
-
-    try {
-      await monitoringService.sendEmergencyAlert(err, {
-        type: 'unhandledRejection',
-        origin: 'background',
-        severity: 'error',
-        detectionReason: classification.detectionReason,
-        stack: err?.stack || null,
-        metadata: classification.metadata,
-      });
-    } catch (alertErr) {
-      logger.error('MONITORING', `Failed to dispatch emergency alert: ${alertErr.message}`, { error: alertErr });
-    }
-
-    return;
-  }
-
-  // Critical core request lifecycle or system unhandled rejection:
-  logger.fatal(
-    'PROCESS',
-    `[CORE_UNHANDLED_REJECTION] Unhandled Promise Rejection in core request lifecycle: ${err?.message || String(err)}`,
-    {
-      type: 'unhandledRejection',
-      origin: 'core',
-      isBackground: false,
-      detectionReason: classification.detectionReason,
-      reason: err?.message || String(err),
-      stack: err?.stack || null,
-      metadata: classification.metadata,
-      error: err instanceof Error ? err : undefined,
-    }
-  );
-
-  try {
-    await monitoringService.sendEmergencyAlert(err, {
-      type: 'unhandledRejection',
-      origin: 'core',
-      severity: 'fatal',
-      detectionReason: classification.detectionReason,
-      stack: err?.stack || null,
-      metadata: classification.metadata,
-    });
-  } catch (alertErr) {
-    logger.error('MONITORING', `Failed to dispatch emergency alert: ${alertErr.message}`, { error: alertErr });
-  }
-
-  // Initiate orderly shutdown with graceful drain period (10–15s)
-  gracefulShutdown('unhandledRejection', 1);
-};
-
-process.on('unhandledRejection', handleUnhandledRejection);
-
-// Process Crash Handler: Handle uncaught exceptions
-const handleUncaughtException = async (err) => {
-  logger.fatal('PROCESS', `Uncaught Exception: ${err.message}`, {
-    type: 'uncaughtException',
-    message: err.message,
-    stack: err.stack,
-  });
-
-  try {
-    await monitoringService.sendEmergencyAlert(err, {
-      type: 'uncaughtException',
-      origin: 'core',
-      severity: 'fatal',
-      stack: err.stack,
-    });
-  } catch (alertErr) {
-    logger.error('MONITORING', `Failed to dispatch emergency alert: ${alertErr.message}`, { error: alertErr });
-  }
-
-  gracefulShutdown('uncaughtException', 1);
-};
-
-process.on('uncaughtException', handleUncaughtException);
-
-// Graceful Shutdown Signal Handlers (SIGINT / SIGTERM / Fatal error) with drain period
+// Graceful Shutdown Signal Handlers (SIGINT / SIGTERM / Fatal error) with 10s drain period
 const gracefulShutdown = (signal, exitCode = 0) => {
   if (isShuttingDown) return;
   isShuttingDown = true;
+
   logger.info(
     'SERVER',
     `Received ${signal} signal. Initiating graceful shutdown with ${DRAIN_TIMEOUT_MS}ms drain period...`
   );
 
+  // Force exit after drain timeout if connections do not terminate in time
   const drainTimer = setTimeout(() => {
     logger.warn('SERVER', `Drain period of ${DRAIN_TIMEOUT_MS}ms expired. Forcing exit.`);
     if (!process.env.TEST_NO_EXIT) {
@@ -166,28 +71,70 @@ const gracefulShutdown = (signal, exitCode = 0) => {
   }, DRAIN_TIMEOUT_MS);
   if (drainTimer.unref) drainTimer.unref();
 
-  if (server && server.listening) {
-    server.close(async () => {
-      clearTimeout(drainTimer);
-      logger.info('SERVER', 'HTTP server closed.');
-      try {
-        await prisma.$disconnect();
-        logger.info('DATABASE', 'Prisma database client disconnected.');
-      } catch (dbErr) {
-        logger.error('DATABASE', `Error disconnecting database during shutdown: ${dbErr.message}`, { error: dbErr });
-      }
-      logger.info('SERVER', 'Application shutdown complete.');
-      if (!process.env.TEST_NO_EXIT) {
-        process.exit(exitCode);
-      }
-    });
-  } else {
+  const cleanup = async () => {
     clearTimeout(drainTimer);
+    try {
+      await prisma.$disconnect();
+      logger.info('DATABASE', 'Prisma database client disconnected.');
+    } catch (dbErr) {
+      logger.error('DATABASE', `Error disconnecting database during shutdown: ${dbErr.message}`, { error: dbErr });
+    }
+    logger.info('SERVER', 'Application shutdown complete.');
     if (!process.env.TEST_NO_EXIT) {
       process.exit(exitCode);
     }
+  };
+
+  if (server && server.listening) {
+    server.close(() => {
+      logger.info('SERVER', 'HTTP server closed.');
+      cleanup();
+    });
+  } else {
+    cleanup();
   }
 };
+
+// Process Crash Handler: Handle unhandled promise rejections
+const handleUnhandledRejection = (err, promise) => {
+  if (isBackgroundRejection(err, promise)) {
+    // Non-critical background task rejection: log full stack trace and DO NOT terminate server
+    logger.error('PROCESS', `Unhandled background promise rejection: ${err?.message || String(err)}`, {
+      type: 'unhandledRejection',
+      isBackground: true,
+      reason: err?.message || String(err),
+      stack: err?.stack || null,
+      error: err instanceof Error ? err : undefined,
+    });
+    return;
+  }
+
+  // Critical core request rejection: log fatal with full stack trace and begin graceful drain shutdown
+  logger.fatal('PROCESS', `Unhandled Promise Rejection encountered: ${err?.message || String(err)}`, {
+    type: 'unhandledRejection',
+    isBackground: false,
+    reason: err?.message || String(err),
+    stack: err?.stack || null,
+    error: err instanceof Error ? err : undefined,
+  });
+
+  gracefulShutdown('unhandledRejection', 1);
+};
+
+process.on('unhandledRejection', handleUnhandledRejection);
+
+// Process Crash Handler: Handle uncaught exceptions
+const handleUncaughtException = (err) => {
+  logger.fatal('PROCESS', `Uncaught Exception: ${err.message}`, {
+    type: 'uncaughtException',
+    message: err.message,
+    stack: err.stack,
+  });
+
+  gracefulShutdown('uncaughtException', 1);
+};
+
+process.on('uncaughtException', handleUncaughtException);
 
 process.on('SIGINT', () => gracefulShutdown('SIGINT', 0));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM', 0));
