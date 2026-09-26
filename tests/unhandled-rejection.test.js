@@ -102,6 +102,14 @@ describe('Issue #221: Unhandled Rejection Handling & Process Lifecycle (Simplifi
       assert.strictEqual(isBackgroundRejection(caughtErr), true);
     });
 
+    test('runBackgroundTask alias executes task safely and marks rejection', async () => {
+      let executed = false;
+      await runBackgroundTask(async () => {
+        executed = true;
+      });
+      assert.strictEqual(executed, true);
+    });
+
     test('registerBackgroundPromise marks promise as background', async () => {
       const p = Promise.reject(new Error('Auxiliary promise failure'));
       p.catch(() => {}); // prevent unhandled warning in test runner
