@@ -146,7 +146,7 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT', 0));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM', 0));
 
 module.exports = {
-  server,
+  getServer: () => server,
   gracefulShutdown,
   handleUnhandledRejection,
   handleUncaughtException,
