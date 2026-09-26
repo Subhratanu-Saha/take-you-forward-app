@@ -3,6 +3,7 @@ const config = require('./src/config');
 const { verifyEmailConfig } = require('./src/config/email');
 const prisma = require('./src/utils/db');
 const { logger } = require('./src/utils/db');
+const { isBackgroundRejection } = require('./src/utils/rejectionHandler');
 
 // Validate critical configuration on startup
 try {
@@ -16,9 +17,17 @@ try {
 
 const PORT = config.port;
 const NODE_ENV = config.nodeEnv;
+const DRAIN_TIMEOUT_MS = parseInt(
+  process.env.SHUTDOWN_DRAIN_TIMEOUT_MS || process.env.DRAIN_TIMEOUT_MS || '10000',
+  10
+);
 
-const server = app.listen(PORT, () => {
-  console.log(`
+let isShuttingDown = false;
+let server = null;
+
+if (process.env.NO_AUTO_SERVER_START !== 'true') {
+  server = app.listen(PORT, () => {
+    console.log(`
   ╔══════════════════════════════════════╗
   ║  Backend Server Started Successfully ║
   ║  Port: ${PORT}                           
@@ -26,62 +35,50 @@ const server = app.listen(PORT, () => {
   ╚══════════════════════════════════════╝
   `);
 
-   logger.info('SERVER', `Server started successfully on port ${PORT} [${NODE_ENV}]`);
-
+    logger.info('SERVER', `Server started successfully on port ${PORT} [${NODE_ENV}]`);
 
     // Non-blocking asynchronous SMTP verification
-  verifyEmailConfig()
-    .then((isReady) => {
-      if (isReady) {
-        logger.info('EMAIL', 'SMTP Transporter verified successfully.');
-      } else {
-        logger.warn('EMAIL', 'SMTP Transporter operating in degraded mode.');
-      }
-    })
-    .catch((err) => {
-      logger.error('EMAIL', `SMTP verification failed in background: ${err.message}`, { error: err });
-    });
-});
-// Process Crash Handler: Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-  logger.fatal('PROCESS', 'Unhandled Promise Rejection encountered', {
-    type: 'unhandledRejection',
-    reason: err?.message || String(err),
-    stack: err?.stack || null,
+    verifyEmailConfig()
+      .then((isReady) => {
+        if (isReady) {
+          logger.info('EMAIL', 'SMTP Transporter verified successfully.');
+        } else {
+          logger.warn('EMAIL', 'SMTP Transporter operating in degraded mode.');
+        }
+      })
+      .catch((err) => {
+        logger.error('EMAIL', `SMTP verification failed in background: ${err.message}`, { error: err });
+      });
   });
+}
 
-  if (server && server.listening) {
-    server.close(() => {
-      process.exit(1);
-    });
-  } else {
-    process.exit(1);
-  }
-});
+// Graceful Shutdown Signal Handlers (SIGINT / SIGTERM / Fatal error) with 10s drain period
+const gracefulShutdown = (signal, exitCode = 0) => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
 
-// Process Crash Handler: Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-  logger.fatal('PROCESS', `Uncaught Exception: ${err.message}`, {
-    type: 'uncaughtException',
-    message: err.message,
-    stack: err.stack,
-  });
+  logger.info(
+    'SERVER',
+    `Received ${signal} signal. Initiating graceful shutdown with ${DRAIN_TIMEOUT_MS}ms drain period...`
+  );
 
-  if (server && server.listening) {
-    server.close(() => {
-      process.exit(1);
-    });
-  } else {
-    process.exit(1);
-  }
-});
+  // Force exit after drain timeout if connections do not terminate in time
+  const drainTimer = setTimeout(async () => {
+    logger.warn('SERVER', `Drain period of ${DRAIN_TIMEOUT_MS}ms expired. Forcing exit.`);
+    try {
+      await prisma.$disconnect();
+      logger.info('DATABASE', 'Prisma database client disconnected.');
+    } catch (dbErr) {
+      logger.error('DATABASE', `Error disconnecting database during shutdown: ${dbErr.message}`, { error: dbErr });
+    }
+    if (!process.env.TEST_NO_EXIT) {
+      process.exit(exitCode);
+    }
+  }, DRAIN_TIMEOUT_MS);
+  if (drainTimer.unref) drainTimer.unref();
 
-// Graceful Shutdown Signal Handlers (SIGINT / SIGTERM)
-const gracefulShutdown = (signal) => {
-  logger.info('SERVER', `Received ${signal} signal. Initiating graceful shutdown...`);
-
-  server.close(async () => {
-    logger.info('SERVER', 'HTTP server closed.');
+  const cleanup = async () => {
+    clearTimeout(drainTimer);
     try {
       await prisma.$disconnect();
       logger.info('DATABASE', 'Prisma database client disconnected.');
@@ -89,9 +86,68 @@ const gracefulShutdown = (signal) => {
       logger.error('DATABASE', `Error disconnecting database during shutdown: ${dbErr.message}`, { error: dbErr });
     }
     logger.info('SERVER', 'Application shutdown complete.');
-    process.exit(0);
-  });
+    if (!process.env.TEST_NO_EXIT) {
+      process.exit(exitCode);
+    }
+  };
+
+  if (server && server.listening) {
+    server.close(() => {
+      logger.info('SERVER', 'HTTP server closed.');
+      cleanup();
+    });
+  } else {
+    cleanup();
+  }
 };
 
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+// Process Crash Handler: Handle unhandled promise rejections
+const handleUnhandledRejection = (err, promise) => {
+  if (isBackgroundRejection(err, promise)) {
+    // Non-critical background task rejection: log full stack trace and DO NOT terminate server
+    logger.error('PROCESS', `Unhandled background promise rejection: ${err?.message || String(err)}`, {
+      type: 'unhandledRejection',
+      isBackground: true,
+      reason: err?.message || String(err),
+      stack: err?.stack || null,
+      error: err instanceof Error ? err : undefined,
+    });
+    return;
+  }
+
+  // Critical core request rejection: log fatal with full stack trace and begin graceful drain shutdown
+  logger.fatal('PROCESS', `Unhandled Promise Rejection encountered: ${err?.message || String(err)}`, {
+    type: 'unhandledRejection',
+    isBackground: false,
+    reason: err?.message || String(err),
+    stack: err?.stack || null,
+    error: err instanceof Error ? err : undefined,
+  });
+
+  gracefulShutdown('unhandledRejection', 1);
+};
+
+process.on('unhandledRejection', handleUnhandledRejection);
+
+// Process Crash Handler: Handle uncaught exceptions
+const handleUncaughtException = (err) => {
+  logger.fatal('PROCESS', `Uncaught Exception: ${err.message}`, {
+    type: 'uncaughtException',
+    message: err.message,
+    stack: err.stack,
+  });
+
+  gracefulShutdown('uncaughtException', 1);
+};
+
+process.on('uncaughtException', handleUncaughtException);
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT', 0));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM', 0));
+
+module.exports = {
+  getServer: () => server,
+  gracefulShutdown,
+  handleUnhandledRejection,
+  handleUncaughtException,
+};
