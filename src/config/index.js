@@ -29,6 +29,25 @@ const config = {
 const environment = process.env.NODE_ENV || 'development';
 const activeConfig = config[environment] || config.development;
 
+const commonConfig = {
+  slack: {
+    signingSecret: process.env.SLACK_SIGNING_SECRET,
+    allowedChannelId: process.env.SLACK_ALLOWED_CHANNEL_ID,
+    // Optional workspace and user restrictions
+    allowedTeamId: process.env.SLACK_ALLOWED_TEAM_ID && process.env.SLACK_ALLOWED_TEAM_ID.trim()
+      ? process.env.SLACK_ALLOWED_TEAM_ID.trim()
+      : null,
+    allowedUserIds: process.env.SLACK_ALLOWED_USER_IDS && process.env.SLACK_ALLOWED_USER_IDS.trim()
+      ? process.env.SLACK_ALLOWED_USER_IDS.split(',').map((id) => id.trim()).filter(Boolean)
+      : null,
+  },
+  render: {
+    apiKey: process.env.RENDER_API_KEY,
+    ownerId: process.env.RENDER_OWNER_ID,
+    serviceId: process.env.RENDER_SERVICE_ID,
+  },
+};
+
 const validateConfig = () => {
   const missing = [];
   if (!process.env.DATABASE_URL && !process.env.DB_URL && environment === 'production') {
@@ -36,6 +55,11 @@ const validateConfig = () => {
   }
   if (!activeConfig.jwtSecret && environment === 'production') {
     missing.push('JWT_SECRET');
+  }
+  if (process.env.SLACK_SIGNING_SECRET && environment === 'production') {
+    if (!process.env.RENDER_API_KEY) missing.push('RENDER_API_KEY');
+    if (!process.env.RENDER_OWNER_ID) missing.push('RENDER_OWNER_ID');
+    if (!process.env.RENDER_SERVICE_ID) missing.push('RENDER_SERVICE_ID');
   }
 
   if (missing.length > 0) {
@@ -49,6 +73,7 @@ const validateConfig = () => {
 
 module.exports = {
   ...activeConfig,
+  ...commonConfig,
   validateConfig,
 };
 
