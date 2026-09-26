@@ -63,8 +63,14 @@ const gracefulShutdown = (signal, exitCode = 0) => {
   );
 
   // Force exit after drain timeout if connections do not terminate in time
-  const drainTimer = setTimeout(() => {
+  const drainTimer = setTimeout(async () => {
     logger.warn('SERVER', `Drain period of ${DRAIN_TIMEOUT_MS}ms expired. Forcing exit.`);
+    try {
+      await prisma.$disconnect();
+      logger.info('DATABASE', 'Prisma database client disconnected.');
+    } catch (dbErr) {
+      logger.error('DATABASE', `Error disconnecting database during shutdown: ${dbErr.message}`, { error: dbErr });
+    }
     if (!process.env.TEST_NO_EXIT) {
       process.exit(exitCode);
     }
