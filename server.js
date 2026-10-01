@@ -11,8 +11,28 @@ try {
     config.validateConfig();
   }
 } catch (configError) {
-  logger.fatal('CONFIG', `Application configuration error: ${configError.message}`, { error: configError });
-  process.exit(1);
+  const alertPayload = {
+    event: 'startup_configuration_failure',
+    timestamp: new Date().toISOString(),
+    severity: 'fatal',
+    component: 'CONFIG',
+    errorCode: configError.code || 'CONFIG_VALIDATION_FAILED',
+    message: configError.message,
+    missingVariables: configError.missingVariables || [],
+    expectedVariables: configError.expectedVariables || {},
+    exitCode: 1,
+  };
+  logger.fatal('CONFIG', `Application configuration error: ${configError.message}`, {
+    ...alertPayload,
+    error: configError,
+  });
+  console.error(JSON.stringify(alertPayload));
+  process.exitCode = 1;
+  prisma.$disconnect().catch((disconnectError) => {
+    logger.error('DATABASE', 'Failed to disconnect Prisma after startup configuration failure.', {
+      error: disconnectError,
+    });
+  });
 }
 
 const PORT = config.port;
@@ -25,7 +45,7 @@ const DRAIN_TIMEOUT_MS = parseInt(
 let isShuttingDown = false;
 let server = null;
 
-if (process.env.NO_AUTO_SERVER_START !== 'true') {
+if (!process.exitCode && process.env.NO_AUTO_SERVER_START !== 'true') {
   server = app.listen(PORT, () => {
     console.log(`
   ╔══════════════════════════════════════╗
