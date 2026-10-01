@@ -5,7 +5,6 @@ const {
   isValidPhone,
   isValidPincode,
   isValidCustomerId,
-  CUSTOMER_ID_REGEX,
 } = require('../utils/validationRules');
 
 // ==================== PROTECTED FIELDS ====================

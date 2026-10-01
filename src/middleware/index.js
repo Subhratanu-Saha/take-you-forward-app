@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 const { logger } = require('../utils/db');
 
-const { EMAIL_REGEX, isValidEmail } = require('../utils/validationRules');
+const { isValidEmail } = require('../utils/validationRules');
 
 const getBearerToken = (req) => {
   const authHeader = req.headers.authorization || '';
