@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 const { logger } = require('../utils/db');
 
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const { EMAIL_REGEX, isValidEmail } = require('../utils/validationRules');
 
 const getBearerToken = (req) => {
   const authHeader = req.headers.authorization || '';
@@ -79,7 +79,7 @@ const validateLoginInput = (req, res, next) => {
   const errors = [];
 
   if (!email || !String(email).trim()) errors.push('Email is required');
-  else if (!emailRegex.test(String(email).trim())) errors.push('Invalid email format');
+  else if (!isValidEmail(String(email).trim())) errors.push('Invalid email format');
 
   if (!password || !String(password).trim()) errors.push('Password is required');
 
@@ -101,7 +101,7 @@ const validateRegisterInput = (req, res, next) => {
 
   if (!firstname || !String(firstname).trim()) errors.push('First name is required');
   if (!email || !String(email).trim()) errors.push('Email is required');
-  else if (!emailRegex.test(String(email).trim())) errors.push('Invalid email format');
+  else if (!isValidEmail(String(email).trim())) errors.push('Invalid email format');
 
   if (!password || String(password).trim().length < 8) {
     errors.push('Password must be at least 8 characters long');

@@ -1,9 +1,12 @@
 const customerModel = require('../models/customer');
 const { logger, ERROR_CODES } = require('../utils/db');
-
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const phoneRegex = /^\d{10}$/;
-const pincodeRegex = /^\d{6}$/;
+const {
+  isValidEmail,
+  isValidPhone,
+  isValidPincode,
+  isValidCustomerId,
+  CUSTOMER_ID_REGEX,
+} = require('../utils/validationRules');
 
 // ==================== PROTECTED FIELDS ====================
 // Fields that cannot be updated after customer creation
@@ -35,16 +38,16 @@ const validateCreateCustomer = async (req, res, next) => {
 
   if (!firstname?.trim()) errors.push('First name is required');
   if (!emailadd?.trim()) errors.push('Email is required');
-  else if (!emailRegex.test(emailadd)) errors.push('Invalid email format');
+  else if (!isValidEmail(emailadd)) errors.push('Invalid email format');
 
   if (!contactnum?.trim()) errors.push('Contact number is required');
-  else if (!phoneRegex.test(contactnum.replace(/\D/g, '')))
+  else if (!isValidPhone(contactnum))
     errors.push('Invalid phone number (must be 10 digits)');
 
   if (!addressline1?.trim()) errors.push('Address is required');
   if (!city?.trim()) errors.push('City is required');
   if (!pincode?.trim()) errors.push('Pincode is required');
-  else if (!pincodeRegex.test(pincode))
+  else if (!isValidPincode(pincode))
     errors.push('Invalid pincode (must be 6 digits)');
 
   if (dob) {
@@ -123,9 +126,7 @@ const validateCustomerId = (req, res, next) => {
   const requestId = req.requestId;
   const { customerId } = req.params;
 
-  const customerIdRegex = /^CUST-\d+-[A-Z0-9]{10}$/;
-
-  if (!customerId || !customerIdRegex.test(customerId)) {
+  if (!isValidCustomerId(customerId)) {
     const msg = "Invalid customer ID format. Expected format: CUST-{timestamp}-{10 alphanumeric characters}";
     logger.warn('CUSTOMER_VALIDATOR', msg, {
       requestId,
@@ -183,8 +184,7 @@ function validateUpdateCustomer(req, res, next) {
 
   // Validate Contact Number (10 digits)
   if (contactnum) {
-    const cleanedNumber = contactnum.toString().replace(/\D/g, '');
-    if (!phoneRegex.test(cleanedNumber)) {
+    if (!isValidPhone(contactnum)) {
       logger.warn('CUSTOMER_VALIDATOR', 'Invalid contact number format in update', {
         requestId,
         customerId,
@@ -200,7 +200,7 @@ function validateUpdateCustomer(req, res, next) {
   }
 
   // Validate Pincode (6 digits)
-  if (pincode && !pincodeRegex.test(pincode.toString())) {
+  if (pincode && !isValidPincode(pincode)) {
     logger.warn('CUSTOMER_VALIDATOR', 'Invalid pincode format in update', {
       requestId,
       customerId,

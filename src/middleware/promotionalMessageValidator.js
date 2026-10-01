@@ -1,4 +1,4 @@
-const CUSTOMER_ID_REGEX = /^CUST-\d+-[A-Z0-9]{10}$/;
+const { CUSTOMER_ID_REGEX } = require('../utils/validationRules');
 const MAX_EXPIRATION_DAYS = 7;
 const MAX_EXPIRATION_MS = MAX_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
 
