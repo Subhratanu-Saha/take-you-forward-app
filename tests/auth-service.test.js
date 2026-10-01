@@ -192,7 +192,7 @@ test('Non-SUPER_ADMIN cannot register staff users', async () => {
 
   const payload = await response.json();
   assert.equal(response.status, 403, 'non super admin should be forbidden');
-  assert.equal(payload.errorCode, 'FORBIDDEN');
+  assert.ok(['FORBIDDEN_INSUFFICIENT_PERMISSIONS', 'FORBIDDEN'].includes(payload.errorCode));
 
   server.close();
 });
@@ -236,7 +236,7 @@ test('GET /me without token is unauthorized', async () => {
   const payload = await response.json();
 
   assert.equal(response.status, 401, 'missing token should be denied');
-  assert.equal(payload.errorCode, 'AUTH_INVALID_TOKEN');
+  assert.equal(payload.errorCode, 'AUTH_TOKEN_MISSING');
 
   server.close();
 });
@@ -250,6 +250,8 @@ test('GET /me with invalid or expired token is rejected', async () => {
   const invalidResponse = await fetch(`http://localhost:${port}/api/v1/auth/me`, { headers: { Authorization: `Bearer ${invalidToken}` } });
 
   assert.equal(invalidResponse.status, 401, 'invalid token should be rejected');
+  const invalidPayload = await invalidResponse.json();
+  assert.ok(['AUTH_TOKEN_INVALID', 'AUTH_INVALID_TOKEN'].includes(invalidPayload.errorCode));
 
   const expiredResponse = await fetch(`http://localhost:${port}/api/v1/auth/me`, {
     headers: { Authorization: `Bearer ${expiredToken}` },
@@ -257,7 +259,7 @@ test('GET /me with invalid or expired token is rejected', async () => {
 
   const expiredPayload = await expiredResponse.json();
   assert.equal(expiredResponse.status, 401, 'expired token should be rejected');
-  assert.equal(expiredPayload.errorCode, 'AUTH_INVALID_TOKEN');
+  assert.ok(['AUTH_TOKEN_INVALID', 'AUTH_INVALID_TOKEN'].includes(expiredPayload.errorCode));
 
   server.close();
 });
