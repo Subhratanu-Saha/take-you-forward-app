@@ -2,8 +2,12 @@ const express = require('express');
 const promotionalMessageController = require('../controllers/promotionalMessageController');
 const { validateCreatePromotionalMessage } = require('../middleware/promotionalMessageValidator');
 const { validatePromotionalCampaign } = require('../middleware/promotionalCampaignValidator');
+const { authenticate, authorizeRoles, ROLES } = require('../middleware/authMiddleware');
 
 const router = express.Router();
+
+router.use(authenticate);
+router.use(authorizeRoles(ROLES.SUPER_ADMIN, ROLES.MARKETING_USER));
 
 /**
  * @swagger
@@ -99,7 +103,8 @@ router.get('/dlq', promotionalMessageController.getFailedPromotionalMessages);
  *             schema:
  *               $ref: '#/components/schemas/ServerErrorResponse'
  */
-router.post('/retry', promotionalMessageController.retryFailedPromotionalMessages);
+router.post('/dlq/retry', authorizeRoles(ROLES.SUPER_ADMIN), promotionalMessageController.retryFailedPromotionalMessages);
+router.post('/retry', authorizeRoles(ROLES.SUPER_ADMIN), promotionalMessageController.retryFailedPromotionalMessages);
 
 /**
  * @swagger

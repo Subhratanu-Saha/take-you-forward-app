@@ -7,6 +7,10 @@ const {
   validateGetSubscriberById,
   validateGetSubscriberByCustomerId,
 } = require('../middleware/subscriberValidator');
+const { authenticate, authorizeRoles, ROLES } = require('../middleware/authMiddleware');
+
+router.use(authenticate);
+router.use(authorizeRoles(ROLES.SUPER_ADMIN, ROLES.MARKETING_USER, ROLES.SUPPORT_AGENT));
 
 /**
  * @swagger
