@@ -147,9 +147,9 @@ const {
 } = require('./rbacMiddleware');
 
 module.exports = {
-  authMiddleware: requireAuth,
-  requireAuth,
-  requireRole,
+  authMiddleware: authenticate,
+  requireAuth: authenticate,
+  requireRole: authorizeRoles,
   authenticate,
   authorizeRoles,
   ROLES,

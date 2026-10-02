@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
-const { requireAuth, requireRole, validateLoginInput, validateRegisterInput } = require('../middleware');
+const { authenticate, authorizeRoles, ROLES, validateLoginInput, validateRegisterInput } = require('../middleware');
 
 /**
  * @swagger
@@ -91,7 +91,7 @@ router.post('/login', validateLoginInput, authController.login);
  *       403:
  *         description: Forbidden - Insufficient permissions for user role
  */
-router.post('/register', requireAuth, requireRole('SUPER_ADMIN'), validateRegisterInput, authController.register);
+router.post('/register', authenticate, authorizeRoles(ROLES.SUPER_ADMIN), validateRegisterInput, authController.register);
 
 /**
  * @swagger
@@ -109,6 +109,6 @@ router.post('/register', requireAuth, requireRole('SUPER_ADMIN'), validateRegist
  *       401:
  *         description: Unauthorized - Missing or invalid JWT token
  */
-router.get('/me', requireAuth, authController.getMe);
+router.get('/me', authenticate, authController.getMe);
 
 module.exports = router;
