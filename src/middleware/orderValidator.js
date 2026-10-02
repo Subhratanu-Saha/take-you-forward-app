@@ -1,10 +1,14 @@
-
-
 const { logger, ERROR_CODES } = require('../utils/db');
 const { validateJsonContentType } = require('./index');
+const {
+  ORDER_ID_REGEX,
+  ORDER_ID_PREFIX_REGEX,
+  CUSTOMER_ID_REGEX,
+  normalizeNumber,
+  normalizeBoolean,
+  parsePagination,
+} = require('../utils/validationRules');
 
-const ORDER_ID_REGEX = /^ORD-\d+-[A-Z0-9]{6}$/;
-const CUSTOMER_ID_REGEX = /^CUST-\d+-[A-Z0-9]{10}$/;
 const MAX_CHANNEL_LENGTH = 10;
 const MAX_PAYMENT_LENGTH = 10;
 
@@ -24,21 +28,6 @@ const buildValidationErrorResponse = (res, requestId, errors, statusCode = 400) 
     errorCode,
     errors,
   });
-};
-
-const normalizeNumber = (value) => {
-  if (value === undefined || value === null || value === '') return undefined;
-  const num = Number(value);
-  return Number.isFinite(num) ? num : undefined;
-};
-
-const normalizeBoolean = (value) => {
-  if (value === undefined || value === null) return undefined;
-  if (typeof value === 'boolean') return value;
-  const normalized = value.toString().trim().toLowerCase();
-  if (normalized === 'true') return true;
-  if (normalized === 'false') return false;
-  return undefined;
 };
 
 const validateOrderLineItems = (items) => {
@@ -92,7 +81,7 @@ const validateOrderId = (req, res, next) => {
 
   if (!orderId?.toString().trim()) {
     errors.push('Order ID is required');
-  }  else if (!/^ORD-\d+-[A-Z0-9]+$/.test(orderId.toString().trim())) {
+  } else if (!ORDER_ID_PREFIX_REGEX.test(orderId.toString().trim())) {
     errors.push('Invalid orderId format. Expected: ORD-{timestamp}-{6 alphanumeric chars}');
   }
 
@@ -134,27 +123,7 @@ const validateCustomerIdParam = (req, res, next) => {
 const validateQueryPagination = (req, res, next) => {
   const requestId = req.requestId;
   const { page, limit } = req.query;
-  const errors = [];
-  let pageValue = 1;
-  let limitValue = 20;
-
-  if (page !== undefined) {
-    const parsed = Number(page);
-    if (!Number.isInteger(parsed) || parsed <= 0) {
-      errors.push('page must be a positive integer');
-    } else {
-      pageValue = parsed;
-    }
-  }
-
-  if (limit !== undefined) {
-    const parsed = Number(limit);
-    if (!Number.isInteger(parsed) || parsed <= 0) {
-      errors.push('limit must be a positive integer');
-    } else {
-      limitValue = parsed;
-    }
-  }
+  const { page: pageValue, limit: limitValue, errors } = parsePagination({ page, limit }, 1, 20, null);
 
   if (errors.length) {
     return buildValidationErrorResponse(res, requestId, errors);
@@ -169,40 +138,7 @@ const validateQueryPagination = (req, res, next) => {
 };
 
 const validateGetAllOrders = (req, res, next) => {
-  const requestId = req.requestId;
-  const { page, limit } = req.query;
-  const errors = [];
-  let pageValue = 1;
-  let limitValue = 20;
-
-  if (page !== undefined) {
-    const parsed = Number(page);
-    if (!Number.isInteger(parsed) || parsed <= 0) {
-      errors.push('page must be a positive integer');
-    } else {
-      pageValue = parsed;
-    }
-  }
-
-  if (limit !== undefined) {
-    const parsed = Number(limit);
-    if (!Number.isInteger(parsed) || parsed <= 0) {
-      errors.push('limit must be a positive integer');
-    } else {
-      limitValue = parsed;
-    }
-  }
-
-  if (errors.length) {
-    return buildValidationErrorResponse(res, requestId, errors);
-  }
-
-  req.validated = {
-    ...(req.validated || {}),
-    query: { page: pageValue, limit: limitValue },
-  };
-
-  return next();
+  return validateQueryPagination(req, res, next);
 };
 
 const validateDeleteOrder = (req, res, next) => {

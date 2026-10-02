@@ -58,12 +58,23 @@ const parseFilters = (query = {}) => {
   };
 };
 
-const sendError = (res, error) => res.status(error.statusCode || 500).json({
-  success: false,
-  message: error.message || 'Internal server error',
-});
+const sendError = (res, error, next) => {
+  if (error.statusCode && error.statusCode < 500) {
+    return res.status(error.statusCode).json({
+      success: false,
+      message: error.message || 'Internal server error',
+    });
+  }
+  if (typeof next === 'function') {
+    return next(error);
+  }
+  return res.status(500).json({
+    success: false,
+    message: error.message || 'Internal server error',
+  });
+};
 
-const getAuditLogs = async (req, res) => {
+const getAuditLogs = async (req, res, next) => {
   try {
     const filters = parseFilters(req.query);
     const { logs, totalRecords } = await auditService.findAuditLogs(prisma, filters);
@@ -81,38 +92,38 @@ const getAuditLogs = async (req, res) => {
       data: logs,
     });
   } catch (error) {
-    sendError(res, error);
+    sendError(res, error, next);
   }
 };
 
-const getAuditLog = async (req, res) => {
+const getAuditLog = async (req, res, next) => {
   try {
     const auditId = req.params.auditId || req.params.id;
     const auditLog = await auditService.getAuditLogById(prisma, auditId);
     if (!auditLog) return res.status(404).json({ success: false, message: 'Audit log not found' });
     return res.status(200).json({ success: true, data: auditLog });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, error, next);
   }
 };
 
-const getAuditTimeline = async (req, res) => {
+const getAuditTimeline = async (req, res, next) => {
   try {
     const { entityName, entityId } = req.params;
     const logs = await auditService.getAuditTimeline(prisma, entityName, entityId);
     res.status(200).json({ success: true, data: logs });
   } catch (error) {
-    sendError(res, error);
+    sendError(res, error, next);
   }
 };
 
-const getAuditStats = async (req, res) => {
+const getAuditStats = async (req, res, next) => {
   try {
     const filters = parseFilters({ ...req.query, page: 1, limit: 1 });
     const stats = await auditService.getAuditStats(prisma, filters);
     res.status(200).json({ success: true, data: stats });
   } catch (error) {
-    sendError(res, error);
+    sendError(res, error, next);
   }
 };
 
@@ -122,7 +133,7 @@ const csvValue = (value) => {
   return `"${text.replace(/"/g, '""')}"`;
 };
 
-const exportAuditLogs = async (req, res) => {
+const exportAuditLogs = async (req, res, next) => {
   try {
     const filters = parseFilters({ ...req.query, page: 1, limit: 100 });
     const exportFilters = { ...filters, page: 1, limit: 1000000 };
@@ -157,11 +168,11 @@ const exportAuditLogs = async (req, res) => {
     res.setHeader('Content-Disposition', 'attachment; filename="audit-logs.csv"');
     return res.status(200).send(csv);
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, error, next);
   }
 };
 
-const getAuditLogsByRequestId = async (req, res) => {
+const getAuditLogsByRequestId = async (req, res, next) => {
   try {
     const logs = await auditService.getAuditLogsByRequestId(
       prisma,
@@ -174,7 +185,7 @@ const getAuditLogsByRequestId = async (req, res) => {
       data: logs,
     });
   } catch (error) {
-    return sendError(res, error);
+    return sendError(res, error, next);
   }
 };
 
