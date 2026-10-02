@@ -8,7 +8,7 @@ const config = {
   development: {
     port: process.env.PORT || 5000,
     nodeEnv: 'development',
-    dbUrl: process.env.DB_URL || 'mongodb://localhost:27017/take-you-forward',
+    dbUrl: databaseUrl || 'postgresql://localhost:5432/take-you-forward',
     apiBaseUrl: 'http://localhost:5000',
     jwtSecret: process.env.JWT_SECRET,
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
@@ -24,7 +24,7 @@ const config = {
   testing: {
     port: 5001,
     nodeEnv: 'testing',
-    dbUrl: 'mongodb://localhost:27017/take-you-forward-test',
+    dbUrl: databaseUrl || 'postgresql://localhost:5432/take-you-forward-test',
     apiBaseUrl: 'http://localhost:5001',
     jwtSecret: process.env.JWT_SECRET,
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',

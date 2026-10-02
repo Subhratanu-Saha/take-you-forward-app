@@ -66,3 +66,29 @@ test('production validation reports the missing JWT secret and accepted database
     return true;
   });
 });
+
+test('development config defaults to postgresql connection string when no env is provided', () => {
+  for (const key of environmentKeys) {
+    delete process.env[key];
+  }
+  process.env.NODE_ENV = 'development';
+  delete require.cache[require.resolve('../src/config')];
+  const config = require('../src/config');
+
+  assert.equal(config.dbUrl, 'postgresql://localhost:5432/take-you-forward');
+  assert.equal(config.port, 5000);
+});
+
+test('development config resolves DATABASE_URL when provided', () => {
+  for (const key of environmentKeys) {
+    delete process.env[key];
+  }
+  process.env.NODE_ENV = 'development';
+  process.env.DATABASE_URL = 'postgresql://custom:5432/devdb';
+  delete require.cache[require.resolve('../src/config')];
+  const config = require('../src/config');
+
+  assert.equal(config.dbUrl, 'postgresql://custom:5432/devdb');
+  assert.equal(process.env.DATABASE_URL, 'postgresql://custom:5432/devdb');
+});
+
