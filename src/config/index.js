@@ -1,14 +1,9 @@
 // Configuration file
-const databaseUrl = process.env.DATABASE_URL || process.env.DB_URL || process.env.DATABASE_PRIVATE_URL;
-if (databaseUrl && !process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = databaseUrl;
-}
-
 const config = {
   development: {
     port: process.env.PORT || 5000,
     nodeEnv: 'development',
-    dbUrl: process.env.DB_URL || 'mongodb://localhost:27017/take-you-forward',
+    dbUrl: process.env.DATABASE_URL,
     apiBaseUrl: 'http://localhost:5000',
     jwtSecret: process.env.JWT_SECRET,
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
@@ -16,7 +11,7 @@ const config = {
   production: {
     port: process.env.PORT || 8000,
     nodeEnv: 'production',
-    dbUrl: databaseUrl,
+    dbUrl: process.env.DATABASE_URL,
     apiBaseUrl: 'https://take-you-forward-app.onrender.com',
     jwtSecret: process.env.JWT_SECRET,
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
@@ -24,7 +19,7 @@ const config = {
   testing: {
     port: 5001,
     nodeEnv: 'testing',
-    dbUrl: 'mongodb://localhost:27017/take-you-forward-test',
+    dbUrl: process.env.DATABASE_URL,
     apiBaseUrl: 'http://localhost:5001',
     jwtSecret: process.env.JWT_SECRET,
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
@@ -36,13 +31,8 @@ const activeConfig = config[environment] || config.development;
 
 const validateConfig = () => {
   const missing = [];
-  if (
-    !process.env.DATABASE_URL &&
-    !process.env.DB_URL &&
-    !process.env.DATABASE_PRIVATE_URL &&
-    environment === 'production'
-  ) {
-    missing.push('DATABASE_URL, DB_URL, or DATABASE_PRIVATE_URL');
+  if (!process.env.DATABASE_URL && environment === 'production') {
+    missing.push('DATABASE_URL');
   }
   if (!activeConfig.jwtSecret && environment === 'production') {
     missing.push('JWT_SECRET');
@@ -55,7 +45,7 @@ const validateConfig = () => {
     error.code = 'CONFIG_VALIDATION_FAILED';
     error.missingVariables = missing;
     error.expectedVariables = {
-      databaseUrl: ['DATABASE_URL', 'DB_URL', 'DATABASE_PRIVATE_URL'],
+      databaseUrl: ['DATABASE_URL'],
       jwtSecret: ['JWT_SECRET'],
     };
     throw error;
