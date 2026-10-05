@@ -1,27 +1,36 @@
+const {
+  isNonEmptyString,
+  isBoolean,
+  isValidCustomerId,
+  isValidSubscriberId,
+} = require('../utils/validationRules');
+
 const validateCreateSubscriber = (req, res, next) => {
-console.log('Validating create subscriber request body:', req.body);
+  console.log('Validating create subscriber request body:', req.body);
   const {
-    customerId = req.body.customerId || req.body.customerid,
-    isSubscribe = req.body.isSubscribe ?? req.body.issubscribe,
-    emailPermStatus = req.body.emailPermStatus ?? req.body.emailpermstatus,
-    smsPermStatus = req.body.smsPermStatus ?? req.body.smspermstatus,
-  } = req.body;
+    customerId = req.body?.customerId || req.body?.customerid,
+    isSubscribe = req.body?.isSubscribe ?? req.body?.issubscribe,
+    emailPermStatus = req.body?.emailPermStatus ?? req.body?.emailpermstatus,
+    smsPermStatus = req.body?.smsPermStatus ?? req.body?.smspermstatus,
+  } = req.body || {};
 
   const errors = [];
 
-  if (!customerId?.trim()) {
+  if (!isNonEmptyString(customerId)) {
     errors.push('Customer ID is required');
+  } else if (!isValidCustomerId(customerId)) {
+    errors.push('Invalid customer ID format');
   }
 
-  if (typeof isSubscribe !== 'boolean') {
+  if (!isBoolean(isSubscribe)) {
     errors.push('isSubscribe must be a boolean');
   }
 
-  if (typeof emailPermStatus !== 'boolean') {
+  if (!isBoolean(emailPermStatus)) {
     errors.push('emailPermStatus must be a boolean');
   }
 
-  if (typeof smsPermStatus !== 'boolean') {
+  if (!isBoolean(smsPermStatus)) {
     errors.push('smsPermStatus must be a boolean');
   }
 
@@ -32,7 +41,7 @@ console.log('Validating create subscriber request body:', req.body);
       errors,
     });
   }
-console.log('Validation passed for create subscriber request body:', req.body);
+  console.log('Validation passed for create subscriber request body:', req.body);
   next();
 };
 
@@ -42,23 +51,25 @@ const validateUpdateSubscriber = (req, res, next) => {
     isSubscribe,
     emailPermStatus,
     smsPermStatus,
-  } = req.body;
+  } = req.body || {};
 
   const errors = [];
 
-  if (!subscriberId?.trim()) {
+  if (!isNonEmptyString(subscriberId)) {
     errors.push('Subscriber ID is required');
+  } else if (!isValidSubscriberId(subscriberId)) {
+    errors.push('Invalid subscriber ID format');
   }
 
-  if (isSubscribe !== undefined && typeof isSubscribe !== 'boolean') {
+  if (isSubscribe !== undefined && !isBoolean(isSubscribe)) {
     errors.push('isSubscribe must be a boolean');
   }
 
-  if (emailPermStatus !== undefined && typeof emailPermStatus !== 'boolean') {
+  if (emailPermStatus !== undefined && !isBoolean(emailPermStatus)) {
     errors.push('emailPermStatus must be a boolean');
   }
 
-  if (smsPermStatus !== undefined && typeof smsPermStatus !== 'boolean') {
+  if (smsPermStatus !== undefined && !isBoolean(smsPermStatus)) {
     errors.push('smsPermStatus must be a boolean');
   }
 
@@ -78,8 +89,10 @@ const validateGetSubscriberById = (req, res, next) => {
   const subscriberId = req.params.subscriberId || req.params.subscriberid;
   const errors = [];
 
-  if (!subscriberId?.trim()) {
+  if (!isNonEmptyString(subscriberId)) {
     errors.push('Subscriber ID is required');
+  } else if (!isValidSubscriberId(subscriberId)) {
+    errors.push('Invalid subscriber ID format');
   }
 
   if (errors.length) {
@@ -98,8 +111,10 @@ const validateGetSubscriberByCustomerId = (req, res, next) => {
   const customerId = req.params.customerId || req.query.customerId || req.query.customerid;
   const errors = [];
 
-  if (!customerId?.trim()) {
+  if (!isNonEmptyString(customerId)) {
     errors.push('Customer ID is required');
+  } else if (!isValidCustomerId(customerId)) {
+    errors.push('Invalid customer ID format');
   }
 
   if (errors.length) {

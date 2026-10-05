@@ -30,11 +30,15 @@ const login = async (req, res, next) => {
       email: req.body?.email,
     });
 
-    return res.status(statusCode).json({
-      success: false,
-      message: error.message || 'Invalid credentials',
-      errorCode,
-    });
+    if (error.isOperational || statusCode < 500) {
+      return res.status(statusCode).json({
+        success: false,
+        message: error.message || 'Invalid credentials',
+        errorCode,
+      });
+    }
+
+    return next(error);
   }
 };
 
@@ -65,11 +69,15 @@ const register = async (req, res, next) => {
       email: req.body?.email,
     });
 
-    return res.status(statusCode).json({
-      success: false,
-      message: error.message || 'Failed to create staff user',
-      errorCode,
-    });
+    if (error.isOperational || statusCode < 500) {
+      return res.status(statusCode).json({
+        success: false,
+        message: error.message || 'Failed to create staff user',
+        errorCode,
+      });
+    }
+
+    return next(error);
   }
 };
 
@@ -103,11 +111,15 @@ const getMe = async (req, res, next) => {
       errorCode,
     });
 
-    return res.status(statusCode).json({
-      success: false,
-      message: error.message || 'Unable to fetch user profile',
-      errorCode,
-    });
+    if (error.isOperational || statusCode < 500) {
+      return res.status(statusCode).json({
+        success: false,
+        message: error.message || 'Unable to fetch user profile',
+        errorCode,
+      });
+    }
+
+    return next(error);
   }
 };
 

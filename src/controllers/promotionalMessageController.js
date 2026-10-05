@@ -3,7 +3,7 @@ const { PROMOTIONAL_ONBOARDING_EMAIL_SUBJECT } = require('../constants/constant'
 const promotionalMessageService = require('../services/promotionalMessageService');
 const { sendWeeklyPromotionalCampaign } = require('../services/promotionalCampaignService');
 
-const createPromotionalMessage = async (req, res) => {
+const createPromotionalMessage = async (req, res, next) => {
   const customerId = req.body?.customerid || req.body?.customerId || 'unknown';
   console.info(`[PROMOTIONAL_CONTROLLER] Received promotional send request for customer=${customerId}`);
 
@@ -39,14 +39,17 @@ const createPromotionalMessage = async (req, res) => {
   } catch (error) {
     const statusCode = error?.statusCode || 500;
     console.error(`[PROMOTIONAL_CONTROLLER] Promotional send failed for customer=${customerId}: ${error.message}`);
-    return res.status(statusCode).json({
-      success: false,
-      message: error.message,
-    });
+    if (statusCode < 500 || error?.isOperational) {
+      return res.status(statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    return next(error);
   }
 };
 
-const getFailedPromotionalMessages = async (req, res) => {
+const getFailedPromotionalMessages = async (req, res, next) => {
   try {
     console.info('[PROMOTIONAL_CONTROLLER] Retrieving failed promotional events from DLQ');
     const failedEvents = await promotionalMessageService.getFailedPromotionalEvents();
@@ -56,14 +59,11 @@ const getFailedPromotionalMessages = async (req, res) => {
     });
   } catch (error) {
     console.error(`[PROMOTIONAL_CONTROLLER] Failed to retrieve failed promotional events: ${error.message}`);
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return next(error);
   }
 };
 
-const retryFailedPromotionalMessages = async (req, res) => {
+const retryFailedPromotionalMessages = async (req, res, next) => {
   try {
     console.info('[PROMOTIONAL_CONTROLLER] Starting promotional DLQ retry process');
     const results = await promotionalMessageService.retryFailedPromotionalEvents({
@@ -79,14 +79,11 @@ const retryFailedPromotionalMessages = async (req, res) => {
     });
   } catch (error) {
     console.error(`[PROMOTIONAL_CONTROLLER] DLQ retry process failed: ${error.message}`);
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return next(error);
   }
 };
 
-const sendPromotionalCampaign = async (req, res) => {
+const sendPromotionalCampaign = async (req, res, next) => {
   try {
     const summary = await sendWeeklyPromotionalCampaign(req.body);
     return res.status(200).json({
@@ -96,10 +93,13 @@ const sendPromotionalCampaign = async (req, res) => {
     });
   } catch (error) {
     console.error(`[PROMOTIONAL_CONTROLLER] Campaign failed: ${error.message}`);
-    return res.status(400).json({
-      success: false,
-      message: error.message,
-    });
+    if (error?.statusCode === 400 || error?.isOperational) {
+      return res.status(error.statusCode || 400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+    return next(error);
   }
 };
 

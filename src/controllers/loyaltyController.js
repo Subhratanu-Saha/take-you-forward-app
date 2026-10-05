@@ -1,22 +1,19 @@
 const loyaltyService = require('../services/loyaltyService');
 
 // GET loyalty summary by customer ID
-const getLoyaltySummary = async (req, res) => {
+const getLoyaltySummary = async (req, res, next) => {
   try {
     console.log(`[LOYALTY_CONTROLLER] GET loyalty summary request for customerId=${req.params.customerId}`);
-
 
     const summary = await loyaltyService.getLoyaltySummary(req.params.customerId);
 
     if (!summary) {
       console.warn(`[LOYALTY_CONTROLLER] No loyalty record found for customerId=${req.params.customerId}`);
     } else {
-      console.log(`[LOYALTY_CONTROLLER] Loyalty summary found for customerId=${req.params.customerId}`,
-
-      );
+      console.log(`[LOYALTY_CONTROLLER] Loyalty summary found for customerId=${req.params.customerId}`);
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: 'Loyalty summary fetched successfully',
       data: summary,
@@ -24,15 +21,19 @@ const getLoyaltySummary = async (req, res) => {
   } catch (error) {
     console.error(`[LOYALTY_CONTROLLER] Failed to fetch loyalty summary for customerId=${req.params.customerId}:`, error);
 
-    res.status(404).json({
-      success: false,
-      message: error.message,
-    });
+    if (error.statusCode === 404 || error.message?.includes('not found') || error.isOperational) {
+      return res.status(error.statusCode || 404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    return next(error);
   }
 };
 
 // UPDATE loyalty tier
-const updateLoyaltyTier = async (req, res) => {
+const updateLoyaltyTier = async (req, res, next) => {
   try {
     const customerid = req.params?.customerId;
     const { totalpoints } = req.body;
@@ -45,7 +46,7 @@ const updateLoyaltyTier = async (req, res) => {
 
     console.log(`[LOYALTY_CONTROLLER] Loyalty tier updated successfully for customerId=${req.params.customerId}`);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: 'Loyalty tier updated successfully',
       data: result,
@@ -53,27 +54,25 @@ const updateLoyaltyTier = async (req, res) => {
   } catch (error) {
     console.error(`[LOYALTY_CONTROLLER] Failed to update loyalty tier for customerId=${req.params.customerId}`, error);
 
-    if (error.message?.includes('Customer not found')) {
+    if (error.message?.includes('Customer not found') || error.statusCode === 404) {
       return res.status(404).json({
         success: false,
         message: error.message,
       });
     }
-    if (error.message?.includes('Customer ID is required')) {
+    if (error.message?.includes('Customer ID is required') || error.statusCode === 400 || error.isOperational) {
       return res.status(400).json({
         success: false,
         message: error.message,
       });
     }
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Internal server error',
-    });
+
+    return next(error);
   }
 };
 
 // CREATE new loyalty record
-const createLoyaltyRecord = async (req, res) => {
+const createLoyaltyRecord = async (req, res, next) => {
   try {
     const urlCustomerId = req.params?.customerId;
     const bodyCustomerId = req.body?.customerid;
@@ -118,26 +117,24 @@ const createLoyaltyRecord = async (req, res) => {
   } catch (error) {
     console.error(`[LOYALTY_CONTROLLER] Failed to create loyalty record for customerId=${req.params?.customerId || req.body?.customerid}`, error);
 
-    if (error.message?.includes('Customer not found')) {
+    if (error.message?.includes('Customer not found') || error.statusCode === 404) {
       return res.status(404).json({
         success: false,
         message: error.message,
       });
     }
-    if (error.message?.includes('Customer ID is required')) {
+    if (error.message?.includes('Customer ID is required') || error.statusCode === 400 || error.isOperational) {
       return res.status(400).json({
         success: false,
         message: error.message,
       });
     }
 
-    // Handle unexpected exceptions with 500 Internal Server Error
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Internal server error',
-    });
+    return next(error);
   }
-};module.exports = {
+};
+
+module.exports = {
   getLoyaltySummary,
   updateLoyaltyTier,
   createLoyaltyRecord,
