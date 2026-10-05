@@ -5,9 +5,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const app = require('../src/app');
-const config = require('../src/config');
-const prisma = require('../src/utils/db');
+const app = require('../../src/app');
+const config = require('../../src/config');
+const prisma = require('../../src/utils/db');
 
 const originalUser = {
   findUnique: prisma.user?.findUnique,

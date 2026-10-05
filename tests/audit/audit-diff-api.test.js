@@ -3,13 +3,13 @@ const assert = require('node:assert/strict');
 
 process.env.NODE_ENV = 'test';
 
-const prisma = require('../src/utils/db');
+const prisma = require('../../src/utils/db');
 const {
   recordAuditLog,
   getAuditLogs,
   getAuditLogsByRequestId,
   getAuditLogById,
-} = require('../src/services/auditService');
+} = require('../../src/services/auditService');
 
 describe('Audit Diff & Single Request Correlation API', () => {
   const testRequestId = 'TEST-REQ-CORRELATION-999';
@@ -116,7 +116,7 @@ describe('Audit Diff & Single Request Correlation API', () => {
   });
 
   test('HTTP GET /api/v1/audit-logs/request/:requestId returns correlated logs via endpoint', async () => {
-    const app = require('../src/app');
+    const app = require('../../src/app');
     const server = app.listen(0);
     const port = server.address().port;
 
@@ -137,7 +137,7 @@ describe('Audit Diff & Single Request Correlation API', () => {
   });
 
   test('HTTP GET /api/v1/audit-logs/:id returns full diff payload via endpoint', async () => {
-    const app = require('../src/app');
+    const app = require('../../src/app');
     const server = app.listen(0);
     const port = server.address().port;
 

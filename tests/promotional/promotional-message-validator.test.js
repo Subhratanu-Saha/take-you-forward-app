@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 
 const {
   validateCreatePromotionalMessage,
-} = require('../src/middleware/promotionalMessageValidator');
+} = require('../../src/middleware/promotionalMessageValidator');
 
 const createMockReqRes = (body = {}) => {
   const req = {

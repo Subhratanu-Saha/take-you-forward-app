@@ -4,8 +4,8 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-key-123';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const jwt = require('jsonwebtoken');
-const config = require('../src/config');
-const app = require('../src/app');
+const config = require('../../src/config');
+const app = require('../../src/app');
 const {
   getRequestContext,
   runWithContext,
@@ -13,14 +13,14 @@ const {
   getActor,
   getUserRole,
   getIpAddress,
-} = require('../src/context/requestContext');
-const contextMiddleware = require('../src/middleware/contextMiddleware');
+} = require('../../src/context/requestContext');
+const contextMiddleware = require('../../src/middleware/contextMiddleware');
 const {
   calculateDiff,
   recordAuditLog,
   getAuditLogsByEntity,
-} = require('../src/services/auditService');
-const { attachAuditExtension } = require('../src/db/prisma');
+} = require('../../src/services/auditService');
+const { attachAuditExtension } = require('../../src/db/prisma');
 
 test('Audit Service - calculateDiff correctly detects field changes and ignores timestamps', () => {
   const oldCustomer = {

@@ -15,7 +15,7 @@ describe('Issue #221: Real Node Child Process Lifecycle & Background Rejections'
   before(async () => {
     await new Promise((resolve, reject) => {
       // Spawn test entry point that mounts test triggers without modifying src/app.js
-      const testServerPath = path.join(__dirname, 'helpers', 'test-server.js');
+      const testServerPath = path.join(__dirname, '..', 'helpers', 'test-server.js');
       serverProcess = spawn('node', [testServerPath], {
         env: {
           ...process.env,

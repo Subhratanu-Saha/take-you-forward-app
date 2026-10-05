@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 
 const {
   generatePromotionalEmailHTML,
-} = require("../src/templates/promotionalEmailTemplate");
+} = require("../../src/templates/promotionalEmailTemplate");
 
 test("generates promotional email with customer and campaign data", () => {
   const html = generatePromotionalEmailHTML({
@@ -120,7 +120,7 @@ test("uses a fallback date when the expiration date is invalid", () => {
 });
 
 test("exports cached utcDateFormatter instance configured for UTC date formatting", () => {
-  const { utcDateFormatter } = require("../src/templates/promotionalEmailTemplate");
+  const { utcDateFormatter } = require("../../src/templates/promotionalEmailTemplate");
   assert.ok(utcDateFormatter, "utcDateFormatter should be exported");
   assert.ok(utcDateFormatter instanceof Intl.DateTimeFormat, "utcDateFormatter should be an instance of Intl.DateTimeFormat");
   const resolved = utcDateFormatter.resolvedOptions();

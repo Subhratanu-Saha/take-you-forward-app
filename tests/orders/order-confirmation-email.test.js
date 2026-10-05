@@ -4,9 +4,9 @@ process.env.EMAIL_USER_PASSCODE = process.env.EMAIL_USER_PASSCODE || 'test-app-p
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const prisma = require('../src/utils/db');
-const { transporter } = require('../src/config/email');
-const app = require('../src/app');
+const prisma = require('../../src/utils/db');
+const { transporter } = require('../../src/config/email');
+const app = require('../../src/app');
 
 // Mock email transporter sendMail method directly on the configured transporter
 const sentEmails = [];
@@ -16,8 +16,8 @@ transporter.sendMail = async (options) => {
   return { messageId: 'msg-mock-123', accepted: [options.to] };
 };
 
-const { generateOrderConfirmationHTML } = require('../src/templates/orderConfirmationTemplate');
-const { sendOrderConfirmationEmail } = require('../src/services/orderEmailService');
+const { generateOrderConfirmationHTML } = require('../../src/templates/orderConfirmationTemplate');
+const { sendOrderConfirmationEmail } = require('../../src/services/orderEmailService');
 
 test('Order Confirmation Email Template matches requirements', (t) => {
   const mockOrder = {

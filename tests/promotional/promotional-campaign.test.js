@@ -5,12 +5,12 @@ process.env.EMAIL_USER_PASSCODE = process.env.EMAIL_USER_PASSCODE || 'test-app-p
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const customerModel = require('../src/models/customer');
-const customerController = require('../src/controllers/customerController');
-const customerService = require('../src/services/customerService');
-const welcomeEmailService = require('../src/services/welcomeEmailService');
-const promotionalMessageService = require('../src/services/promotionalMessageService');
-const { sendWeeklyPromotionalCampaign } = require('../src/services/promotionalCampaignService');
+const customerModel = require('../../src/models/customer');
+const customerController = require('../../src/controllers/customerController');
+const customerService = require('../../src/services/customerService');
+const welcomeEmailService = require('../../src/services/welcomeEmailService');
+const promotionalMessageService = require('../../src/services/promotionalMessageService');
+const { sendWeeklyPromotionalCampaign } = require('../../src/services/promotionalCampaignService');
 
 const eligibleCustomer = {
   customerid: 'CUST-123',

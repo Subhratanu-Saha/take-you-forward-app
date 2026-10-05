@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 
 const {
   createLoyaltyPurchaseConsumer,
-} = require('../src/events/loyaltyEventConsumer');
+} = require('../../src/events/loyaltyEventConsumer');
 
 test('failed loyalty event should succeed when the event is redelivered', async () => {
   let attempts = 0;

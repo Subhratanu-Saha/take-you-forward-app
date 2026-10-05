@@ -7,11 +7,11 @@ const http = require('node:http');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 
-const config = require('../src/config');
-const { ERROR_CODES } = require('../src/utils/db');
-const { AUTH_ERROR_CODES } = require('../src/constants/constant');
-const { authenticate } = require('../src/middleware/authMiddleware');
-const { authorizeRoles, ROLES } = require('../src/middleware/rbacMiddleware');
+const config = require('../../src/config');
+const { ERROR_CODES } = require('../../src/utils/db');
+const { AUTH_ERROR_CODES } = require('../../src/constants/constant');
+const { authenticate } = require('../../src/middleware/authMiddleware');
+const { authorizeRoles, ROLES } = require('../../src/middleware/rbacMiddleware');
 
 describe('Auth & RBAC Authorization Middleware Engine (#188)', () => {
   describe('Constants and Error Codes Verification', () => {

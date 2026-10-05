@@ -1,8 +1,8 @@
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
 
-const auditService = require('../src/services/auditService');
-const prisma = require('../src/utils/db');
+const auditService = require('../../src/services/auditService');
+const prisma = require('../../src/utils/db');
 
 describe('Promotional DLQ Service - Audit Logging', () => {
 

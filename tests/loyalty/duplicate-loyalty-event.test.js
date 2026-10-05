@@ -3,11 +3,11 @@ const assert = require('node:assert/strict');
 
 const {
   createLoyaltyPurchaseConsumer,
-} = require('../src/events/loyaltyEventConsumer');
+} = require('../../src/events/loyaltyEventConsumer');
 
-const loyaltyService = require('../src/services/loyaltyService');
-const loyaltyModel = require('../src/models/loyalty');
-const customerModel = require('../src/models/customer');
+const loyaltyService = require('../../src/services/loyaltyService');
+const loyaltyModel = require('../../src/models/loyalty');
+const customerModel = require('../../src/models/customer');
 
 test('recordProcessedLoyaltyEvent creates a ledger entry when the event has not been recorded yet', async () => {
   const created = [];
@@ -63,7 +63,7 @@ test('duplicate customer.purchase event should be skipped', async () => {
       processedEvents.add(eventId);
     };
 
-    const prisma = require('../src/utils/db');
+    const prisma = require('../../src/utils/db');
 
     const tx = {
       customer: {

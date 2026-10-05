@@ -1,8 +1,8 @@
 const { test, describe, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 
-const auditService = require('../src/services/auditService');
-const prisma = require('../src/utils/db');
+const auditService = require('../../src/services/auditService');
+const prisma = require('../../src/utils/db');
 
 describe('Audit Service - Core Functionality', () => {
 

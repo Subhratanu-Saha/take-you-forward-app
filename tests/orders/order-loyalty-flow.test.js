@@ -14,10 +14,10 @@ nodemailer.createTransport = (...args) => {
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const prisma = require('../src/utils/db');
-const { getEventEmitter } = require('../src/events/eventEmitter');
-const { createOrder, updateOrder } = require('../src/services/orderService');
-const app = require('../src/app');
+const prisma = require('../../src/utils/db');
+const { getEventEmitter } = require('../../src/events/eventEmitter');
+const { createOrder, updateOrder } = require('../../src/services/orderService');
+const app = require('../../src/app');
 
 test('createOrder emits a purchase event without updating loyalty directly', async () => {
   const emitter = getEventEmitter();

@@ -9,19 +9,19 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 
 // Mock email verification in test environment
-const { transporter } = require('../src/config/email');
+const { transporter } = require('../../src/config/email');
 transporter.verify = async () => true;
 
-const { logger } = require('../src/utils/db');
+const { logger } = require('../../src/utils/db');
 const {
   classifyRejection,
   isBackgroundRejection,
   safeBackgroundTask,
   runBackgroundTask,
   registerBackgroundPromise,
-} = require('../src/utils/rejectionHandler');
-const { handleUnhandledRejection } = require('../server');
-const app = require('../src/app');
+} = require('../../src/utils/rejectionHandler');
+const { handleUnhandledRejection } = require('../../server');
+const app = require('../../src/app');
 
 describe('Issue #221: Unhandled Rejection Handling & Process Lifecycle (Simplified)', () => {
   let loggedErrors = [];

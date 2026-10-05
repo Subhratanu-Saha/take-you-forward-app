@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 
 const {
   createLoyaltyPurchaseConsumer,
-} = require('../src/events/loyaltyEventConsumer');
+} = require('../../src/events/loyaltyEventConsumer');
 
 test('failed loyalty event should be rejected and acknowledged as failure', async () => {
   const mockLoyaltyProcessor = {

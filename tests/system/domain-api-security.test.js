@@ -15,8 +15,8 @@ nodemailer.createTransport = (...args) => {
   return transport;
 };
 
-const app = require('../src/app');
-const prisma = require('../src/utils/db');
+const app = require('../../src/app');
+const prisma = require('../../src/utils/db');
 
 describe('Domain API Security Guards (#190)', () => {
   let server;

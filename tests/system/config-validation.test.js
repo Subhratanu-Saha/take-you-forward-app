@@ -17,8 +17,8 @@ const loadProductionConfig = (environment) => {
     delete process.env[key];
   }
   Object.assign(process.env, { NODE_ENV: 'production', ...environment });
-  delete require.cache[require.resolve('../src/config')];
-  return require('../src/config');
+  delete require.cache[require.resolve('../../src/config')];
+  return require('../../src/config');
 };
 
 afterEach(() => {
@@ -29,7 +29,7 @@ afterEach(() => {
       process.env[key] = originalEnvironment[key];
     }
   }
-  delete require.cache[require.resolve('../src/config')];
+  delete require.cache[require.resolve('../../src/config')];
 });
 
 test('production config accepts DB_URL as a database URL alias', () => {
