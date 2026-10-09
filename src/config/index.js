@@ -1,4 +1,10 @@
 // Configuration file
+const DB_URL_ALIASES = ['DATABASE_URL', 'DB_URL', 'DATABASE_PRIVATE_URL'];
+const resolvedDbUrl = DB_URL_ALIASES.map((key) => process.env[key]).find(Boolean);
+if (!process.env.DATABASE_URL && resolvedDbUrl) {
+  process.env.DATABASE_URL = resolvedDbUrl;
+}
+
 const config = {
   development: {
     port: process.env.PORT || 5000,
@@ -45,7 +51,7 @@ const validateConfig = () => {
     error.code = 'CONFIG_VALIDATION_FAILED';
     error.missingVariables = missing;
     error.expectedVariables = {
-      databaseUrl: ['DATABASE_URL'],
+      databaseUrl: ['DATABASE_URL', 'DB_URL', 'DATABASE_PRIVATE_URL'],
       jwtSecret: ['JWT_SECRET'],
     };
     throw error;
